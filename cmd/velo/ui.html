@@ -1,0 +1,922 @@
+<!doctype html>
+<html data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Velo</title>
+<style>
+  :root {
+    --primary: #1677ff; --primary-hover: #0f63dd; --primary-soft: #e8f1ff;
+    --ink: #0d1728; --text: #1b2433; --muted: #64748b; --faint: #94a3b8;
+    --bg: #f5f8fc; --panel: #ffffff; --panel-2: #f8fafd; --line: #e6ebf2; --line-2: #eef2f7;
+    --ok: #22c55e; --ok-soft: #e8f8ee; --warn: #f59e0b; --warn-soft: #fef5e6; --err: #ef4444; --err-soft: #fdecec;
+    --shadow: 0 1px 2px rgba(13,23,40,.05), 0 4px 16px rgba(13,23,40,.06);
+    --shadow-lg: 0 12px 40px rgba(13,23,40,.18);
+    --radius: 12px;
+  }
+  html[data-theme="dark"] {
+    --primary: #3b8bff; --primary-hover: #5c9eff; --primary-soft: #16294a;
+    --ink: #eef3fa; --text: #dbe3ee; --muted: #93a1b5; --faint: #66758b;
+    --bg: #0d1728; --panel: #131f33; --panel-2: #172540; --line: #22314a; --line-2: #1b2a42;
+    --ok-soft: #12301f; --warn-soft: #33270f; --err-soft: #3a1a1d;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+    --shadow-lg: 0 12px 40px rgba(0,0,0,.5);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--text); display: flex; overflow: hidden;
+    font: 13.5px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased; user-select: none;
+  }
+  svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  input, select { font: inherit; color: var(--text); }
+  :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+  /* ---- sidebar ---- */
+  aside {
+    width: 232px; flex: none; background: var(--panel); border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; padding: 18px 14px 14px;
+  }
+  .logo { display: flex; align-items: center; gap: 8px; padding: 2px 10px 20px; font-weight: 700; font-size: 22px; color: var(--ink); letter-spacing: -.5px; }
+  .logo svg { width: 26px; height: 26px; }
+  nav { display: grid; gap: 2px; }
+  nav button {
+    display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border: 0; border-radius: 9px;
+    background: none; color: var(--text); text-align: left; font-weight: 500; transition: background .15s;
+  }
+  nav button:hover { background: var(--panel-2); }
+  nav button.active { background: var(--primary); color: #fff; }
+  nav .count { margin-left: auto; min-width: 22px; padding: 1px 7px; border-radius: 10px; background: var(--primary-soft); color: var(--primary); font-size: 11.5px; font-weight: 600; text-align: center; }
+  nav button.active .count { background: rgba(255,255,255,.22); color: #fff; }
+  .side-bottom { margin-top: auto; display: grid; gap: 10px; }
+  .speed-card { background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 10px; padding: 12px 14px; }
+  .speed-card .lbl { color: var(--muted); font-size: 12px; }
+  .speed-card .row { display: flex; align-items: end; justify-content: space-between; gap: 8px; }
+  .speed-card .val { font-size: 19px; font-weight: 600; color: var(--ink); white-space: nowrap; }
+  .speed-card svg { width: 84px; height: 30px; }
+  .oss { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: var(--primary-soft); color: var(--primary); font-weight: 600; font-size: 12.5px; }
+  .oss span { color: var(--muted); font-weight: 400; }
+
+  /* ---- main ---- */
+  main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .topbar { display: flex; align-items: center; gap: 12px; padding: 14px 28px 10px; }
+  .search { flex: 0 1 460px; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--muted); }
+  .search input { flex: 1; border: 0; outline: 0; background: none; min-width: 0; }
+  .search kbd { font: 11px inherit; color: var(--faint); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; }
+  .content { flex: 1; overflow: auto; padding: 6px 28px 28px; }
+  .page { display: none; } .page.on { display: block; }
+  h1 { font-size: 20px; color: var(--ink); margin: 6px 0 16px; letter-spacing: -.2px; }
+
+  /* hero */
+  .hero {
+    position: relative; overflow: hidden; border-radius: 16px; padding: 30px 28px 24px; color: #fff; margin-bottom: 26px;
+    background: linear-gradient(115deg, #0d1728 0%, #14325f 48%, #1c4f8f 100%);
+  }
+  .hero svg.mtn { position: absolute; right: 0; bottom: 0; width: 70%; height: 100%; opacity: .5; }
+  .hero h2 { position: relative; margin: 0; font-size: 26px; line-height: 1.2; font-weight: 700; letter-spacing: -.4px; }
+  .hero p { position: relative; margin: 8px 0 18px; color: rgba(255,255,255,.85); }
+  .addbar { position: relative; display: flex; gap: 8px; align-items: center; background: #fff; border-radius: 12px; padding: 6px 6px 6px 14px; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+  .addbar.drop { outline: 3px dashed #7fb2ff; }
+  .addbar svg.i { color: #94a3b8; }
+  .addbar input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: #1b2433; font-size: 14px; padding: 9px 4px; user-select: text; }
+  .iconbtn { display: inline-grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 9px; background: none; color: var(--muted); }
+  .iconbtn:hover { background: var(--panel-2); color: var(--ink); }
+  .addbar .iconbtn:hover { background: #f1f5f9; color: #0d1728; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 9px 16px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel); font-weight: 600; transition: background .15s, border-color .15s; }
+  .btn:hover { background: var(--panel-2); }
+  .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .btn.primary:hover { background: var(--primary-hover); }
+  .btn.big { padding: 11px 26px; font-size: 14px; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .hero-note { position: relative; margin-top: 14px; font-size: 12px; color: rgba(255,255,255,.7); }
+
+  /* list */
+  .listhead { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .listhead h3 { margin: 0; font-size: 17px; color: var(--ink); }
+  .listhead .acts { margin-left: auto; display: flex; gap: 2px; align-items: center; }
+  .listhead .acts .btn { border: 0; background: none; padding: 7px 10px; }
+  .listhead .acts .btn:hover { background: var(--panel); }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .chip { padding: 5px 13px; border-radius: 16px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); font-size: 12.5px; font-weight: 500; }
+  .chip.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .list { display: grid; gap: 10px; }
+  .card {
+    display: grid; grid-template-columns: 54px 1fr auto; gap: 16px; align-items: center;
+    background: var(--panel); border: 1px solid var(--line-2); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow);
+  }
+  .card.new { animation: rise .25s ease; }
+  @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .tile { width: 54px; height: 54px; border-radius: 12px; display: grid; place-items: center; color: #fff; }
+  .tile svg.i { width: 26px; height: 26px; stroke-width: 1.7; }
+  .t-Video { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+  .t-Music { background: linear-gradient(135deg, #a855f7, #7c3aed); }
+  .t-Images { background: linear-gradient(135deg, #14b8a6, #0d9488); }
+  .t-Documents { background: linear-gradient(135deg, #f97316, #ea580c); }
+  .t-Compressed { background: linear-gradient(135deg, #facc15, #eab308); }
+  .t-Programs { background: linear-gradient(135deg, #64748b, #475569); }
+  .t-Other { background: linear-gradient(135deg, #94a3b8, #64748b); }
+  .info { min-width: 0; }
+  .name { font-weight: 600; font-size: 14.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meta { display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: 12.5px; margin-top: 3px; white-space: nowrap; overflow: hidden; }
+  .meta .dot::before { content: "•"; margin-right: 10px; color: var(--faint); }
+  .meta .left { margin-left: auto; }
+  .bar { height: 6px; border-radius: 4px; background: var(--line-2); overflow: hidden; margin-top: 9px; }
+  .bar > i { display: block; height: 100%; border-radius: 4px; background: var(--primary); transition: width .5s ease; }
+  .card.done .bar > i { background: var(--ok); }
+  .card.paused .bar > i, .card.queued .bar > i { background: var(--warn); }
+  .card.error .bar > i { background: var(--err); }
+  .badge { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; font-size: 12.5px; }
+  .badge.ok { color: var(--ok); } .badge.warn { color: var(--warn); } .badge.err { color: var(--err); } .badge.blue { color: var(--primary); }
+  .card .actions { display: flex; gap: 4px; }
+  .card.selected { border-color: var(--primary); }
+  .menu {
+    position: fixed; z-index: 50; min-width: 190px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: var(--shadow-lg); padding: 5px; display: none;
+  }
+  .menu button { display: flex; width: 100%; gap: 10px; align-items: center; padding: 8px 10px; border: 0; background: none; border-radius: 7px; text-align: left; }
+  .menu button:hover { background: var(--panel-2); }
+  .menu button.danger { color: var(--err); }
+  .menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
+
+  .empty { text-align: center; padding: 56px 20px; color: var(--muted); background: var(--panel); border: 1px dashed var(--line); border-radius: var(--radius); }
+  .empty .ill { width: 64px; height: 64px; margin: 0 auto 14px; border-radius: 18px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); }
+  .empty .ill svg.i { width: 30px; height: 30px; }
+  .empty b { display: block; color: var(--ink); font-size: 15px; margin-bottom: 4px; }
+
+  /* panels / forms */
+  .panel { background: var(--panel); border: 1px solid var(--line-2); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 22px; }
+  .grid2 { display: grid; grid-template-columns: 220px 1fr; gap: 18px; align-items: start; }
+  .snav { display: grid; gap: 2px; background: var(--panel); border: 1px solid var(--line-2); border-radius: var(--radius); padding: 8px; box-shadow: var(--shadow); }
+  .snav button { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border: 0; border-radius: 8px; background: none; text-align: left; font-weight: 500; }
+  .snav button:hover { background: var(--panel-2); }
+  .snav button.on { background: var(--primary-soft); color: var(--primary); }
+  .sec { display: none; } .sec.on { display: block; }
+  .sec h2 { margin: 0 0 14px; font-size: 16px; color: var(--ink); }
+  .opt { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 12px 0; border-bottom: 1px solid var(--line-2); }
+  .opt:last-child { border-bottom: 0; }
+  .opt .t { font-weight: 500; } .opt .d { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .switch { position: relative; width: 38px; height: 22px; flex: none; }
+  .switch input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; z-index: 1; }
+  .switch i { position: absolute; inset: 0; border-radius: 12px; background: var(--line); transition: background .2s; }
+  .switch i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .2s; }
+  .switch input:checked + i { background: var(--primary); }
+  .switch input:checked + i::after { transform: translateX(16px); }
+  .field { display: grid; gap: 6px; margin-bottom: 14px; }
+  .field > label, .field > .lbl { font-weight: 600; font-size: 12.5px; color: var(--muted); }
+  .inp { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); padding: 0 6px 0 12px; }
+  .inp input, .inp select { flex: 1; min-width: 0; border: 0; outline: 0; background: none; padding: 9px 0; user-select: text; }
+  .inp .link { border: 0; background: none; color: var(--primary); font-weight: 600; padding: 6px 8px; border-radius: 7px; }
+  .inp .link:hover { background: var(--primary-soft); }
+  .inp.ro input { color: var(--muted); }
+  select.sel, input.num, input.time { border: 1px solid var(--line); border-radius: 9px; background: var(--panel); padding: 8px 10px; }
+  .row2 { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .days { display: flex; gap: 6px; flex-wrap: wrap; }
+  .days label { padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-size: 12.5px; }
+  .days input { display: none; }
+  .days label:has(input:checked) { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); font-weight: 600; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+  .seg label { padding: 7px 14px; cursor: pointer; border-right: 1px solid var(--line); }
+  .seg label:last-child { border-right: 0; }
+  .seg input { display: none; }
+  .seg label:has(input:checked) { background: var(--primary); color: #fff; }
+  .check { display: flex; gap: 9px; align-items: center; cursor: pointer; }
+  .check input { width: 16px; height: 16px; accent-color: var(--primary); margin: 0; }
+  .hint { color: var(--muted); font-size: 12.5px; }
+  .off { opacity: .5; pointer-events: none; }
+  code { font-family: Consolas, monospace; font-size: 12px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; user-select: text; }
+  ol.steps { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+
+  /* dialog */
+  dialog {
+    border: 0; border-radius: 14px; padding: 0; width: 480px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px);
+    background: var(--panel); color: var(--text); box-shadow: var(--shadow-lg);
+  }
+  dialog::backdrop { background: rgba(13,23,40,.45); }
+  dialog[open] { display: flex; flex-direction: column; animation: pop .18s ease; }
+  @keyframes pop { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+  .dh { display: flex; align-items: center; padding: 16px 20px; font-size: 16px; font-weight: 700; color: var(--ink); }
+  .dh .iconbtn { margin-left: auto; }
+  .db { padding: 2px 20px 8px; overflow: auto; }
+  .df { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px 18px; }
+  .probe { min-height: 18px; font-size: 12.5px; color: var(--muted); margin: -6px 0 12px; }
+  .probe.err { color: var(--err); }
+  .formrow { display: grid; grid-template-columns: 92px 1fr; gap: 10px; align-items: center; margin-bottom: 12px; }
+  .formrow > span { color: var(--muted); font-weight: 500; }
+
+  /* batch dialog */
+  #batchDlg { width: 640px; }
+  .btools { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+  .btools .inp { flex: 1; min-width: 180px; }
+  .blist { border: 1px solid var(--line); border-radius: 10px; max-height: 340px; overflow: auto; }
+  .brow { display: grid; grid-template-columns: 20px 34px 1fr; gap: 10px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line-2); cursor: pointer; }
+  .brow:last-child { border-bottom: 0; }
+  .brow:hover { background: var(--panel-2); }
+  .brow input { accent-color: var(--primary); width: 16px; height: 16px; margin: 0; }
+  .brow .tile { width: 34px; height: 34px; border-radius: 8px; }
+  .brow .tile svg.i { width: 17px; height: 17px; }
+  .brow .n { font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .brow .u { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .brow > div { min-width: 0; }
+  /* onboarding */
+  #onboard { width: 560px; }
+  .ob { padding: 28px 30px 6px; }
+  .ob .big { width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; background: var(--primary); color: #fff; margin-bottom: 16px; }
+  .ob .big svg.i { width: 30px; height: 30px; }
+  .ob h2 { margin: 0 0 6px; font-size: 21px; color: var(--ink); letter-spacing: -.3px; }
+  .ob p { margin: 0 0 16px; color: var(--muted); }
+  .ob ul { margin: 0 0 8px; padding: 0; list-style: none; display: grid; gap: 10px; }
+  .ob ul li { display: flex; gap: 10px; align-items: flex-start; }
+  .ob li svg.i { color: var(--primary); margin-top: 1px; }
+  .dots { display: flex; gap: 6px; margin-right: auto; align-items: center; }
+  .dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+  .dots i.on { background: var(--primary); width: 22px; border-radius: 4px; }
+  .status { display: flex; gap: 10px; align-items: center; padding: 12px 14px; border-radius: 10px; background: var(--panel-2); margin-top: 14px; font-weight: 600; }
+  .status.ok { background: var(--ok-soft); color: var(--ok); }
+  .spin { width: 16px; height: 16px; border: 2px solid var(--line); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); opacity: 0; pointer-events: none;
+    background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; box-shadow: var(--shadow-lg); transition: all .2s; max-width: 70vw;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%); }
+  #toast.err { background: var(--err); color: #fff; }
+  .dropzone { position: fixed; inset: 0; z-index: 40; display: none; place-items: center; background: rgba(22,119,255,.12); border: 3px dashed var(--primary); color: var(--primary); font-size: 18px; font-weight: 700; }
+  .dropzone.on { display: grid; }
+</style>
+</head>
+<body>
+<aside>
+  <div class="logo"><svg viewBox="0 0 24 24"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z" fill="var(--primary)"/></svg>velo.</div>
+  <nav id="nav"></nav>
+  <div class="side-bottom">
+    <div class="speed-card">
+      <div class="lbl">Download speed</div>
+      <div class="row"><div class="val" id="speedVal">0 B/s</div><svg id="spark" viewBox="0 0 84 30" preserveAspectRatio="none"></svg></div>
+    </div>
+    <div class="oss"><svg class="i" viewBox="0 0 24 24"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z"/></svg>velo <span>· Open Source</span></div>
+  </div>
+</aside>
+
+<main>
+  <div class="topbar">
+    <label class="search"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="search" placeholder="Search downloads…" spellcheck="false"><kbd>Ctrl K</kbd></label>
+  </div>
+  <div class="content">
+
+    <!-- Home -->
+    <section class="page" data-page="home">
+      <div class="hero">
+        <svg class="mtn" viewBox="0 0 600 200" preserveAspectRatio="xMaxYMax slice">
+          <path d="M0 200 120 90l60 50 90-110 110 120 70-60 150 110z" fill="#2f6fd0" opacity=".45"/>
+          <path d="M60 200 200 110l70 50 110-90 120 130z" fill="#0b1a33" opacity=".7"/>
+        </svg>
+        <h2>Fast downloads.<br>A smoother internet.</h2>
+        <p>Paste a link or drag and drop to start.</p>
+        <div class="addbar" id="heroBar">
+          <svg class="i" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>
+          <input id="heroUrl" placeholder="https://example.com/file.zip" spellcheck="false">
+          <button class="iconbtn" id="pasteBtn" title="Paste link"><svg class="i" viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M16 5h2a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h2"/></svg></button>
+          <button class="btn primary big" id="heroGo">Download</button>
+        </div>
+        <div class="hero-note">Files, HLS and DASH video streams. Protected/DRM content is not supported.</div>
+      </div>
+      <div data-list="home"></div>
+    </section>
+
+    <section class="page" data-page="downloads"><h1>Downloads</h1><div data-list="downloads"></div></section>
+    <section class="page" data-page="queue"><h1>Queue</h1><div data-list="queue"></div></section>
+    <section class="page" data-page="completed"><h1>Completed</h1><div data-list="completed"></div></section>
+    <section class="page" data-page="media"><h1>Video / Audio</h1><div data-list="media"></div></section>
+
+    <!-- Scheduler -->
+    <section class="page" data-page="scheduler">
+      <h1>Scheduler</h1>
+      <div class="panel" style="max-width:640px">
+        <div class="opt"><div><div class="t">Only download during set hours</div><div class="d">Outside the window, downloads wait in the queue and running ones pause, then continue when it opens.</div></div>
+          <span class="switch"><input type="checkbox" id="sEnabled" data-s="schedule.enabled"><i></i></span></div>
+        <div id="sFields" style="padding-top:12px">
+          <div class="field"><span class="lbl">Between</span>
+            <div class="row2"><input type="time" class="time" id="sStart" data-s="schedule.start"> <span class="hint">and</span> <input type="time" class="time" id="sStop" data-s="schedule.stop"><span class="hint">(23:00–06:00 runs overnight)</span></div></div>
+          <div class="field"><span class="lbl">On these days</span><div class="days" id="sDays"></div></div>
+        </div>
+        <div class="opt"><div><div class="t">Downloads at once</div><div class="d">Others wait in the queue.</div></div>
+          <select class="sel" data-s="maxConcurrent" data-num>${[1,2,3,4,5,6,8,10].map(n=>`<option>${n}</option>`)}</select></div>
+        <div class="opt"><div><div class="t">When all downloads finish</div><div class="d">Shut down gives a 1-minute warning (<code>shutdown /a</code> cancels).</div></div>
+          <select class="sel" data-s="onFinish"><option value="none">Do nothing</option><option value="exit">Exit Velo</option><option value="sleep">Sleep</option><option value="shutdown">Shut down</option></select></div>
+      </div>
+    </section>
+
+    <!-- Browser extension -->
+    <section class="page" data-page="extension">
+      <h1>Browser Extension</h1>
+      <div class="panel" style="max-width:720px">
+        <h2 style="margin:0 0 6px;font-size:16px;color:var(--ink)">One-click downloads from Chrome and Edge</h2>
+        <p class="hint" style="margin:0 0 16px">The extension hands downloads to Velo, finds videos on pages (HLS, DASH and media files) and adds “Download with Velo” to the right-click menu. It talks to Velo through the browser's native messaging, never an open network port.</p>
+        <ol class="steps">
+          <li>Open <code>chrome://extensions</code> or <code>edge://extensions</code> and turn on <b>Developer mode</b>.</li>
+          <li>Click <b>Load unpacked</b> and choose the <code>extension</code> folder from the Velo source.</li>
+          <li>The extension ID should be <code id="extId">dmdcijgljocjdmafenflenjhdjhenokc</code>. Run <code>install.ps1</code> once so the browser can reach Velo.</li>
+        </ol>
+        <div id="extStatus"></div>
+      </div>
+    </section>
+
+    <!-- Settings -->
+    <section class="page" data-page="settings">
+      <h1>Settings</h1>
+      <div class="grid2">
+        <div class="snav" id="snav"></div>
+        <div class="panel">
+          <div class="sec" data-sec="general"><h2>General</h2>
+            <div class="opt"><div><div class="t">Start Velo with Windows</div><div class="d">Starts quietly in the system tray.</div></div><span class="switch"><input type="checkbox" data-s="autostart"><i></i></span></div>
+            <div class="opt"><div><div class="t">Show download notifications</div><div class="d">When a download finishes or fails.</div></div><span class="switch"><input type="checkbox" data-s="notify"><i></i></span></div>
+            <div class="opt"><div><div class="t">Show Velo Mini while downloading</div><div class="d">A small progress window in the corner when the main window is closed.</div></div><span class="switch"><input type="checkbox" data-s="showMini"><i></i></span></div>
+            <div class="opt"><div><div class="t">Offer to download copied links</div><div class="d">Copy a link to a file and Velo offers to download it.</div></div><span class="switch"><input type="checkbox" data-s="watchClipboard"><i></i></span></div>
+          </div>
+          <div class="sec" data-sec="downloads"><h2>Downloads</h2>
+            <div class="field"><span class="lbl">Default download location</span>
+              <div class="inp ro"><input id="dirShow" readonly><button class="link" id="dirChange">Change</button><button class="link" id="dirReset">Reset</button></div></div>
+            <div class="opt"><div><div class="t">Auto-categorize downloads</div><div class="d">Video, Music, Images, Documents, Compressed and Programs subfolders.</div></div><span class="switch"><input type="checkbox" data-s="sortByType"><i></i></span></div>
+          </div>
+          <div class="sec" data-sec="connection"><h2>Connection</h2>
+            <div class="opt"><div><div class="t">Connections per download</div><div class="d">Velo splits files into parts and downloads them in parallel. Busy servers automatically get fewer.</div></div>
+              <select class="sel" data-s="connections" data-num><option>1</option><option>2</option><option>4</option><option>8</option><option>16</option><option>32</option></select></div>
+          </div>
+          <div class="sec" data-sec="speed"><h2>Speed limit</h2>
+            <div class="opt"><div><div class="t">Limit total download speed</div><div class="d">Shared by all downloads. Also in the tray menu.</div></div>
+              <select class="sel" data-s="speedLimitKB" data-num id="limitSel"><option value="0">No limit</option><option value="256">256 KB/s</option><option value="512">512 KB/s</option><option value="1024">1 MB/s</option><option value="2048">2 MB/s</option><option value="5120">5 MB/s</option><option value="10240">10 MB/s</option></select></div>
+          </div>
+          <div class="sec" data-sec="browser"><h2>Browser integration</h2>
+            <p class="hint">Downloads of common file types in Chrome and Edge are handed to Velo automatically. See <b>Browser Extension</b> in the sidebar to set it up.</p>
+          </div>
+          <div class="sec" data-sec="video"><h2>Video grabber</h2>
+            <p class="hint">The extension detects HLS (<code>.m3u8</code>) and DASH (<code>.mpd</code>) streams and media files while a video plays. Velo picks the best quality and merges audio and video with ffmpeg. Encrypted (DRM) and live streams, and sites that protect their videos (such as YouTube), are not supported.</p>
+          </div>
+          <div class="sec" data-sec="appearance"><h2>Appearance</h2>
+            <div class="opt"><div><div class="t">Theme</div></div>
+              <span class="seg"><label><input type="radio" name="theme" value="light" data-s="theme">Light</label><label><input type="radio" name="theme" value="dark" data-s="theme">Dark</label><label><input type="radio" name="theme" value="system" data-s="theme">System</label></span></div>
+          </div>
+          <div class="sec" data-sec="advanced"><h2>Advanced</h2>
+            <p class="hint">Settings and history are stored in <code>%APPDATA%\Velo</code>. Velo can also be controlled from the command line with <code>veloctl</code>.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<div class="menu" id="menu"></div>
+<div id="toast"></div>
+<div class="dropzone" id="dropzone">Drop a link to download it</div>
+
+<dialog id="addDlg">
+  <div class="dh">Add Download<button class="iconbtn" data-close title="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="db">
+    <div class="inp" style="margin-bottom:10px"><svg class="i" viewBox="0 0 24 24" style="color:var(--faint)"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>
+      <input id="aUrl" placeholder="https://example.com/file.zip" spellcheck="false"><button class="iconbtn" id="aClear" title="Clear"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <div class="probe" id="aProbe"></div>
+    <div class="formrow"><span>Save to</span><div class="inp ro"><svg class="i" viewBox="0 0 24 24" style="color:var(--faint)"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><input id="aDir" readonly><button class="link" id="aDirChange">Change</button></div></div>
+    <div class="formrow"><span>File name</span><div class="inp"><input id="aName" spellcheck="false" placeholder="From the server"></div></div>
+    <div class="formrow"><span>Split into</span><div class="inp"><select id="aParts"></select></div></div>
+    <div style="display:grid;gap:10px;margin:14px 0 4px">
+      <label class="check"><input type="radio" name="aStart" value="now" checked> Start download immediately</label>
+      <label class="check"><input type="radio" name="aStart" value="queue"> Add to queue (paused)</label>
+    </div>
+  </div>
+  <div class="df"><button class="btn" data-close>Cancel</button><button class="btn primary" id="aGo"><svg class="i" viewBox="0 0 24 24"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z"/></svg>Download</button></div>
+</dialog>
+
+<dialog id="batchDlg">
+  <div class="dh"><span id="bTitle">Download links</span><button class="iconbtn" data-close title="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="db">
+    <div class="hint" id="bPage" style="margin:-6px 0 12px"></div>
+    <div class="btools">
+      <div class="inp"><svg class="i" viewBox="0 0 24 24" style="color:var(--faint)"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="bFilter" placeholder="Filter by name or link…" spellcheck="false"></div>
+      <span class="chips" id="bChips" style="margin:0"></span>
+    </div>
+    <div class="btools"><button class="btn" id="bAll">Select all</button><button class="btn" id="bNone">Select none</button><span class="hint" id="bCount" style="margin-left:auto"></span></div>
+    <div class="blist" id="bList"></div>
+    <div style="display:flex;gap:18px;margin:14px 0 4px">
+      <label class="check"><input type="radio" name="bStart" value="now" checked> Start immediately</label>
+      <label class="check"><input type="radio" name="bStart" value="queue"> Add to queue (paused)</label>
+    </div>
+  </div>
+  <div class="df"><button class="btn" data-close>Cancel</button><button class="btn primary" id="bGo">Download</button></div>
+</dialog>
+
+<dialog id="onboard">
+  <div id="obBody"></div>
+  <div class="df"><span class="dots" id="obDots"></span><button class="btn" id="obBack">Back</button><button class="btn primary" id="obNext">Next</button></div>
+</dialog>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const icon = (d, cls = "i") => `<svg class="${cls}" viewBox="0 0 24 24">${d}</svg>`;
+const I = {
+  home: '<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/>',
+  dl: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+  queue: '<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>',
+  check: '<path d="m5 12 5 5 9-10"/>',
+  media: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  puzzle: '<path d="M10 3h4v3a2 2 0 1 0 4 0V3h3v7h-3a2 2 0 1 0 0 4h3v7h-7v-3a2 2 0 1 0-4 0v3H3v-7h3a2 2 0 1 0 0-4H3V3h7z"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  pause: '<path d="M9 5v14M15 5v14"/>',
+  play: '<path d="m7 4 13 8-13 8z"/>',
+  x: '<path d="M6 6l12 12M18 6 6 18"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+  retry: '<path d="M4 4v6h6"/><path d="M5 10a8 8 0 1 1 2 6"/>',
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
+  open: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>',
+  Video: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/>',
+  Music: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+  Images: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/>',
+  Documents: '<path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/>',
+  Compressed: '<path d="M6 3h12v18H6z"/><path d="M12 3v2M12 7v2M12 11v2M11 15h2v3h-2z"/>',
+  Programs: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 13l3 2-3 2"/>',
+  Other: '<path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5"/>',
+  sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  wifi: '<path d="M5 12a10 10 0 0 1 14 0M8.5 15.5a5 5 0 0 1 7 0"/><circle cx="12" cy="19" r="1"/>',
+  gauge: '<path d="M12 14l4-4"/><path d="M4 18a9 9 0 1 1 16 0"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  palette: '<circle cx="12" cy="12" r="9"/><circle cx="8" cy="10" r="1"/><circle cx="12" cy="7" r="1"/><circle cx="16" cy="10" r="1"/>',
+  wrench: '<path d="M14 7a4 4 0 0 0 5 5l-8 8a2 2 0 0 1-3-3l8-8a4 4 0 0 0-2-2z"/>',
+};
+
+// ---------- formatting ----------
+function size(n) {
+  if (!(n > 0)) return "0 B";
+  const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0;
+  while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+  return n.toFixed(i && n < 100 ? 1 : 0) + " " + u[i];
+}
+function eta(sec) {
+  sec = Math.round(sec);
+  const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+  return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
+}
+function ago(ms) {
+  const s = (Date.now() - ms) / 1000;
+  if (s < 60) return "just now"; if (s < 3600) return Math.floor(s / 60) + " min ago";
+  if (s < 86400) return Math.floor(s / 3600) + " h ago";
+  return new Date(ms).toLocaleDateString();
+}
+let toastTimer;
+function toast(msg, err) {
+  const t = $("#toast"); t.textContent = msg; t.className = "show" + (err ? " err" : "");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.className = ""), 3200);
+}
+async function act(fn, ...args) {
+  try { await fn(...args); } catch (e) { toast(String(e), true); }
+  refresh();
+}
+
+// ---------- navigation ----------
+const PAGES = [
+  ["home", "Home", I.home], ["downloads", "Downloads", I.dl], ["queue", "Queue", I.queue],
+  ["completed", "Completed", I.check], ["media", "Video/Audio", I.media], ["scheduler", "Scheduler", I.clock],
+  ["extension", "Browser Extension", I.puzzle], ["settings", "Settings", I.gear],
+];
+$("#nav").innerHTML = PAGES.map(([id, label, ic]) =>
+  `<button data-go="${id}">${icon(ic)}<span>${label}</span><span class="count" data-count="${id}" hidden></span></button>`).join("");
+let page = "home";
+function go(p) {
+  page = p;
+  $$("#nav button").forEach((b) => b.classList.toggle("active", b.dataset.go === p));
+  $$(".page").forEach((s) => s.classList.toggle("on", s.dataset.page === p));
+  if (p === "settings" || p === "scheduler") loadSettings();
+  if (p === "extension") extStatusHTML().then((h) => ($("#extStatus").innerHTML = h));
+  render();
+}
+window.go = go;
+$("#nav").onclick = (e) => { const b = e.target.closest("[data-go]"); if (b) go(b.dataset.go); };
+
+// ---------- list ----------
+let data = [], filter = "all", query = "", selected = null;
+const seenIds = new Set(); // cards already shown (only new ones animate in)
+const FILTERS = [["all", "All"], ["downloading", "Downloading"], ["completed", "Completed"], ["paused", "Paused"], ["scheduled", "Scheduled"]];
+const statusOf = (r) => r.status === "done" ? "completed" : r.status === "queued" ? "scheduled" : r.status === "error" ? "paused" : r.status;
+function rowsFor(view) {
+  let rows = data.slice().reverse();
+  if (query) rows = rows.filter((r) => (r.file + " " + r.url).toLowerCase().includes(query));
+  switch (view) {
+    case "queue": return rows.filter((r) => ["queued", "paused", "error"].includes(r.status));
+    case "completed": return rows.filter((r) => r.status === "done").sort((a, b) => b.finished - a.finished);
+    case "media": return rows.filter((r) => r.category === "Video" || r.category === "Music");
+  }
+  return filter === "all" ? rows : rows.filter((r) => statusOf(r) === filter);
+}
+
+function card(r) {
+  const cat = r.category || "Other";
+  const pct = r.status === "done" ? 100 : Math.min(r.percent, 100);
+  const known = r.total > 0;
+  let meta = "", right = "", acts = "";
+  if (r.status === "downloading") {
+    meta = `<span>${known ? size(r.done) + " / " + size(r.total) : size(r.done)}</span>` +
+      (known || r.kind ? `<span class="dot">${pct.toFixed(0)}%</span>` : "") +
+      `<span class="dot">${size(r.speed)}/s</span>` + (r.connections > 1 ? `<span class="dot">${r.connections} connections</span>` : "");
+    if (known && r.speed > 0) right = `<span class="left">${eta((r.total - r.done) / r.speed)} left</span>`;
+    acts = `<button class="iconbtn" data-act="pause" title="Pause">${icon(I.pause)}</button>`;
+  } else if (r.status === "done") {
+    meta = `<span>${size(r.total || r.done)}</span><span class="dot">${r.finished ? ago(r.finished) : "Done"}</span>`;
+    right = `<span class="left badge ok">${icon(I.check)}Completed</span>`;
+    acts = `<button class="iconbtn" data-act="folder" title="Show in folder">${icon(I.folder)}</button>`;
+  } else if (r.status === "error") {
+    meta = `<span class="badge err" title="${escapeHtml(r.error || "")}">${escapeHtml(shorten(r.error || "Failed", 80))}</span>`;
+    acts = `<button class="iconbtn" data-act="resume" title="Retry">${icon(I.retry)}</button>`;
+  } else {
+    const label = r.status === "queued" ? "Waiting in queue" : "Paused";
+    meta = `<span>${known ? size(r.done) + " / " + size(r.total) : r.done ? size(r.done) : "Not started"}</span>` +
+      (pct > 0 ? `<span class="dot">${pct.toFixed(0)}%</span>` : "") + `<span class="dot badge warn">${label}</span>`;
+    acts = r.status === "paused" ? `<button class="iconbtn" data-act="resume" title="Resume">${icon(I.play)}</button>`
+                                 : `<button class="iconbtn" data-act="pause" title="Hold">${icon(I.pause)}</button>`;
+  }
+  acts += r.status === "done" ? `<button class="iconbtn" data-act="more" title="More">${icon(I.more)}</button>`
+                              : `<button class="iconbtn" data-act="cancel" title="Cancel">${icon(I.x)}</button>`;
+  const fresh = !seenIds.has(r.id);
+  seenIds.add(r.id);
+  return `<div class="card ${r.status}${r.id === selected ? " selected" : ""}${fresh ? " new" : ""}" data-id="${r.id}">
+    <div class="tile t-${cat}">${icon(I[cat] || I.Other)}</div>
+    <div class="info"><div class="name" title="${escapeHtml(r.url)}">${escapeHtml(r.file || "Starting…")}</div>
+      <div class="meta">${meta}${right}</div>
+      ${r.status === "done" ? "" : `<div class="bar"><i style="width:${pct}%"></i></div>`}</div>
+    <div class="actions">${acts}</div></div>`;
+}
+const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const shorten = (s, n) => s.length > n ? s.slice(0, n - 1) + "…" : s;
+
+function emptyFor(view) {
+  const m = {
+    home: ["No downloads yet", "Paste a link above, drop one onto the window, or download a file in your browser."],
+    downloads: ["No downloads", "Everything you download shows up here."],
+    queue: ["The queue is empty", "Paused, waiting and failed downloads appear here."],
+    completed: ["Nothing completed yet", "Finished downloads are listed here, newest first."],
+    media: ["No video or audio yet", "Play a video in your browser and use the Velo extension to grab it."],
+  }[view];
+  if (query) return `<div class="empty"><div class="ill">${icon(I.dl)}</div><b>No matches</b>Nothing matches “${escapeHtml(query)}”.</div>`;
+  return `<div class="empty"><div class="ill">${icon(view === "completed" ? I.check : view === "media" ? I.media : I.dl)}</div><b>${m[0]}</b>${m[1]}</div>`;
+}
+
+function render() {
+  const host = $(`[data-list="${page}"]`);
+  if (host) {
+    const rows = rowsFor(page);
+    const showChips = page === "home" || page === "downloads";
+    const counts = Object.fromEntries(FILTERS.map(([f]) => [f, f === "all" ? data.length : data.filter((r) => statusOf(r) === f).length]));
+    host.innerHTML = (page === "home" ? `<div class="listhead"><h3>Downloads (${data.length})</h3><div class="acts">
+        <button class="btn" data-bulk="add">${icon(I.plus)}Add</button>
+        <button class="iconbtn" data-bulk="resumeAll" title="Resume all">${icon(I.play)}</button>
+        <button class="iconbtn" data-bulk="pauseAll" title="Pause all">${icon(I.pause)}</button>
+        <button class="iconbtn" data-bulk="clear" title="Clear completed">${icon(I.trash)}</button></div></div>` : "") +
+      (showChips ? `<div class="chips">${FILTERS.map(([f, l]) => `<button class="chip${filter === f ? " on" : ""}" data-filter="${f}">${l} (${counts[f]})</button>`).join("")}</div>` : "") +
+      (rows.length ? `<div class="list">${rows.map(card).join("")}</div>` : emptyFor(page));
+  }
+  const active = data.filter((r) => r.status === "downloading").length;
+  const setCount = (id, n) => { const el = $(`[data-count="${id}"]`); el.hidden = !n; el.textContent = n; };
+  setCount("downloads", active);
+  setCount("queue", data.filter((r) => ["queued", "paused", "error"].includes(r.status)).length);
+}
+
+document.addEventListener("click", (e) => {
+  const f = e.target.closest("[data-filter]"); if (f) { filter = f.dataset.filter; render(); return; }
+  const b = e.target.closest("[data-bulk]");
+  if (b) {
+    const k = b.dataset.bulk;
+    if (k === "add") openAdd(); else if (k === "clear") act(clearDone); else act(window[k]);
+    return;
+  }
+  const c = e.target.closest(".card"); if (!c) return;
+  const id = +c.dataset.id, r = data.find((x) => x.id === id);
+  const a = e.target.closest("[data-act]");
+  if (!a) { selected = id; render(); return; }
+  switch (a.dataset.act) {
+    case "pause": return act(pause, id);
+    case "resume": return act(resume, id);
+    case "folder": return act(showInFolder, id);
+    case "cancel":
+      if (confirm(`Cancel “${r.file || r.url}” and delete the partial file?`)) act(remove, id);
+      return;
+    case "more": return openMenu(a, r);
+  }
+});
+document.addEventListener("dblclick", (e) => {
+  const c = e.target.closest(".card"); if (!c) return;
+  const r = data.find((x) => x.id === +c.dataset.id);
+  act(r.status === "done" ? openFile : showInFolder, r.id);
+});
+document.addEventListener("contextmenu", (e) => {
+  const c = e.target.closest(".card"); if (!c) return;
+  e.preventDefault(); openMenu({ getBoundingClientRect: () => ({ left: e.clientX, bottom: e.clientY, right: e.clientX }) }, data.find((x) => x.id === +c.dataset.id));
+});
+
+function openMenu(anchor, r) {
+  const m = $("#menu");
+  const items = [];
+  if (r.status === "done") items.push(["open", I.open, "Open"]);
+  items.push(["folder", I.folder, "Show in folder"], ["copy", I.copy, "Copy link"]);
+  if (r.status === "downloading" || r.status === "queued") items.push(["pause", I.pause, "Pause"]);
+  if (r.status === "paused" || r.status === "error") items.push(["resume", I.play, "Resume"]);
+  items.push(["hr"], ["remove", I.trash, r.status === "done" ? "Remove from list" : "Cancel and delete", "danger"]);
+  m.innerHTML = items.map(([k, ic, l, cls]) => k === "hr" ? "<hr>" : `<button data-m="${k}" class="${cls || ""}">${icon(ic)}${l}</button>`).join("");
+  const rect = anchor.getBoundingClientRect();
+  m.style.display = "block";
+  m.style.left = Math.min(rect.right - m.offsetWidth, innerWidth - m.offsetWidth - 8) + "px";
+  m.style.top = Math.min(rect.bottom + 4, innerHeight - m.offsetHeight - 8) + "px";
+  m.onclick = (e) => {
+    const k = e.target.closest("[data-m]")?.dataset.m; if (!k) return;
+    m.style.display = "none";
+    if (k === "open") act(openFile, r.id);
+    if (k === "folder") act(showInFolder, r.id);
+    if (k === "copy") { navigator.clipboard.writeText(r.url).then(() => toast("Link copied"), () => toast("Couldn't copy", true)); }
+    if (k === "pause") act(pause, r.id);
+    if (k === "resume") act(resume, r.id);
+    if (k === "remove") act(remove, r.id);
+  };
+}
+document.addEventListener("mousedown", (e) => { if (!e.target.closest("#menu")) $("#menu").style.display = "none"; });
+
+// ---------- status polling ----------
+function spark(values) {
+  const v = values.length ? values : [0];
+  const max = Math.max(...v, 1);
+  const pts = v.map((x, i) => `${(i / Math.max(v.length - 1, 1)) * 84},${28 - (x / max) * 24}`).join(" ");
+  $("#spark").innerHTML = `<polyline points="${pts}" fill="none" stroke="var(--ok)" stroke-width="2" stroke-linejoin="round"/>`;
+}
+async function refresh() {
+  try {
+    const st = await appStatus();
+    data = st.rows;
+    const now = st.speed.length ? st.speed[st.speed.length - 1] : 0;
+    $("#speedVal").textContent = size(now) + "/s";
+    spark(st.speed.slice(-30));
+    if (!$("#menu").contains(document.activeElement) && $("#menu").style.display !== "block") render();
+  } catch { /* closing */ }
+}
+
+// ---------- search ----------
+$("#search").oninput = (e) => {
+  query = e.target.value.trim().toLowerCase();
+  if (query && !["home", "downloads", "queue", "completed", "media"].includes(page)) go("downloads"); else render();
+};
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey && e.key.toLowerCase() === "k") { e.preventDefault(); $("#search").focus(); $("#search").select(); }
+  if (e.ctrlKey && e.key.toLowerCase() === "n") { e.preventDefault(); openAdd(); }
+  if (e.key === "Escape") $("#menu").style.display = "none";
+});
+
+// ---------- add download ----------
+let addDir = "", probeSeq = 0, defConn = 8;
+function partsOptions(def) {
+  $("#aParts").innerHTML = [1, 2, 4, 8, 16, 32].map((n) =>
+    `<option value="${n}"${n === def ? " selected" : ""}>${n} part${n > 1 ? "s" : ""}${n === def ? " (Recommended)" : ""}</option>`).join("");
+}
+async function showAddDir() { $("#aDir").value = addDir || (await downloadDir()); }
+async function openAdd(url = "") {
+  addDir = "";
+  defConn = await connections();
+  partsOptions(defConn);
+  $("#aUrl").value = url; $("#aName").value = ""; $("#aProbe").textContent = ""; $("#aProbe").className = "probe";
+  $$('input[name="aStart"]')[0].checked = true;
+  await showAddDir();
+  $("#addDlg").showModal();
+  if (url) runProbe(); else $("#aUrl").focus();
+}
+window.openAdd = openAdd;
+let probeTimer;
+async function runProbe() {
+  const url = $("#aUrl").value.trim(), seq = ++probeSeq, p = $("#aProbe");
+  if (!/^https?:\/\//i.test(url)) { p.textContent = url ? "Enter a link starting with http:// or https://" : ""; p.className = "probe" + (url ? " err" : ""); return; }
+  p.className = "probe"; p.textContent = "Checking link…";
+  try {
+    const info = await probe(url);
+    if (seq !== probeSeq) return;
+    if (!$("#aName").value || $("#aName").dataset.auto === "1") { $("#aName").value = info.kind ? "" : info.name; $("#aName").dataset.auto = "1"; }
+    p.textContent = info.kind ? `Video stream (${info.kind.toUpperCase()}) · best quality is picked automatically`
+      : [info.size > 0 ? size(info.size) : "Size unknown", info.category || null, info.resumable ? "Resumable" : "Can't resume (server doesn't support it)"].filter(Boolean).join(" · ");
+  } catch (e) {
+    if (seq !== probeSeq) return;
+    p.className = "probe err"; p.textContent = "Couldn't check the link: " + String(e);
+  }
+}
+$("#aUrl").oninput = () => { clearTimeout(probeTimer); probeTimer = setTimeout(runProbe, 450); };
+$("#aName").oninput = () => ($("#aName").dataset.auto = "0");
+$("#aClear").onclick = () => { $("#aUrl").value = ""; $("#aName").value = ""; $("#aProbe").textContent = ""; $("#aUrl").focus(); };
+$("#aDirChange").onclick = async () => {
+  try { const p = await pickFolder(addDir || (await downloadDir())); if (p) { addDir = p; showAddDir(); } } catch (e) { toast(String(e), true); }
+};
+$("#aGo").onclick = async () => {
+  const start = $('input[name="aStart"]:checked').value === "now";
+  const parts = +$("#aParts").value;
+  try {
+    await addDownload({ url: $("#aUrl").value.trim(), filename: $("#aName").value.trim(), dir: addDir, segments: parts === defConn ? 0 : parts, start });
+    $("#addDlg").close();
+    toast(start ? "Download started" : "Added to the queue");
+    $("#heroUrl").value = "";
+    refresh();
+  } catch (e) { $("#aProbe").className = "probe err"; $("#aProbe").textContent = String(e); }
+};
+$$("[data-close]").forEach((b) => (b.onclick = () => b.closest("dialog").close()));
+$("#heroGo").onclick = () => openAdd($("#heroUrl").value.trim());
+$("#heroUrl").onkeydown = (e) => { if (e.key === "Enter") openAdd($("#heroUrl").value.trim()); };
+$("#pasteBtn").onclick = async () => { const t = await pasteText(); if (t) { $("#heroUrl").value = t; } else toast("The clipboard is empty"); };
+
+// drag & drop links
+let dragDepth = 0;
+document.addEventListener("dragenter", (e) => { e.preventDefault(); if (++dragDepth === 1) $("#dropzone").classList.add("on"); });
+document.addEventListener("dragleave", () => { if (--dragDepth === 0) $("#dropzone").classList.remove("on"); });
+document.addEventListener("dragover", (e) => e.preventDefault());
+document.addEventListener("drop", (e) => {
+  e.preventDefault(); dragDepth = 0; $("#dropzone").classList.remove("on");
+  const t = (e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain") || "").split(/\s+/).find((x) => /^https?:\/\//i.test(x));
+  if (t) openAdd(t); else toast("Drop a web link (http:// or https://)", true);
+});
+
+// ---------- settings ----------
+const SECS = [["general", "General", I.sliders], ["downloads", "Downloads", I.dl], ["connection", "Connection", I.wifi],
+  ["speed", "Speed Limit", I.gauge], ["browser", "Browser Integration", I.globe], ["video", "Video Grabber", I.media],
+  ["appearance", "Appearance", I.palette], ["advanced", "Advanced", I.wrench]];
+$("#snav").innerHTML = SECS.map(([id, l, ic]) => `<button data-sec-go="${id}">${icon(ic)}${l}</button>`).join("");
+function showSec(id) {
+  $$("#snav button").forEach((b) => b.classList.toggle("on", b.dataset.secGo === id));
+  $$(".sec").forEach((s) => s.classList.toggle("on", s.dataset.sec === id));
+}
+$("#snav").onclick = (e) => { const b = e.target.closest("[data-sec-go]"); if (b) showSec(b.dataset.secGo); };
+showSec("general");
+$$("[data-s='maxConcurrent']")[0].innerHTML = [1, 2, 3, 4, 5, 6, 8, 10].map((n) => `<option>${n}</option>`).join("");
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+$("#sDays").innerHTML = DAYS.map((d, i) => `<label><input type="checkbox" data-day="${i}">${d}</label>`).join("");
+
+let S = null, defaultFolder = "";
+const getPath = (o, p) => p.split(".").reduce((x, k) => x?.[k], o);
+const setPath = (o, p, v) => { const k = p.split("."); const last = k.pop(); k.reduce((x, kk) => x[kk], o)[last] = v; };
+async function loadSettings() {
+  S = await getSettings();
+  defaultFolder = await defaultDir();
+  applyTheme(S.theme);
+  $$("[data-s]").forEach((el) => {
+    const v = getPath(S, el.dataset.s);
+    if (el.type === "checkbox") el.checked = !!v;
+    else if (el.type === "radio") el.checked = el.value === v;
+    else {
+      if (el.tagName === "SELECT" && ![...el.options].some((o) => o.value === String(v))) el.add(new Option(`${v}${el.id === "limitSel" ? " KB/s" : ""}`, v));
+      el.value = v;
+    }
+  });
+  $$("#sDays input").forEach((c) => (c.checked = S.schedule.days[+c.dataset.day]));
+  $("#sFields").classList.toggle("off", !S.schedule.enabled);
+  $("#dirShow").value = S.downloadDir || defaultFolder;
+  $("#dirReset").disabled = !S.downloadDir;
+}
+async function save(mutate) {
+  const next = JSON.parse(JSON.stringify(S));
+  mutate(next);
+  try { await setSettings(next); S = next; refresh(); } catch (e) { toast(String(e), true); }
+  loadSettings();
+}
+document.addEventListener("change", (e) => {
+  const el = e.target;
+  if (el.dataset.day !== undefined) {
+    const days = $$("#sDays input").sort((a, b) => a.dataset.day - b.dataset.day).map((c) => c.checked);
+    if (!days.some(Boolean)) { toast("Pick at least one day", true); el.checked = true; return; }
+    return save((s) => (s.schedule.days = days));
+  }
+  if (!el.dataset.s || !S) return;
+  let v = el.type === "checkbox" ? el.checked : el.value;
+  if (el.dataset.num !== undefined) v = parseInt(v, 10);
+  if (el.dataset.s === "theme") applyTheme(v);
+  save((s) => setPath(s, el.dataset.s, v));
+});
+$("#dirChange").onclick = async () => {
+  try { const p = await pickFolder(S.downloadDir || defaultFolder); if (p) save((s) => (s.downloadDir = p.toLowerCase() === defaultFolder.toLowerCase() ? "" : p)); } catch (e) { toast(String(e), true); }
+};
+$("#dirReset").onclick = () => save((s) => (s.downloadDir = ""));
+
+function applyTheme(t) {
+  const dark = t === "dark" || (t === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => S && applyTheme(S.theme));
+
+// ---------- batch download ("Download all with Velo") ----------
+let batch = null, bSel = new Set(), bCat = "files";
+const BCHIPS = [["files", "Files"], ["all", "All links"], ["Video", "Video"], ["Music", "Music"], ["Images", "Images"], ["Documents", "Docs"], ["Compressed", "Archives"], ["Programs", "Programs"]];
+function bVisible() {
+  const q = $("#bFilter").value.trim().toLowerCase();
+  return batch.links.filter((l) =>
+    (bCat === "all" || (bCat === "files" ? l.file : l.category === bCat)) &&
+    (!q || (l.name + " " + l.url + " " + l.text).toLowerCase().includes(q)));
+}
+function bRender() {
+  const rows = bVisible();
+  $("#bChips").innerHTML = BCHIPS.filter(([k]) => k === "files" || k === "all" || batch.links.some((l) => l.category === k))
+    .map(([k, l]) => `<button class="chip${bCat === k ? " on" : ""}" data-bcat="${k}">${l}</button>`).join("");
+  $("#bList").innerHTML = rows.length ? rows.map((l) => {
+    const cat = l.category || "Other";
+    return `<label class="brow" title="${escapeHtml(l.url)}"><input type="checkbox" data-u="${escapeHtml(l.url)}"${bSel.has(l.url) ? " checked" : ""}>
+      <div class="tile t-${cat}">${icon(I[cat] || I.Other)}</div>
+      <div><div class="n">${escapeHtml(l.file ? l.name : (l.text || l.name))}</div><div class="u">${escapeHtml(l.url)}</div></div></label>`;
+  }).join("") : `<div class="empty" style="border:0">No links match.</div>`;
+  $("#bCount").textContent = `${bSel.size} selected of ${batch.links.length}`;
+  $("#bGo").textContent = bSel.size ? `Download ${bSel.size}` : "Download";
+  $("#bGo").disabled = !bSel.size;
+}
+async function openBatch() {
+  batch = await takeBatch();
+  if (!batch) return;
+  bSel = new Set(batch.links.filter((l) => l.file).map((l) => l.url));
+  bCat = bSel.size ? "files" : "all";
+  let host = ""; try { host = new URL(batch.page).hostname; } catch {}
+  $("#bTitle").textContent = `Download links (${batch.links.length})`;
+  $("#bPage").textContent = `From ${host || batch.page}. Downloadable files are selected; anything else is up to you.`;
+  $("#bFilter").value = "";
+  bRender();
+  if (!$("#batchDlg").open) $("#batchDlg").showModal();
+}
+window.openBatch = openBatch;
+$("#bFilter").oninput = bRender;
+// Closing without downloading discards the batch.
+$("#batchDlg").addEventListener("close", () => { if (batch) { batch = null; finishBatch([], false); } });
+$("#bChips").onclick = (e) => { const c = e.target.closest("[data-bcat]"); if (c) { bCat = c.dataset.bcat; bRender(); } };
+$("#bList").onchange = (e) => { const u = e.target.dataset.u; if (u) { e.target.checked ? bSel.add(u) : bSel.delete(u); bRender(); } };
+$("#bAll").onclick = () => { bVisible().forEach((l) => bSel.add(l.url)); bRender(); };
+$("#bNone").onclick = () => { bVisible().forEach((l) => bSel.delete(l.url)); bRender(); };
+$("#bGo").onclick = async () => {
+  const start = $('input[name="bStart"]:checked').value === "now";
+  const n = await finishBatch([...bSel], start);
+  $("#batchDlg").close();
+  batch = null;
+  toast(start ? `Downloading ${n} file${n === 1 ? "" : "s"}` : `Added ${n} to the queue`);
+  refresh();
+};
+
+// ---------- extension status ----------
+async function extStatusHTML() {
+  const seen = await extensionSeen();
+  return seen ? `<div class="status ok">${icon(I.check)}Connected — the extension talked to Velo ${ago(seen)}.</div>`
+              : `<div class="status"><span class="spin"></span>Waiting for the extension… open any page with it installed.</div>`;
+}
+
+// ---------- first-run onboarding ----------
+const OB = [
+  () => `<div class="ob"><div class="big">${icon('<path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z"/>')}</div>
+    <h2>Welcome to Velo</h2><p>Fast, open-source downloads for Windows. Here's what it does:</p>
+    <ul><li>${icon(I.dl)}<span><b>Splits files into parts</b> and downloads them in parallel, with pause and resume.</span></li>
+    <li>${icon(I.media)}<span><b>Grabs videos</b> (HLS and DASH streams) from pages you visit.</span></li>
+    <li>${icon(I.clock)}<span><b>Queues and schedules</b> downloads, with a speed limit when you need it.</span></li></ul></div>`,
+  () => `<div class="ob"><h2>Where should downloads go?</h2><p>You can change this any time in Settings.</p>
+    <div class="field"><span class="lbl">Download folder</span><div class="inp ro"><input id="obDir" readonly value="${escapeHtml(S.downloadDir || defaultFolder)}"><button class="link" id="obDirChange">Change</button></div></div>
+    <div class="opt"><div><div class="t">Sort into folders by type</div><div class="d">Video, Music, Images, Documents, Compressed, Programs.</div></div><span class="switch"><input type="checkbox" id="obSort"${S.sortByType ? " checked" : ""}><i></i></span></div>
+    <div class="opt"><div><div class="t">Start Velo with Windows</div><div class="d">So browser downloads and schedules always work.</div></div><span class="switch"><input type="checkbox" id="obAuto"${S.autostart ? " checked" : ""}><i></i></span></div></div>`,
+  async () => `<div class="ob"><h2>Connect your browser</h2><p>The Velo extension sends downloads and videos from Chrome or Edge to Velo.</p>
+    <ol class="steps"><li>Open <code>chrome://extensions</code> or <code>edge://extensions</code> and turn on <b>Developer mode</b>.</li>
+    <li>Click <b>Load unpacked</b> and choose the <code>extension</code> folder from Velo.</li>
+    <li>Open any web page. Velo shows ✓ below when the extension connects.</li></ol>
+    <div id="obStatus">${await extStatusHTML()}</div></div>`,
+  () => `<div class="ob"><div class="big" style="background:var(--ok)">${icon(I.check)}</div><h2>You're all set</h2><p>A few tips:</p>
+    <ul><li>${icon(I.plus)}<span><b>Ctrl+N</b> adds a download; you can also drop a link onto the window.</span></li>
+    <li>${icon(I.dl)}<span>While downloading, <b>Velo Mini</b> shows progress in the corner. Click it to open Velo.</span></li>
+    <li>${icon(I.globe)}<span>Right-click a page and choose <b>Download all links with Velo</b> to grab many files at once.</span></li></ul></div>`,
+];
+let obStep = 0, obTimer;
+async function obShow() {
+  clearInterval(obTimer);
+  $("#obBody").innerHTML = await OB[obStep]();
+  $("#obDots").innerHTML = OB.map((_, i) => `<i class="${i === obStep ? "on" : ""}"></i>`).join("");
+  $("#obBack").style.visibility = obStep ? "visible" : "hidden";
+  $("#obNext").textContent = obStep === OB.length - 1 ? "Start using Velo" : obStep === 2 ? "Next (or skip)" : "Next";
+  if (obStep === 1) {
+    $("#obDirChange").onclick = async () => {
+      const p = await pickFolder(S.downloadDir || defaultFolder);
+      if (p) await save((s) => (s.downloadDir = p.toLowerCase() === defaultFolder.toLowerCase() ? "" : p)), $("#obDir").value = p;
+    };
+    $("#obSort").onchange = (e) => save((s) => (s.sortByType = e.target.checked));
+    $("#obAuto").onchange = (e) => save((s) => (s.autostart = e.target.checked));
+  }
+  if (obStep === 2) obTimer = setInterval(async () => { const el = $("#obStatus"); if (el) el.innerHTML = await extStatusHTML(); }, 1500);
+}
+$("#obNext").onclick = async () => {
+  if (obStep < OB.length - 1) { obStep++; return obShow(); }
+  clearInterval(obTimer);
+  await save((s) => (s.onboarded = true));
+  $("#onboard").close();
+};
+$("#obBack").onclick = () => { if (obStep) { obStep--; obShow(); } };
+$("#onboard").addEventListener("cancel", (e) => e.preventDefault()); // finish it with the buttons
+async function maybeOnboard() {
+  if (S && !S.onboarded) { obStep = 0; await obShow(); $("#onboard").showModal(); }
+}
+
+// ---------- start ----------
+loadSettings().then(() => { go("home"); maybeOnboard(); openBatch(); });
+refresh();
+setInterval(refresh, 1000);
+</script>
+</body>
+</html>

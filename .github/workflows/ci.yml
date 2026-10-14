@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Check formatting
+        shell: bash
+        run: test -z "$(gofmt -l cmd internal tools)" || (gofmt -l cmd internal tools; exit 1)
+      - name: Vet
+        run: go vet ./...
+      - name: Test
+        run: go test -race ./...
+      - name: Build
+        run: |
+          go build -ldflags "-H windowsgui" -o bin/velo.exe ./cmd/velo
+          go build -ldflags "-H windowsgui" -o bin/velo-host.exe ./cmd/velo-host
+          go build -o bin/veloctl.exe ./cmd/veloctl
+      - name: Check extension scripts
+        shell: bash
+        run: for f in extension/*.js; do node --check "$f"; done

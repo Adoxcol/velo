@@ -1,0 +1,108 @@
+// Velo popup: the videos found on the current tab, quality choice, and
+// "download all links on this page".
+const $ = (id) => document.getElementById(id);
+const svg = (d) => `<svg class="i" viewBox="0 0 24 24">${d}</svg>`;
+const ICON = {
+  play: '<path d="m8 5 11 7-11 7z"/>',
+  bolt: '<path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z"/>',
+  links: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  video: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/>',
+  warn: '<path d="M12 3 2 21h20z"/><path d="M12 10v5M12 18h0"/>',
+  shield: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/>',
+};
+
+function size(n) {
+  if (!(n > 0)) return "";
+  const u = ["B", "KB", "MB", "GB"];
+  let i = 0;
+  while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+  return n.toFixed(i ? 1 : 0) + " " + u[i];
+}
+const mbps = (bw) => (bw >= 1e6 ? (bw / 1e6).toFixed(1) + " Mbps" : Math.round(bw / 1e3) + " kbps");
+function fileName(url) {
+  try {
+    const p = new URL(url).pathname.split("/").filter(Boolean);
+    return decodeURIComponent(p[p.length - 1] || url);
+  } catch { return url; }
+}
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const NOTE = { encrypted: "DRM-protected", live: "Live stream", unsupported: "Not supported yet" };
+const KIND = { hls: "Stream (HLS)", dash: "Stream (DASH)", file: "File" };
+
+function say(text, cls) { $("msg").textContent = text; $("msg").className = cls || ""; }
+
+// Each choice is { item, variant?, label, meta, note }.
+function choicesFor(items) {
+  const out = [];
+  for (const item of items) {
+    if (item.options?.length && !item.note) {
+      for (const o of item.options) {
+        out.push({ item, variant: o.url, label: o.height ? `Video · ${o.height}p` : "Video", meta: [KIND[item.kind], o.bandwidth ? mbps(o.bandwidth) : ""].filter(Boolean).join(" · ") });
+      }
+    } else {
+      const stream = item.kind !== "file";
+      out.push({ item, label: stream ? `Video${item.quality ? " · " + item.quality : ""}` : fileName(item.url),
+        meta: [KIND[item.kind], stream ? "" : size(item.size)].filter(Boolean).join(" · "), note: item.note });
+    }
+  }
+  return out;
+}
+
+(async () => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const { detectCard } = await chrome.storage.local.get({ detectCard: true });
+  $("detect").checked = detectCard;
+  $("detect").onchange = (e) => chrome.storage.local.set({ detectCard: e.target.checked });
+  $("openApp").onclick = () => chrome.runtime.sendMessage({ type: "show" });
+
+  // Is Velo reachable? (The host starts Velo if it isn't running.)
+  chrome.runtime.sendMessage({ type: "ping" }).then((r) => {
+    if (r?.ok) return;
+    const missing = /not found|forbidden|host/i.test(r?.error || "");
+    $("banner").hidden = false;
+    $("banner").innerHTML = svg(ICON.warn) + `<div><b>Velo isn't connected.</b> ${missing
+      ? "Run <b>install.ps1</b> from the Velo folder, then reopen this popup."
+      : esc(r?.error || "No reply from Velo.")}</div>`;
+  });
+
+  const media = await chrome.runtime.sendMessage({ type: "media", tabId: tab.id });
+  const body = $("body");
+  let host = "";
+  try { host = new URL(tab.url).hostname; } catch {}
+  const pageCard = (sub) => `<div class="page"><div class="thumb">${svg(ICON.video)}</div><div>
+    <div class="t">${esc(tab.title || host)}</div><div class="s">${esc(sub)}</div></div></div>`;
+  const allBtn = `<button class="btn ghost" id="all">${svg(ICON.links)}Download all links on this page</button>`;
+
+  if (media.unsupported) {
+    body.innerHTML = `<div class="empty"><div class="ill">${svg(ICON.shield)}</div><b>This site isn't supported</b>
+      It streams video in a protected format that Velo doesn't download.</div>` + allBtn;
+  } else if (!media.items.length) {
+    body.innerHTML = `<div class="empty"><div class="ill">${svg(ICON.play)}</div><b>No videos detected yet</b>
+      Start playing the video, then open this again.</div>` + allBtn;
+  } else {
+    const choices = choicesFor(media.items);
+    const firstOk = choices.findIndex((c) => !c.note);
+    body.innerHTML = pageCard(host + (choices.length > 1 ? ` · ${choices.length} options` : "")) +
+      `<button class="btn" id="go"${firstOk < 0 ? " disabled" : ""}>${svg(ICON.bolt)}Download with Velo</button>` +
+      `<h4>Download as</h4><div class="opts">` + choices.map((c, i) => `
+        <label class="opt${c.note ? " bad" : ""}" title="${esc(c.item.url)}">
+          <input type="radio" name="c" value="${i}"${i === firstOk ? " checked" : ""}${c.note ? " disabled" : ""}>
+          <span class="n">${esc(c.label)}</span>
+          <span class="m">${c.note ? `<span class="tag">${NOTE[c.note]}</span>` : esc(c.meta)}</span></label>`).join("") +
+      `</div><div class="row">${allBtn}</div>`;
+    $("go").onclick = async () => {
+      const c = choices[+document.querySelector('input[name="c"]:checked').value];
+      $("go").disabled = true;
+      const r = await chrome.runtime.sendMessage({ type: "grab", tabId: tab.id, url: c.item.url, variant: c.variant });
+      if (r.ok) { say("Sent to Velo ✓", "ok"); setTimeout(() => window.close(), 700); }
+      else { say(r.error, "err"); $("go").disabled = false; }
+    };
+  }
+  $("all").onclick = async () => {
+    $("all").disabled = true;
+    say("Collecting links…");
+    await chrome.runtime.sendMessage({ type: "all", tabId: tab.id });
+    say("Sent to Velo — choose the files in its window.", "ok");
+    setTimeout(() => window.close(), 1200);
+  };
+})();

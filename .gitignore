@@ -1,0 +1,12 @@
+# Build output
+/bin/
+*.exe
+
+# Private notes (not part of the public project)
+01-browser-integration.md
+notes/
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db

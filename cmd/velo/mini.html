@@ -1,0 +1,80 @@
+<!doctype html>
+<html data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Velo Mini</title>
+<style>
+  :root { --primary: #1677ff; --ink: #0d1728; --muted: #64748b; --bg: #ffffff; --line: #e6ebf2; --hover: #f1f5f9; --ok: #22c55e; --warn: #f59e0b; }
+  html[data-theme="dark"] { --primary: #3b8bff; --ink: #eef3fa; --muted: #93a1b5; --bg: #131f33; --line: #22314a; --hover: #1b2a42; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body { background: var(--bg); color: var(--ink); font: 13px/1.4 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; user-select: none; border: 1px solid var(--line); border-radius: 8px; }
+  .wrap { display: grid; grid-template-columns: 56px 1fr auto; gap: 12px; align-items: center; padding: 14px 12px 14px 14px; height: 100%; cursor: pointer; }
+  .tile { width: 56px; height: 56px; border-radius: 10px; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+  svg.i { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  .tile svg.i { width: 26px; height: 26px; }
+  .info { min-width: 0; }
+  .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meta { color: var(--muted); font-size: 12px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar { height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; margin-top: 8px; }
+  .bar i { display: block; height: 100%; background: var(--primary); border-radius: 3px; transition: width .5s; }
+  .done .bar i { background: var(--ok); }
+  .acts { display: flex; gap: 2px; align-self: start; }
+  button { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 7px; background: none; color: var(--muted); cursor: pointer; }
+  button:hover { background: var(--hover); color: var(--ink); }
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap" title="Open Velo">
+  <div class="tile" id="tile"></div>
+  <div class="info"><div class="name" id="name">Starting…</div><div class="meta" id="meta"></div><div class="bar"><i id="bar" style="width:0"></i></div></div>
+  <div class="acts"><button id="pp" title="Pause"></button><button id="close" title="Hide until the next download"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+</div>
+<script>
+const $ = (s) => document.querySelector(s);
+const ICON = {
+  pause: '<path d="M9 5v14M15 5v14"/>', play: '<path d="m7 4 13 8-13 8z"/>', check: '<path d="m5 12 5 5 9-10"/>',
+  Video: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/>',
+  Music: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+  Other: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+};
+const TILE = { Video: "#3b82f6,#1d4ed8", Music: "#a855f7,#7c3aed", Images: "#14b8a6,#0d9488", Documents: "#f97316,#ea580c", Compressed: "#facc15,#eab308", Programs: "#64748b,#475569" };
+const svg = (d) => `<svg class="i" viewBox="0 0 24 24">${d}</svg>`;
+function size(n) { if (!(n > 0)) return "0 B"; const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0; while (n >= 1024 && i < 4) { n /= 1024; i++; } return n.toFixed(i && n < 100 ? 1 : 0) + " " + u[i]; }
+function eta(s) { s = Math.round(s); return [Math.floor(s / 3600), Math.floor(s % 3600 / 60), s % 60].map((v) => String(v).padStart(2, "0")).join(":"); }
+let current = null;
+async function refresh() {
+  const st = await appStatus();
+  const active = st.rows.filter((r) => r.status === "downloading");
+  // Show the active download closest to finishing.
+  const r = active.sort((a, b) => b.percent - a.percent)[0] || st.rows.filter((x) => x.status === "done").pop();
+  if (!r) return;
+  current = r;
+  const cat = r.category || "Other";
+  $("#tile").innerHTML = svg(ICON[cat] || ICON.Other);
+  $("#tile").style.background = `linear-gradient(135deg, ${TILE[cat] || "#94a3b8,#64748b"})`;
+  $("#name").textContent = r.file || "Starting…";
+  const pct = r.status === "done" ? 100 : r.percent;
+  const parts = [r.total > 0 || r.kind ? pct.toFixed(0) + "%" : size(r.done)];
+  if (r.status === "downloading") {
+    parts.push(size(r.speed) + "/s");
+    if (r.total > 0 && r.speed > 0) parts.push(eta((r.total - r.done) / r.speed) + " left");
+  } else parts.push("Completed");
+  if (active.length > 1) parts.push(`+${active.length - 1} more`);
+  $("#meta").textContent = parts.join(" • ");
+  $("#bar").style.width = pct + "%";
+  document.body.classList.toggle("done", r.status === "done");
+  $("#pp").innerHTML = svg(r.status === "downloading" ? ICON.pause : ICON.check);
+  $("#pp").title = r.status === "downloading" ? "Pause" : "Done";
+}
+$("#pp").onclick = (e) => { e.stopPropagation(); if (current?.status === "downloading") pause(current.id).then(refresh); };
+$("#close").onclick = (e) => { e.stopPropagation(); dismissMini(); };
+$("#wrap").onclick = () => openMain();
+getSettings().then((s) => {
+  const dark = s.theme === "dark" || (s.theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+});
+refresh(); setInterval(refresh, 1000);
+</script>
+</body>
+</html>
