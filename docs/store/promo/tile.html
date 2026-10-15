@@ -1,0 +1,97 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html { background: #000; }
+  body { overflow: hidden; }
+  body.small { width: 440px; height: 280px; }
+  body.marquee { width: 1400px; height: 560px; }
+  body { font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; color: #fff; background: #0d1728; position: relative; -webkit-font-smoothing: antialiased; }
+  .glow { position: absolute; inset: 0; background:
+      radial-gradient(55% 75% at 22% 0%, rgba(22,119,255,.55), transparent 70%),
+      radial-gradient(45% 60% at 100% 100%, rgba(76,155,255,.22), transparent 70%); }
+  .grid { position: absolute; inset: 0; opacity: .55; background-image:
+      linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
+      background-size: var(--g) var(--g); mask-image: radial-gradient(80% 80% at 30% 20%, #000, transparent 80%); }
+  .content { position: relative; height: 100%; display: flex; align-items: center; }
+  .brand { display: flex; align-items: center; gap: .18em; font-weight: 700; letter-spacing: -.03em; line-height: 1; }
+  .brand svg { width: .95em; height: .95em; }
+  h1 { font-weight: 700; letter-spacing: -.035em; line-height: 1.04; }
+  h1 span { background: linear-gradient(90deg, #8fc0ff, #1677ff 70%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .sub { color: #aebbd0; }
+  /* segmented download bar: the core idea */
+  .file { background: #fff; color: #0d1728; border-radius: var(--r); box-shadow: 0 30px 70px -20px rgba(22,119,255,.6), 0 20px 50px rgba(0,0,0,.35); }
+  .row { display: flex; align-items: center; gap: var(--gap); }
+  .tile { flex: none; display: grid; place-items: center; border-radius: 22%; background: linear-gradient(135deg, #facc15, #eab308); }
+  .tile svg { width: 50%; height: 50%; }
+  .name { font-weight: 600; }
+  .meta { color: #64748b; }
+  .meta b { color: #1677ff; font-weight: 600; }
+  .segs { display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: var(--sg); }
+  .segs i { display: block; height: var(--sh); border-radius: 99px; background: #e8eef6; overflow: hidden; }
+  .segs i::after { content: ""; display: block; height: 100%; width: var(--p); border-radius: 99px; background: linear-gradient(90deg, #1677ff, #4c9bff); }
+  .chips { display: flex; gap: var(--cg); flex-wrap: wrap; }
+  .chips span { border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.06); border-radius: 99px; color: #d5e0f0; font-weight: 600; }
+
+  /* small tile 440x280 */
+  body.small { --g: 28px; --r: 14px; --gap: 10px; --n: 16; --sg: 3px; --sh: 6px; }
+  body.small .content { flex-direction: column; align-items: flex-start; justify-content: center; padding: 0 30px; gap: 16px; }
+  body.small .brand { font-size: 40px; }
+  body.small .sub { font-size: 17px; margin-top: -6px; }
+  body.small .file { width: 100%; padding: 12px 14px; }
+  body.small .tile { width: 32px; height: 32px; }
+  body.small .name { font-size: 13.5px; }
+  body.small .meta { font-size: 11.5px; }
+  body.small .segs { margin-top: 8px; }
+
+  /* marquee 1400x560 */
+  body.marquee { --g: 56px; --r: 22px; --gap: 18px; --n: 16; --sg: 6px; --sh: 10px; --cg: 10px; }
+  body.marquee .content { padding: 0 88px; gap: 56px; justify-content: space-between; }
+  body.marquee .left { max-width: 680px; }
+  body.marquee .brand { font-size: 44px; margin-bottom: 30px; }
+  body.marquee h1 { font-size: 62px; }
+  body.marquee .sub { font-size: 23px; margin: 22px 0 28px; line-height: 1.45; }
+  body.marquee .chips span { font-size: 17px; padding: 7px 16px; }
+  body.marquee .right { flex: none; width: 520px; display: flex; flex-direction: column; gap: 16px; }
+  body.marquee .file { padding: 22px 24px; }
+  body.marquee .file.dim { transform: scale(.94); transform-origin: left; box-shadow: 0 20px 50px rgba(0,0,0,.3); }
+  body.marquee .tile { width: 54px; height: 54px; }
+  body.marquee .name { font-size: 20px; }
+  body.marquee .meta { font-size: 16px; }
+  body.marquee .segs { margin-top: 14px; }
+  .bar { height: 10px; border-radius: 99px; background: #e8eef6; margin-top: 14px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 58%; background: linear-gradient(90deg, #1677ff, #4c9bff); }
+  .t-vid { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+</style></head>
+<body class="small">
+<div class="glow"></div><div class="grid"></div>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="bolt" viewBox="0 0 24 24"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z" fill="#1677ff"/></symbol>
+  <symbol id="zip" viewBox="0 0 24 24"><g fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M12 3v2M12 7v2M12 11v2"/><rect x="10.5" y="14" width="3" height="4" rx="1"/></g></symbol>
+  <symbol id="play" viewBox="0 0 24 24"><g fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/></g></symbol>
+</svg>
+<div class="content" id="c"></div>
+<script>
+const kind = location.hash.slice(1) || "small";
+document.body.className = kind;
+const brand = `<div class="brand"><svg><use href="#bolt"/></svg>velo.</div>`;
+const segs = (n) => `<div class="segs">${[.82,.64,.9,.55,.76,.6,.88,.5,.72,.67,.85,.58,.79,.62,.9,.7].slice(0, n).map(p => `<i style="--p:${p*100}%"></i>`).join("")}</div>`;
+if (kind === "small") {
+  document.getElementById("c").innerHTML = brand +
+    `<div class="sub">Faster downloads, right from your browser</div>
+     <div class="file"><div class="row"><div class="tile"><svg><use href="#zip"/></svg></div>
+       <div style="flex:1;min-width:0"><div class="name">ubuntu-24.04-desktop.iso</div><div class="meta">32.4 MB/s · <b>16 connections</b></div></div></div>${segs(16)}</div>`;
+} else {
+  document.getElementById("c").innerHTML =
+    `<div class="left">${brand}<h1>Fast downloads.<br><span>A smoother internet.</span></h1>
+       <div class="sub">Click a download and Velo takes over: up to 32 connections, pause and resume, and a video grabber.</div>
+       <div class="chips"><span>Free &amp; open source</span><span>Chrome · Edge · Brave · Firefox</span></div></div>
+     <div class="right">
+       <div class="file"><div class="row"><div class="tile"><svg><use href="#zip"/></svg></div>
+         <div style="flex:1"><div class="name">ubuntu-24.04-desktop-amd64.iso</div><div class="meta">2.6 GB of 5.7 GB · 32.4 MB/s · <b>16 connections</b></div></div></div>${segs(16)}</div>
+       <div class="file dim"><div class="row"><div class="tile t-vid"><svg><use href="#play"/></svg></div>
+         <div style="flex:1"><div class="name">Mountain Lake at Sunset (2160p).mp4</div><div class="meta">1.2 GB of 2.0 GB · 16.2 MB/s · <b>Video</b></div></div></div><div class="bar"><i></i></div></div>
+     </div>`;
+}
+</script>
+</body></html>
