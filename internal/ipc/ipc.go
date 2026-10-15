@@ -47,16 +47,32 @@ type Endpoint struct {
 
 const TokenHeader = "X-Velo-Token"
 
-// Dir is Velo's data folder: %APPDATA%\velo, or $VELO_HOME if set (tests).
+// Dir is Velo's data folder: %APPDATA%\Velo, the "data" folder of a
+// portable copy, or $VELO_HOME if set (tests).
 func Dir() string {
 	if d := os.Getenv("VELO_HOME"); d != "" {
 		return d
+	}
+	if dir, ok := Portable(); ok {
+		return filepath.Join(dir, "data")
 	}
 	d, err := os.UserConfigDir()
 	if err != nil {
 		d = os.TempDir()
 	}
 	return filepath.Join(d, "Velo")
+}
+
+// Portable reports whether this is a portable copy (a file named
+// "portable" next to the program) and returns the program's folder.
+func Portable() (string, bool) {
+	exe, err := os.Executable()
+	if err != nil {
+		return "", false
+	}
+	dir := filepath.Dir(exe)
+	_, err = os.Stat(filepath.Join(dir, "portable"))
+	return dir, err == nil
 }
 
 func endpointPath() string { return filepath.Join(Dir(), "endpoint.json") }

@@ -39,10 +39,10 @@ Ticked items are done. Work goes roughly top to bottom.
 ## Reach
 - [ ] Firefox
 - [ ] Translations
-- [ ] Portable zip
+- [x] Portable zip (settings in its own data folder, connects the browser when run)
 
 ## Polish
-- [ ] Taskbar progress bar
+- [x] Taskbar progress bar
 - [x] Search downloads (Ctrl+K)
-- [ ] More keyboard shortcuts (Delete, Space to pause, Ctrl+N to add)
+- [x] Keyboard shortcuts: Ctrl+N add, Ctrl+V paste a link, arrows to select, Space pause/resume, Enter open, Delete remove, ? for the list
 - [ ] Landing page for launch

@@ -727,6 +727,35 @@ document.addEventListener("keydown", (e) => {
   if (e.ctrlKey && e.key.toLowerCase() === "k") { e.preventDefault(); $("#search").focus(); $("#search").select(); }
   if (e.ctrlKey && e.key.toLowerCase() === "n") { e.preventDefault(); openAdd(); }
   if (e.key === "Escape") $("#menu").style.display = "none";
+  // List shortcuts, when not typing and no dialog is open.
+  if (e.target.closest("input, textarea, select") || document.querySelector("dialog[open]") || e.altKey) return;
+  if (e.ctrlKey && e.key.toLowerCase() === "v") { // paste a link to download it
+    navigator.clipboard.readText().then((t) => { t = t.trim(); if (/^https?:\/\/\S+$/i.test(t)) openAdd(t); }).catch(() => {});
+    return;
+  }
+  if (e.ctrlKey || e.metaKey) return;
+  const cards = $$(".card"), i = cards.findIndex((c) => +c.dataset.id === selected);
+  const pick = (c) => { if (!c) return; selected = +c.dataset.id; render(); c.scrollIntoView({ block: "nearest" }); };
+  const r = data.find((x) => x.id === selected);
+  switch (e.key) {
+    case "ArrowDown": e.preventDefault(); return pick(cards[Math.min(i + 1, cards.length - 1)] || cards[0]);
+    case "ArrowUp": e.preventDefault(); return pick(cards[Math.max(i - 1, 0)]);
+    case " ":
+      if (!r) return;
+      e.preventDefault();
+      if (r.status === "downloading" || r.status === "queued") act(pause, r.id);
+      else if (r.status === "paused" || r.status === "error") act(resume, r.id);
+      return;
+    case "Enter":
+      if (r?.status === "done") act(openFile, r.id);
+      return;
+    case "Delete":
+      if (!r) return;
+      if (r.status === "done" || confirm(`Cancel “${r.file || r.url}” and delete the partial file?`)) act(remove, r.id);
+      return;
+    case "?":
+      return toast("Shortcuts: Ctrl+N add · Ctrl+V paste a link · Ctrl+K search · ↑↓ select · Space pause/resume · Enter open · Delete remove");
+  }
 });
 
 // ---------- add download ----------

@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"velo/internal/ipc"
 	"velo/internal/update"
 	"velo/internal/version"
 )
@@ -70,6 +71,7 @@ func (u *updater) check(a *app) {
 		u.set("Updates are off in development builds.")
 		return
 	}
+	_, portable := ipc.Portable()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 	client := &http.Client{Timeout: 5 * time.Minute}
@@ -84,6 +86,13 @@ func (u *updater) check(a *app) {
 		return
 	case !update.Newer(rel.Version, version.Version):
 		u.set("Velo is up to date.")
+		return
+	}
+	if portable { // the installer would install a second, normal copy
+		u.mu.Lock()
+		u.release = rel
+		u.mu.Unlock()
+		u.set("Velo " + rel.Version + " is out. This is a portable copy: download the new portable zip from GitHub.")
 		return
 	}
 	u.mu.Lock()

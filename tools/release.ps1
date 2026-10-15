@@ -1,6 +1,7 @@
 # Builds a Velo release into dist\:
 #   Velo-Setup-<version>.exe       installer (embeds the app and the extension)
 #   velo-extension-<version>.zip   extension package for the Chrome Web Store / Edge Add-ons
+#   Velo-Portable-<version>.zip    no install: unzip and run velo.exe
 #
 # Usage (from the repository root):  .\tools\release.ps1 -Version 0.1.0
 param([Parameter(Mandatory)][string]$Version)
@@ -31,6 +32,30 @@ Remove-Item -LiteralPath (Join-Path $payload 'extension\EXTENSION_ID.txt') -Erro
 $setup = Join-Path $dist "Velo-Setup-$Version.exe"
 go build -trimpath -ldflags "$ld -H windowsgui -s -w" -o $setup ./cmd/velo-setup
 if ($LASTEXITCODE) { throw 'setup build failed' }
+
+# Portable: the app, the extension and a "portable" marker, which keeps
+# settings in .\data and connects the browser to this folder when run.
+$portable = Join-Path ([IO.Path]::GetTempPath()) "Velo-Portable-$Version"
+Remove-Item -LiteralPath $portable -Recurse -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force $portable | Out-Null
+Get-ChildItem -LiteralPath $payload | Where-Object Name -ne 'README.md' | Copy-Item -Destination $portable -Recurse
+Set-Content -LiteralPath (Join-Path $portable 'portable') -Value 'This file makes Velo portable: settings and history stay in the data folder next to it.'
+@"
+Velo $Version (portable)
+
+1. Run velo.exe. Settings and history are kept in the data folder here.
+2. Browser extension: open chrome://extensions (or edge://extensions),
+   turn on Developer mode, click "Load unpacked" and pick the extension
+   folder here. Velo connects the browser to this folder when it runs.
+3. To remove Velo, quit it from the tray and delete this folder.
+
+Portable copies don't update themselves: download the new zip from
+https://github.com/Adoxcol/velo/releases
+"@ | Set-Content -LiteralPath (Join-Path $portable 'README.txt')
+$pzip = Join-Path $dist "Velo-Portable-$Version.zip"
+Remove-Item -LiteralPath $pzip -ErrorAction SilentlyContinue
+Compress-Archive -Path (Join-Path $portable '*') -DestinationPath $pzip
+Remove-Item -LiteralPath $portable -Recurse -Force
 
 go run ./tools/packext -version $Version -out (Join-Path $dist "velo-extension-$Version.zip")
 if ($LASTEXITCODE) { throw 'extension package failed' }

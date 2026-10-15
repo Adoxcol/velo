@@ -117,6 +117,7 @@ func runTray(a *app, openWindow bool) {
 		}
 		syncLimit()
 		a.changed = syncLimit
+		a.onTick = a.updateTaskbar
 		for i, kb := range limits {
 			go func() {
 				for range limitItems[i].ClickedCh {

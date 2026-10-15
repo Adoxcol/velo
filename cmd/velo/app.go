@@ -61,6 +61,7 @@ type app struct {
 	quit      func() // exits the app
 	showBatch func() // opens the window's batch dialog
 	changed   func() // settings changed (updates the tray menu)
+	onTick    func() // every second (taskbar progress)
 
 	lastHistory   []byte      // last saved history.json contents
 	speedHist     []float64   // total speed per second, last minute
@@ -780,6 +781,9 @@ func (a *app) measure() {
 		busy := a.running > 0
 		a.mu.Unlock()
 		keepAwake(busy)
+		if a.onTick != nil {
+			a.onTick()
+		}
 	}
 }
 

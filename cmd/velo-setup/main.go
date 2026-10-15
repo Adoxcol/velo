@@ -12,7 +12,6 @@ package main
 
 import (
 	"embed"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -27,6 +26,7 @@ import (
 
 	"golang.org/x/sys/windows/registry"
 
+	"velo/internal/hostreg"
 	"velo/internal/ipc"
 	"velo/internal/version"
 )
@@ -34,20 +34,12 @@ import (
 //go:embed all:payload
 var payload embed.FS
 
-const (
-	appName  = "Velo"
-	hostName = "com.velo.host"
-	// The development extension ID (fixed by the "key" in extension/manifest.json).
-	devExtensionID = "dmdcijgljocjdmafenflenjhdjhenokc"
-)
+const appName = "Velo"
 
-// Store extension IDs: fill in once Velo is published. When set, the
-// installer also asks the browser to offer the store extension ("New
+// Store extension IDs (set in hostreg once Velo is published). When set,
+// the installer also asks the browser to offer the store extension ("New
 // extension added") on its next start.
-var (
-	chromeStoreID = ""
-	edgeStoreID   = ""
-)
+var chromeStoreID, edgeStoreID = hostreg.ChromeStoreID, hostreg.EdgeStoreID
 
 const (
 	chromeUpdateURL = "https://clients2.google.com/service/update2/crx"
@@ -55,9 +47,6 @@ const (
 	uninstallKey    = `Software\Microsoft\Windows\CurrentVersion\Uninstall\Velo`
 	runKey          = `Software\Microsoft\Windows\CurrentVersion\Run`
 )
-
-// Browsers that read native messaging hosts from HKCU\Software\<key>\NativeMessagingHosts.
-var browsers = []string{`Google\Chrome`, `Microsoft\Edge`, `BraveSoftware\Brave-Browser`, `Chromium`}
 
 var silent bool
 
@@ -228,35 +217,7 @@ func veloRunning() bool {
 }
 
 func registerHost(dir string) error {
-	origins := []string{"chrome-extension://" + devExtensionID + "/"}
-	for _, id := range []string{chromeStoreID, edgeStoreID} {
-		if id != "" {
-			origins = append(origins, "chrome-extension://"+id+"/")
-		}
-	}
-	manifest := filepath.Join(dir, hostName+".json")
-	b, _ := json.MarshalIndent(map[string]any{
-		"name":            hostName,
-		"description":     "Velo native messaging host",
-		"path":            filepath.Join(dir, "velo-host.exe"),
-		"type":            "stdio",
-		"allowed_origins": origins,
-	}, "", "  ")
-	if err := os.WriteFile(manifest, b, 0o644); err != nil {
-		return err
-	}
-	for _, br := range browsers {
-		k, _, err := registry.CreateKey(registry.CURRENT_USER, `Software\`+br+`\NativeMessagingHosts\`+hostName, registry.SET_VALUE)
-		if err != nil {
-			return err
-		}
-		err = k.SetStringValue("", manifest)
-		k.Close()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return hostreg.Register(dir)
 }
 
 // registerStoreExtensions asks Chrome/Edge to offer the store extension.
@@ -352,9 +313,7 @@ func uninstall(confirmed bool) error {
 	}
 
 	quitRunningVelo()
-	for _, br := range browsers {
-		registry.DeleteKey(registry.CURRENT_USER, `Software\`+br+`\NativeMessagingHosts\`+hostName)
-	}
+	hostreg.Unregister()
 	if chromeStoreID != "" {
 		registry.DeleteKey(registry.CURRENT_USER, `Software\Google\Chrome\Extensions\`+chromeStoreID)
 	}

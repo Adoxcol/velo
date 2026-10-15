@@ -21,13 +21,14 @@ import (
 	"unsafe"
 
 	"velo/internal/engine"
+	"velo/internal/hostreg"
 	"velo/internal/ipc"
 )
 
 func main() {
 	home, _ := os.UserHomeDir()
 	dir := flag.String("dir", filepath.Join(home, "Downloads", "Velo"), "download folder")
-	segs := flag.Int("segments", 8, "connections per download")
+	segs := flag.Int("segments", 16, "connections per download")
 	background := flag.Bool("background", false, "start in the tray without opening the window")
 	flag.Parse()
 
@@ -42,10 +43,21 @@ func main() {
 		return
 	}
 
-	migrateFromMyDM()
+	portableDir, portable := ipc.Portable()
+	if !portable {
+		migrateFromMyDM()
+	}
 	os.MkdirAll(ipc.Dir(), 0o700)
 	if f, err := os.OpenFile(filepath.Join(ipc.Dir(), "velo.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644); err == nil {
 		log.SetOutput(f)
+	}
+	// A portable copy connects the browser extension to itself when run.
+	if portable && !hostreg.RegisteredTo(portableDir) {
+		if err := hostreg.Register(portableDir); err != nil {
+			log.Printf("portable: couldn't connect browsers: %v", err)
+		} else {
+			log.Printf("portable: browsers now use %s", portableDir)
+		}
 	}
 
 	eng := engine.New(*dir)
