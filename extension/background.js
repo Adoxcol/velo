@@ -111,8 +111,10 @@ async function takeOver(item, name) {
   return !!reply.ok;
 }
 
-if (chrome.downloads.onDeterminingFilename) {
-  chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
+// Chrome and Edge only (Firefox has no such event; it uses onCreated below).
+const onDeterminingFilename = chrome.downloads["onDeterminingFilename"];
+if (onDeterminingFilename) {
+  onDeterminingFilename.addListener((item, suggest) => {
     const name = (item.filename || "").split(/[\\/]/).pop();
     takeOver(item, name).then((taken) => {
       if (taken) {

@@ -16,7 +16,7 @@ try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = br
   host.style.cssText = "position:fixed;z-index:2147483647;display:none;top:0;left:0;";
   const shadow = host.attachShadow({ mode: "closed" }); // page CSS can't restyle it
   if (globalThis.veloI18n) veloI18n.observe(shadow);
-  shadow.innerHTML = `
+  veloSetHTML(shadow, `
     <style>
       * { box-sizing: border-box; }
       .wrap { all: initial; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; font: 13px/1.35 "Segoe UI", system-ui, sans-serif; }
@@ -46,7 +46,7 @@ try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = br
       <div class="pill" id="pill"><button id="go"></button><button class="more" id="more" title="Choose quality">${CARET}</button></div>
       <div class="menu" id="menu"></div>
       <div class="msg" id="msg"></div>
-    </div>`;
+    </div>`);
   const $ = (id) => shadow.getElementById(id);
   let current = null, hideTimer = null, msgTimer = null, items = [], hidden = false;
 
@@ -73,7 +73,7 @@ try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = br
     try { items = (await chrome.runtime.sendMessage({ type: "media" }))?.items || []; } catch { items = []; }
     const ok = choices().filter((c) => !c.bad);
     $("pill").classList.toggle("idle", !ok.length);
-    $("go").innerHTML = BOLT + (ok.length ? "Download with Velo" : "Play to enable download");
+    veloSetHTML($("go"), BOLT + (ok.length ? "Download with Velo" : "Play to enable download"));
     $("more").style.display = ok.length > 1 || choices().some((c) => c.bad) ? "" : "none";
   }
 
@@ -113,9 +113,9 @@ try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = br
 
   function openMenu() {
     const list = choices();
-    $("menu").innerHTML = `<div class="h">Download as</div>` +
+    veloSetHTML($("menu"), `<div class="h">Download as</div>` +
       list.map((c, i) => `<button class="item${c.bad ? " bad" : ""}" data-i="${i}"><span class="n">${esc(c.label)}</span><span class="m">${esc(c.meta)}</span></button>`).join("") +
-      `<div class="sep"></div><button class="item quiet" data-hide="1"><span class="n">Hide on this page</span></button>`;
+      `<div class="sep"></div><button class="item quiet" data-hide="1"><span class="n">Hide on this page</span></button>`);
     $("menu").classList.add("on");
     $("menu").onclick = (e) => {
       const b = e.target.closest(".item");
@@ -168,7 +168,7 @@ try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = br
   cardHost.style.cssText = "position:fixed;z-index:2147483647;right:20px;bottom:20px;";
   const cs = cardHost.attachShadow({ mode: "closed" });
   if (globalThis.veloI18n) veloI18n.observe(cs);
-  cs.innerHTML = `
+  veloSetHTML(cs, `
     <style>
       .card { all: initial; display: block; width: 300px; background: #fff; color: #1b2433; border-radius: 14px;
         box-shadow: 0 12px 40px rgba(13,23,40,.25); font: 13px/1.4 "Segoe UI", system-ui, sans-serif; overflow: hidden;
@@ -192,7 +192,7 @@ try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = br
       .note { all: initial; display: block; padding: 10px 14px; border-radius: 10px; background: #0d1728; color: #fff;
         font: 13px "Segoe UI", system-ui, sans-serif; box-shadow: 0 8px 24px rgba(0,0,0,.3); }
     </style>
-    <div class="card" id="card"></div>`;
+    <div class="card" id="card"></div>`);
   const cardEl = cs.getElementById("card");
   let cardTimer;
   const bolt = '<svg viewBox="0 0 24 24"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z" fill="#fff"/></svg>';
@@ -203,7 +203,7 @@ try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = br
     setTimeout(() => cardHost.remove(), 300);
   }
   function showCard(html, ms) {
-    cardEl.innerHTML = html;
+    veloSetHTML(cardEl, html);
     if (!cardHost.isConnected) document.documentElement.append(cardHost);
     requestAnimationFrame(() => cardEl.classList.add("on"));
     clearTimeout(cardTimer);

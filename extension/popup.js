@@ -77,8 +77,8 @@ function choicesFor(items) {
       : /exited|communicating/i.test(err) ? "Velo's connector stopped unexpectedly. Restart Velo, then reopen this popup."
       : "";
     $("banner").hidden = false;
-    $("banner").innerHTML = svg(ICON.warn) + `<div><b>Velo isn't connected.</b> ${esc(advice)}
-      <div style="opacity:.8;margin-top:4px;font-size:11.5px">Browser said: ${esc(err)}</div></div>`;
+    veloSetHTML($("banner"), svg(ICON.warn) + `<div><b>Velo isn't connected.</b> ${esc(advice)}
+      <div style="opacity:.8;margin-top:4px;font-size:11.5px">Browser said: ${esc(err)}</div></div>`);
   });
 
   const media = await chrome.runtime.sendMessage({ type: "media", tabId: tab.id });
@@ -90,22 +90,22 @@ function choicesFor(items) {
   const allBtn = `<button class="btn ghost" id="all">${svg(ICON.links)}Download all links on this page</button>`;
 
   if (media.unsupported) {
-    body.innerHTML = `<div class="empty"><div class="ill">${svg(ICON.shield)}</div><b>This site isn't supported</b>
-      It streams video in a protected format that Velo doesn't download.</div>` + allBtn;
+    veloSetHTML(body, `<div class="empty"><div class="ill">${svg(ICON.shield)}</div><b>This site isn't supported</b>
+      It streams video in a protected format that Velo doesn't download.</div>` + allBtn);
   } else if (!media.items.length) {
-    body.innerHTML = `<div class="empty"><div class="ill">${svg(ICON.play)}</div><b>No videos detected yet</b>
-      Start playing the video, then open this again.</div>` + allBtn;
+    veloSetHTML(body, `<div class="empty"><div class="ill">${svg(ICON.play)}</div><b>No videos detected yet</b>
+      Start playing the video, then open this again.</div>` + allBtn);
   } else {
     const choices = choicesFor(media.items);
     const firstOk = choices.findIndex((c) => !c.note);
-    body.innerHTML = pageCard(host + (choices.length > 1 ? ` · ${choices.length} options` : "")) +
+    veloSetHTML(body, pageCard(host + (choices.length > 1 ? ` · ${choices.length} options` : "")) +
       `<button class="btn" id="go"${firstOk < 0 ? " disabled" : ""}>${svg(ICON.bolt)}Download with Velo</button>` +
       `<h4>Download as</h4><div class="opts">` + choices.map((c, i) => `
         <label class="opt${c.note ? " bad" : ""}" title="${esc(c.item.url)}">
           <input type="radio" name="c" value="${i}"${i === firstOk ? " checked" : ""}${c.note ? " disabled" : ""}>
           <span class="n">${esc(c.label)}</span>
           <span class="m">${c.note ? `<span class="tag">${NOTE[c.note]}</span>` : esc(c.meta)}</span></label>`).join("") +
-      `</div><div class="row">${allBtn}</div>`;
+      `</div><div class="row">${allBtn}</div>`);
     $("go").onclick = async () => {
       const c = choices[+document.querySelector('input[name="c"]:checked').value];
       $("go").disabled = true;

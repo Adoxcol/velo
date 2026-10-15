@@ -14,6 +14,20 @@
 (function () {
   "use strict";
   if (globalThis.veloI18n) return;
+
+  // veloSetHTML(el, markup) replaces el's content with markup that Velo built
+  // itself (page-provided values are escaped by the caller). It parses inside
+  // a <template>, so nothing in it runs, then inserts the resulting nodes.
+  // As a safety net it also drops <script> elements and on* attributes.
+  globalThis.veloSetHTML = (el, markup) => {
+    const tpl = new DOMParser().parseFromString("<template>" + markup + "</template>", "text/html").querySelector("template");
+    const frag = tpl.content;
+    for (const s of frag.querySelectorAll("script")) s.remove();
+    for (const n of frag.querySelectorAll("*")) {
+      for (const a of [...n.attributes]) if (/^on/i.test(a.name)) n.removeAttribute(a.name);
+    }
+    el.replaceChildren(document.importNode(frag, true));
+  };
   let dict = {};
   let patterns = [];
   const SKIP = "[translate=no], code, kbd, input, textarea, script, style, .name, .u, .url, .file .name";
@@ -85,7 +99,7 @@
         const key = node.innerHTML.replace(/\s+/g, " ").trim();
         if (Object.prototype.hasOwnProperty.call(dict, key)) {
           node.setAttribute("data-i18n-html", "done");
-          node.innerHTML = dict[key];
+          veloSetHTML(node, dict[key]);
         }
       }
       return;

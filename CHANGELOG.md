@@ -2,6 +2,12 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.4.1 — 2026-10-16
+
+### Improved
+- The browser extension builds its popup, video button and cards with a safer method that never runs scripts or event handlers from markup. Mozilla's add-on checker now reports no warnings at all.
+- Releases are now built, tested and published automatically on GitHub, ready for code signing.
+
 ## 0.4.0 — 2026-10-16
 
 ### New
