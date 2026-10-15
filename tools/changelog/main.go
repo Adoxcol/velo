@@ -193,10 +193,12 @@ var page = template.Must(template.New("page").Parse(`<!doctype html>
 </main>
 <footer>
   <div class="wrap">
-    <span>Velo · Open source · MIT license · Made by <a href="https://adoxcol.com">Adoxcol</a></span>
+    <span>Velo · Open source · MIT license · Made by <a href="https://www.adoxcol.com">Adoxcol</a></span>
     <div class="links">
       <a href="https://github.com/Adoxcol/velo">GitHub</a>
       <a href="https://github.com/Adoxcol/velo/issues">Report a problem</a>
+      <a href="https://studio.adoxcol.com">Studio music player</a>
+      <a href="https://www.adoxcol.com">adoxcol.com</a>
       <a href="https://gist.github.com/Adoxcol/ea9009ab50bad69a5067c20ae35edd49">Privacy</a>
     </div>
   </div>

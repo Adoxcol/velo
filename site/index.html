@@ -220,8 +220,22 @@
   footer a { text-decoration: none; }
   footer a:hover { color: var(--ink); }
 
+  /* more from the maker */
+  .makers { display: grid; grid-template-columns: 1.35fr 1fr; gap: 20px; }
+  .maker { display: flex; gap: 18px; padding: 28px; border-radius: 18px; border: 1px solid var(--line); background: var(--surface); text-decoration: none; color: var(--ink); transition: transform .15s, box-shadow .15s, border-color .15s; }
+  .maker:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--primary) 40%, var(--line)); box-shadow: 0 18px 40px -24px rgba(13, 23, 40, .35); }
+  .maker-ic { flex: none; width: 48px; height: 48px; border-radius: 13px; display: grid; place-items: center; }
+  .maker-ic svg { width: 24px; height: 24px; }
+  .maker-ic.studio { background: color-mix(in srgb, #a855f7 15%, transparent); color: #a855f7; }
+  .maker-ic.me { background: var(--soft); color: var(--primary); }
+  .maker-tag { color: var(--muted); font-size: 12.5px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; }
+  .maker h3 { margin: 6px 0 8px; font-size: 19px; line-height: 1.3; }
+  .maker p { margin: 0 0 14px; color: var(--muted); font-size: 15px; }
+  .maker-go { color: var(--primary); font-weight: 600; font-size: 15px; }
+
   @media (max-width: 920px) {
     .features, .steps { grid-template-columns: 1fr 1fr; }
+    .makers { grid-template-columns: 1fr; }
     .split { grid-template-columns: 1fr; gap: 40px; }
     .split.rev .text { order: 0; }
     .app { grid-template-columns: 1fr; }
@@ -435,6 +449,36 @@
   </div>
 </section>
 
+<section id="more">
+  <div class="wrap">
+    <div class="head center">
+      <div class="eyebrow">More from the maker</div>
+      <h2>Made by Adoxcol</h2>
+      <p class="sub">Velo is one of a few free, open-source tools I build. If you like it, have a look at the others.</p>
+    </div>
+    <div class="makers">
+      <a class="maker" href="https://studio.adoxcol.com">
+        <div class="maker-ic studio" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M9 18V6l11-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></svg></div>
+        <div>
+          <div class="maker-tag">Free · Open source · Desktop</div>
+          <h3>Studio — a music player you can make your own</h3>
+          <p>A fast, local-first music player for audiophiles: bit-perfect playback, a 10-band graphic EQ, dockable panels you can arrange however you like, and colours that follow your album art.</p>
+          <span class="maker-go">Check out Studio <span aria-hidden="true">→</span></span>
+        </div>
+      </a>
+      <a class="maker" href="https://www.adoxcol.com">
+        <div class="maker-ic me" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
+        <div>
+          <div class="maker-tag">Portfolio</div>
+          <h3>Mahmood — developer &amp; maker</h3>
+          <p>The person behind Velo and Studio. See what else I'm working on, and get in touch.</p>
+          <span class="maker-go">Visit adoxcol.com <span aria-hidden="true">→</span></span>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>
+
 <section id="download">
   <div class="wrap">
     <div class="band">
@@ -453,11 +497,13 @@
 <footer>
   <div class="wrap">
     <a class="brand" href="#" style="font-size:17px"><svg style="width:18px;height:18px"><use href="#bolt"/></svg>velo.</a>
-    <span>Open source · MIT license · Made by <a href="https://adoxcol.com">Adoxcol</a></span>
+    <span>Open source · MIT license · Made by <a href="https://www.adoxcol.com">Adoxcol</a></span>
     <div class="links">
       <a href="/changelog">Changelog</a>
       <a href="https://github.com/Adoxcol/velo">GitHub</a>
       <a href="https://github.com/Adoxcol/velo/issues">Report a problem</a>
+      <a href="https://studio.adoxcol.com">Studio music player</a>
+      <a href="https://www.adoxcol.com">adoxcol.com</a>
       <a href="https://gist.github.com/Adoxcol/ea9009ab50bad69a5067c20ae35edd49">Privacy</a>
     </div>
   </div>
