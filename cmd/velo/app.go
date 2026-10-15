@@ -278,9 +278,17 @@ type addOptions struct {
 	Dir       string `json:"dir"`      // "" = default folder
 	Segments  int    `json:"segments"` // 0 = default
 	Start     bool   `json:"start"`    // false = add paused
+	Checksum  string `json:"checksum"` // optional, verified when done
 }
 
 func (a *app) addWith(o addOptions) (int, error) {
+	sum := ""
+	if strings.TrimSpace(o.Checksum) != "" {
+		var err error
+		if sum, err = engine.ParseChecksum(o.Checksum); err != nil {
+			return 0, err
+		}
+	}
 	if o.PendingID != 0 {
 		base, ok := a.takePending(o.PendingID)
 		if !ok {
@@ -290,7 +298,7 @@ func (a *app) addWith(o addOptions) (int, error) {
 		if name := strings.TrimSpace(o.Filename); name != "" {
 			base.Filename = name // otherwise keep the browser's suggested name
 		}
-		base.Dir, base.Segments = o.Dir, o.Segments
+		base.Dir, base.Segments, base.Checksum = o.Dir, o.Segments, sum
 		if o.Dir != "" && !filepath.IsAbs(o.Dir) {
 			return 0, errors.New("choose a full folder path")
 		}
@@ -309,7 +317,7 @@ func (a *app) addWith(o addOptions) (int, error) {
 	if o.Dir != "" && !filepath.IsAbs(o.Dir) {
 		return 0, errors.New("choose a full folder path")
 	}
-	r := engine.Request{URL: o.URL, Filename: strings.TrimSpace(o.Filename), Dir: o.Dir, Segments: o.Segments, Kind: kind}
+	r := engine.Request{URL: o.URL, Filename: strings.TrimSpace(o.Filename), Dir: o.Dir, Segments: o.Segments, Kind: kind, Checksum: sum}
 	if !o.Start {
 		it := a.register(&engine.Download{Req: r, Status: "paused"})
 		a.kick()
@@ -480,6 +488,65 @@ func (a *app) pause(id int) error {
 	it.d.SetStatus("paused")
 	a.kick()
 	return nil
+}
+
+// refreshLink swaps an expired link for a fresh one and resumes the same
+// file, like IDM's "refresh download address". The new link must serve a
+// file of the same size, so two different files are never stitched together.
+func (a *app) refreshLink(id int, newURL string) error {
+	it := a.get(id)
+	if it == nil {
+		return errors.New("no such download")
+	}
+	newURL = strings.TrimSpace(newURL)
+	if u := strings.ToLower(newURL); !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
+		return errors.New("enter a link starting with http:// or https://")
+	}
+	a.mu.Lock()
+	running := it.running
+	a.mu.Unlock()
+	d := it.d
+	if running {
+		return errors.New("pause the download first")
+	}
+	if s, _ := d.State(); s == "done" {
+		return errors.New("this download has already finished")
+	}
+	if d.Req.Kind != "" {
+		return errors.New("video streams can't change their link; add the new one as a new download")
+	}
+	req := d.Req
+	if hostOf(req.URL) != hostOf(newURL) {
+		req.Cookies = "" // the old site's login isn't for the new one
+	}
+	req.URL = newURL
+	_, total := d.Info()
+	if total > 0 {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		info, err := a.eng.Probe(ctx, req)
+		cancel()
+		if err != nil {
+			return fmt.Errorf("couldn't open the new link: %w", err)
+		}
+		if info.Size != total {
+			return fmt.Errorf("the new link is a different file (%d bytes, this download is %d bytes)", info.Size, total)
+		}
+		if !info.Resumable {
+			return errors.New("the new link can't continue a download (the server doesn't support resuming)")
+		}
+	}
+	d.SetRequest(req)
+	log.Printf("#%d link refreshed", d.ID)
+	a.enqueue(it)
+	return nil
+}
+
+func hostOf(s string) string {
+	u, err := url.Parse(s)
+	if err != nil {
+		return ""
+	}
+	return strings.ToLower(u.Hostname())
 }
 
 func (a *app) resume(id int) error {
@@ -661,6 +728,7 @@ type row struct {
 	Added       int64   `json:"added"`    // unix ms
 	Finished    int64   `json:"finished"` // unix ms, 0 until done
 	Error       string  `json:"error,omitempty"`
+	Verified    bool    `json:"verified,omitempty"` // matched the checksum given when added
 	Retrying    bool    `json:"retrying,omitempty"` // waiting after a network drop
 	RetryIn     int     `json:"retryIn,omitempty"`  // seconds until the next try
 }
@@ -698,6 +766,7 @@ func (a *app) rows() []row {
 		if err != nil {
 			r.Error = err.Error()
 		}
+		r.Verified = d.Verified
 		if status == "queued" && !it.retryAt.IsZero() {
 			r.RetryIn = max(int(time.Until(it.retryAt).Seconds()+0.99), 0)
 			r.Retrying = true

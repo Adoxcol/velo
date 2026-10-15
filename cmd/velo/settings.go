@@ -17,18 +17,18 @@ type Settings struct {
 	MaxConcurrent  int      `json:"maxConcurrent"` // downloads at once, 1-10
 	SpeedLimitKB   int      `json:"speedLimitKB"`  // KB/s for all downloads, 0 = unlimited
 	Schedule       Schedule `json:"schedule"`
-	OnFinish       string   `json:"onFinish"`       // none, exit, sleep, shutdown
-	DownloadDir    string   `json:"downloadDir"`    // "" = the default (Downloads\Velo)
-	SortByType     bool     `json:"sortByType"`     // Video/Music/Documents/... subfolders
-	Autostart      bool     `json:"autostart"`      // start with Windows (in the tray)
-	Notify         bool     `json:"notify"`         // notification when a download finishes or fails
-	WatchClipboard bool     `json:"watchClipboard"` // offer to download copied file links
-	Theme          string   `json:"theme"`          // light, dark or system
-	Connections    int      `json:"connections"`    // default connections per download, 1-32
-	ShowMini       bool     `json:"showMini"`       // floating Velo Mini window while downloading
-	Onboarded      bool     `json:"onboarded"`      // first-run setup done
-	AutoUpdate     bool     `json:"autoUpdate"`     // install verified updates when idle
-	AskOnCapture   bool     `json:"askOnCapture"`   // show the download dialog for browser downloads
+	OnFinish       string   `json:"onFinish"`          // none, exit, sleep, shutdown
+	DownloadDir    string   `json:"downloadDir"`       // "" = the default (Downloads\Velo)
+	SortByType     bool     `json:"sortByType"`        // Video/Music/Documents/... subfolders
+	Autostart      bool     `json:"autostart"`         // start with Windows (in the tray)
+	Notify         bool     `json:"notify"`            // notification when a download finishes or fails
+	WatchClipboard bool     `json:"watchClipboard"`    // offer to download copied file links
+	Theme          string   `json:"theme"`             // light, dark or system
+	Connections    int      `json:"connections"`       // default connections per download, 1-32
+	ShowMini       bool     `json:"showMini"`          // floating Velo Mini window while downloading
+	Onboarded      bool     `json:"onboarded"`         // first-run setup done
+	AutoUpdate     bool     `json:"autoUpdate"`        // install verified updates when idle
+	AskOnCapture   bool     `json:"askOnCapture"`      // show the download dialog for browser downloads
 	MiniPos        *[2]int  `json:"miniPos,omitempty"` // where Velo Mini was dragged to (nil = bottom right)
 }
 

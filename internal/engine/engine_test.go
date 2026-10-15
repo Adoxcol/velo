@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"io"
 	"net/http"
@@ -347,5 +349,38 @@ func TestStateFileHasNoCookies(t *testing.T) {
 	}
 	if d.Req.Cookies == "" {
 		t.Fatal("saveState cleared the live download's cookies")
+	}
+}
+
+func TestChecksum(t *testing.T) {
+	data := randomData(t, 1<<20)
+	sum := sha256.Sum256(data)
+	good := hex.EncodeToString(sum[:])
+	srv, _ := testServer(t, data, 0, 0)
+	e := New(t.TempDir())
+
+	parsed, err := ParseChecksum("SHA256:" + strings.ToUpper(good) + "  file.bin")
+	if err != nil || parsed != good {
+		t.Fatalf("ParseChecksum: %q %v", parsed, err)
+	}
+	if _, err := ParseChecksum("not-a-hash"); err == nil {
+		t.Fatal("accepted a bad checksum")
+	}
+
+	d := &Download{Req: Request{URL: srv.URL + "/file.bin", Checksum: good}}
+	if err := e.Run(context.Background(), d); err != nil || !d.Verified {
+		t.Fatalf("good checksum: err=%v verified=%v", err, d.Verified)
+	}
+
+	bad := &Download{Req: Request{URL: srv.URL + "/file.bin", Checksum: strings.Repeat("0", 64)}}
+	err = e.Run(context.Background(), bad)
+	var ce *ChecksumError
+	if !errors.As(err, &ce) || bad.Verified || Transient(err) {
+		t.Fatalf("bad checksum: %v", err)
+	}
+	if p, _ := bad.Info(); p == "" {
+		t.Fatal("file should be kept for inspection")
+	} else if _, err := os.Stat(p); err != nil {
+		t.Fatal(err)
 	}
 }

@@ -367,6 +367,8 @@
             <div class="opt"><div><div class="t">Install updates automatically</div><div class="d">Updates are verified, then installed when nothing is downloading and the window is closed.</div></div><span class="switch"><input type="checkbox" data-s="autoUpdate"><i></i></span></div>
             <div class="opt"><div><div class="t">Updates</div><div class="d" id="updStatus">Not checked yet.</div></div>
               <span class="row2"><button class="btn" id="updCheck">Check for updates</button><button class="btn primary" id="updInstall" hidden>Install update</button></span></div>
+            <div class="opt"><div><div class="t">Report a problem</div><div class="d">Copies Velo's version, settings and recent log to paste into a bug report. Link details and your user folder are left out.</div></div>
+              <button class="btn" id="dbgCopy">Copy debug info</button></div>
             <p class="hint">Settings and history are stored in <code>%APPDATA%\Velo</code>. Velo can also be controlled from the command line with <code>veloctl</code>.</p>
           </div>
         </div>
@@ -387,6 +389,7 @@
     <div class="probe" id="aProbe"></div>
     <div class="formrow"><span>Save to</span><div class="inp ro"><svg class="i" viewBox="0 0 24 24" style="color:var(--faint)"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><input id="aDir" readonly><button class="link" id="aDirChange">Change</button></div></div>
     <div class="formrow"><span>File name</span><div class="inp"><input id="aName" spellcheck="false" placeholder="From the server"></div></div>
+    <div class="formrow"><span>Checksum</span><div class="inp"><input id="aSum" spellcheck="false" placeholder="Optional: SHA-256, SHA-1 or MD5 to check the file"></div></div>
     <div class="formrow"><span>Split into</span><div class="inp"><select id="aParts"></select></div></div>
     <div style="display:grid;gap:10px;margin:14px 0 4px">
       <label class="check"><input type="radio" name="aStart" value="now" checked> Start download immediately</label>
@@ -396,12 +399,22 @@
   <div class="df"><button class="btn" data-close>Cancel</button><button class="btn primary" id="aGo"><svg class="i" viewBox="0 0 24 24"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z"/></svg>Download</button></div>
 </dialog>
 
+<dialog id="relinkDlg">
+  <div class="dh"><span>Refresh link</span><button class="iconbtn" data-close title="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="db">
+    <p class="hint" style="margin-top:0">If the download link expired, get a fresh one from the website (start the download again in the browser and copy its link) and paste it here. Velo checks it is the same file, then continues where it stopped.</p>
+    <div class="hint" id="rlName" style="font-weight:600;color:var(--ink);margin-bottom:8px"></div>
+    <div class="inp"><input id="rlUrl" spellcheck="false" placeholder="https://…"></div>
+  </div>
+  <div class="df"><button class="btn" data-close>Cancel</button><button class="btn primary" id="rlGo">Continue download</button></div>
+</dialog>
+
 <dialog id="batchDlg">
   <div class="dh"><span id="bTitle">Download links</span><button class="iconbtn" data-close title="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="db">
     <div class="hint" id="bPage" style="margin:-6px 0 12px"></div>
     <div class="btools">
-      <div class="inp"><svg class="i" viewBox="0 0 24 24" style="color:var(--faint)"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="bFilter" placeholder="Filter by name or link…" spellcheck="false"></div>
+      <div class="inp"><svg class="i" viewBox="0 0 24 24" style="color:var(--faint)"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="bFilter" placeholder="Filter, or extensions like *.pdf *.zip" spellcheck="false"></div>
       <span class="chips" id="bChips" style="margin:0"></span>
     </div>
     <div class="btools"><button class="btn" id="bAll">Select all</button><button class="btn" id="bNone">Select none</button><span class="hint" id="bCount" style="margin-left:auto"></span></div>
@@ -480,6 +493,22 @@ function toast(msg, err) {
   const t = $("#toast"); t.textContent = msg; t.className = "show" + (err ? " err" : "");
   clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.className = ""), 3200);
 }
+let relinkId = 0;
+function openRelink(r) {
+  relinkId = r.id;
+  $("#rlName").textContent = r.file;
+  $("#rlUrl").value = "";
+  $("#relinkDlg").showModal();
+  navigator.clipboard.readText().then((t) => { t = t.trim(); if (/^https?:\/\//i.test(t) && t !== r.url && !$("#rlUrl").value) $("#rlUrl").value = t; }).catch(() => {});
+}
+async function relinkGo() {
+  const b = $("#rlGo"); b.disabled = true; b.textContent = "Checking…";
+  try { await refreshLink(relinkId, $("#rlUrl").value); $("#relinkDlg").close(); toast("Link refreshed — continuing"); refresh(); }
+  catch (e) { toast(String(e), true); }
+  finally { b.disabled = false; b.textContent = "Continue download"; }
+}
+$("#rlGo").onclick = relinkGo;
+$("#rlUrl").onkeydown = (e) => { if (e.key === "Enter") relinkGo(); };
 async function act(fn, ...args) {
   try { await fn(...args); } catch (e) { toast(String(e), true); }
   refresh();
@@ -536,13 +565,13 @@ function card(r) {
     const bytes = r.total > 0 ? r.total : r.done;
     meta = `<span>${bytes > 0 ? size(bytes) : "Size unknown"}</span><span class="dot">${r.finished ? ago(r.finished) : "Done"}</span>`;
     // The badge sits with the buttons so they share one centred row.
-    acts = `<span class="badge ok done-badge">${icon(I.check)}Completed</span>` +
+    acts = `<span class="badge ok done-badge"${r.verified ? ' title="Checksum verified"' : ""}>${icon(I.check)}${r.verified ? "Verified" : "Completed"}</span>` +
       `<button class="iconbtn" data-act="folder" title="Show in folder">${icon(I.folder)}</button>`;
   } else if (r.status === "error") {
     meta = `<span class="badge err" title="${escapeHtml(r.error || "")}">${escapeHtml(shorten(r.error || "Failed", 80))}</span>`;
     acts = `<button class="iconbtn" data-act="resume" title="Retry">${icon(I.retry)}</button>`;
   } else {
-    const label = r.retrying ? (r.retryIn > 0 ? "Connection lost · retrying in " + r.retryIn + "s" : "Reconnecting…")
+    const label = r.status === "verifying" ? "Checking checksum…" : r.retrying ? (r.retryIn > 0 ? "Connection lost · retrying in " + r.retryIn + "s" : "Reconnecting…")
       : r.status === "queued" ? "Waiting in queue" : "Paused";
     meta = `<span>${known ? size(r.done) + " / " + size(r.total) : r.done ? size(r.done) : "Not started"}</span>` +
       (pct > 0 ? `<span class="dot">${pct.toFixed(0)}%</span>` : "") + `<span class="dot badge warn" title="${escapeHtml(r.retrying ? r.error || "" : "")}">${label}</span>`;
@@ -634,6 +663,7 @@ function openMenu(anchor, r) {
   items.push(["folder", I.folder, "Show in folder"], ["copy", I.copy, "Copy link"]);
   if (r.status === "downloading" || r.status === "queued") items.push(["pause", I.pause, "Pause"]);
   if (r.status === "paused" || r.status === "error") items.push(["resume", I.play, "Resume"]);
+  if ((r.status === "paused" || r.status === "error") && !r.kind) items.push(["relink", I.retry, "Refresh link…"]);
   items.push(["hr"], ["remove", I.trash, r.status === "done" ? "Remove from list" : "Cancel and delete", "danger"]);
   m.innerHTML = items.map(([k, ic, l, cls]) => k === "hr" ? "<hr>" : `<button data-m="${k}" class="${cls || ""}">${icon(ic)}${l}</button>`).join("");
   const rect = anchor.getBoundingClientRect();
@@ -649,6 +679,7 @@ function openMenu(anchor, r) {
     if (k === "pause") act(pause, r.id);
     if (k === "resume") act(resume, r.id);
     if (k === "remove") act(remove, r.id);
+    if (k === "relink") openRelink(r);
   };
 }
 document.addEventListener("mousedown", (e) => { if (!e.target.closest("#menu")) $("#menu").style.display = "none"; });
@@ -698,7 +729,7 @@ async function openAdd(url = "") {
   addDir = "";
   defConn = await connections();
   partsOptions(defConn);
-  $("#aUrl").value = url; $("#aName").value = ""; $("#aProbe").textContent = ""; $("#aProbe").className = "probe";
+  $("#aUrl").value = url; $("#aName").value = ""; $("#aSum").value = ""; $("#aProbe").textContent = ""; $("#aProbe").className = "probe";
   $$('input[name="aStart"]')[0].checked = true;
   await showAddDir();
   $("#addDlg").showModal();
@@ -755,7 +786,7 @@ $("#aGo").onclick = async () => {
   const start = $('input[name="aStart"]:checked').value === "now";
   const parts = +$("#aParts").value;
   try {
-    await addDownload({ pendingId, url: $("#aUrl").value.trim(), filename: $("#aName").value.trim(), dir: addDir, segments: parts === defConn ? 0 : parts, start });
+    await addDownload({ pendingId, url: $("#aUrl").value.trim(), filename: $("#aName").value.trim(), dir: addDir, segments: parts === defConn ? 0 : parts, start, checksum: $("#aSum").value.trim() });
     pendingId = 0;
     $("#addDlg").close();
     toast(start ? "Download started" : "Added to the queue");
@@ -848,16 +879,29 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => S &&
 // ---------- batch download ("Download all with Velo") ----------
 let batch = null, bSel = new Set(), bCat = "files";
 const BCHIPS = [["files", "Files"], ["all", "All links"], ["Video", "Video"], ["Music", "Music"], ["Images", "Images"], ["Documents", "Docs"], ["Compressed", "Archives"], ["Programs", "Programs"]];
+// The filter box takes words to search for, or extension patterns like
+// "*.pdf *.zip" (also ".pdf, .zip"): a link matches any pattern.
+function bMatcher() {
+  const words = $("#bFilter").value.toLowerCase().split(/[\s,;]+/).filter(Boolean);
+  const isExt = (w) => /^\*?\.[a-z0-9]+$/.test(w);
+  const exts = words.filter(isExt).map((w) => w.replace(/^\*/, ""));
+  const text = words.filter((w) => !isExt(w));
+  return (l) => {
+    const name = (l.name || "").toLowerCase();
+    if (exts.length && !exts.some((e) => name.endsWith(e))) return false;
+    const hay = (l.name + " " + l.url + " " + l.text).toLowerCase();
+    return text.every((w) => hay.includes(w));
+  };
+}
+const bInCat = (l, k) => k === "all" || (k === "files" ? l.file : l.category === k);
 function bVisible() {
-  const q = $("#bFilter").value.trim().toLowerCase();
-  return batch.links.filter((l) =>
-    (bCat === "all" || (bCat === "files" ? l.file : l.category === bCat)) &&
-    (!q || (l.name + " " + l.url + " " + l.text).toLowerCase().includes(q)));
+  const m = bMatcher();
+  return batch.links.filter((l) => bInCat(l, bCat) && m(l));
 }
 function bRender() {
   const rows = bVisible();
   $("#bChips").innerHTML = BCHIPS.filter(([k]) => k === "files" || k === "all" || batch.links.some((l) => l.category === k))
-    .map(([k, l]) => `<button class="chip${bCat === k ? " on" : ""}" data-bcat="${k}">${l}</button>`).join("");
+    .map(([k, l]) => `<button class="chip${bCat === k ? " on" : ""}" data-bcat="${k}">${l} <span style="opacity:.6">${batch.links.filter((x) => bInCat(x, k)).length}</span></button>`).join("");
   $("#bList").innerHTML = rows.length ? rows.map((l) => {
     const cat = l.category || "Other";
     return `<label class="brow" title="${escapeHtml(l.url)}"><input type="checkbox" data-u="${escapeHtml(l.url)}"${bSel.has(l.url) ? " checked" : ""}>
@@ -964,6 +1008,10 @@ async function showUpdate() {
   if (u.ready) $("#updInstall").textContent = `Install ${u.available}`;
   $("#updCheck").disabled = u.checking;
 }
+$("#dbgCopy").onclick = async () => {
+  try { await navigator.clipboard.writeText(await debugInfo()); toast("Debug info copied"); }
+  catch (e) { toast("Couldn't copy: " + e, true); }
+};
 $("#updCheck").onclick = async () => { await checkUpdate(); setTimeout(showUpdate, 300); };
 $("#updInstall").onclick = () => act(installUpdate);
 setInterval(() => { if (page === "settings") showUpdate(); }, 1500);

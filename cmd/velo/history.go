@@ -25,6 +25,7 @@ type histEntry struct {
 	Added    int64          `json:"added,omitempty"`
 	Finished int64          `json:"finished,omitempty"`
 	Error    string         `json:"error,omitempty"`
+	Verified bool           `json:"verified,omitempty"`
 }
 
 const maxHistory = 500
@@ -41,11 +42,12 @@ func (a *app) snapshot() []histEntry {
 		d := it.d
 		status, err := d.State()
 		p, total := d.Info()
-		if status == "downloading" {
+		if status == "downloading" || status == "verifying" {
 			status = "queued" // was interrupted: start again on the next run
 		}
 		e := histEntry{Req: d.Req, Path: p, Total: total, Status: status, Added: it.added.UnixMilli()}
 		if status == "done" {
+			e.Verified = d.Verified
 			e.Req.Cookies = "" // only needed to finish the download
 		}
 		if !it.finished.IsZero() {
@@ -151,7 +153,7 @@ func (a *app) loadHistory(entries []histEntry, skip map[string]bool) {
 		d := &engine.Download{Req: e.Req, Total: -1}
 		switch e.Status {
 		case "done":
-			d.Path, d.Total, d.Status = e.Path, e.Total, "done"
+			d.Path, d.Total, d.Status, d.Verified = e.Path, e.Total, "done", e.Verified
 			d.Done.Store(max(e.Total, 0))
 		case "error":
 			d.Status, d.Err = "error", errors.New(e.Error)

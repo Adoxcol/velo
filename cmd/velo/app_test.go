@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -273,4 +274,74 @@ func TestRetriesAfterNetworkDrop(t *testing.T) {
 
 	miss := a.add(engine.Request{URL: srv.URL + "/missing"})
 	waitFor(t, "404 to fail", func() bool { return statusOf(a, miss) == "error" })
+}
+
+func TestDebugInfoHidesSecrets(t *testing.T) {
+	a := testApp(t, defaultSettings())
+	home, _ := os.UserHomeDir()
+	log := "2026/10/15 #1 queued https://cdn.example.com/f.zip?token=SECRET&sig=abc\n" +
+		"2026/10/15 #1 done " + filepath.Join(home, "Downloads", "f.zip") + "\n"
+	os.WriteFile(filepath.Join(a.home, "velo.log"), []byte(log), 0o600)
+	out := a.debugInfo()
+	for _, bad := range []string{"SECRET", "sig=abc", home} {
+		if strings.Contains(out, bad) {
+			t.Errorf("debug info contains %q:\n%s", bad, out)
+		}
+	}
+	for _, want := range []string{"https://cdn.example.com/f.zip?…", "%USERPROFILE%", "Velo ", "Windows "} {
+		if !strings.Contains(out, want) {
+			t.Errorf("debug info is missing %q:\n%s", want, out)
+		}
+	}
+}
+
+// An expired link can be swapped for a fresh one and the same file
+// continues; a link to a different file is refused.
+func TestRefreshLink(t *testing.T) {
+	data := make([]byte, 4<<20)
+	rand.Read(data)
+	other := make([]byte, 3<<20)
+	var expired atomic.Bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/old" && expired.Load():
+			http.Error(w, "link expired", http.StatusForbidden)
+		case r.URL.Path == "/old" || r.URL.Path == "/new":
+			http.ServeContent(w, r, "f.bin", time.Time{}, bytes.NewReader(data))
+		default:
+			http.ServeContent(w, r, "g.bin", time.Time{}, bytes.NewReader(other))
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	s := defaultSettings()
+	s.SpeedLimitKB = 1024
+	a := testApp(t, s)
+	id := a.add(engine.Request{URL: srv.URL + "/old"})
+	waitFor(t, "progress", func() bool { return a.get(id).d.Done.Load() > 512<<10 })
+	a.pause(id)
+	waitFor(t, "pause", func() bool { return statusOf(a, id) == "paused" })
+	expired.Store(true)
+
+	if err := a.refreshLink(id, srv.URL+"/different"); err == nil {
+		t.Fatal("accepted a link to a different file")
+	}
+	before := a.get(id).d.Done.Load()
+	a.mu.Lock()
+	a.settings.SpeedLimitKB = 0
+	a.mu.Unlock()
+	a.eng.Limit.SetRate(0)
+	if err := a.refreshLink(id, srv.URL+"/new"); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "download to finish", func() bool { return statusOf(a, id) == "done" })
+	d := a.get(id).d
+	p, _ := d.Info()
+	got, _ := os.ReadFile(p)
+	if !bytes.Equal(got, data) {
+		t.Fatal("content mismatch")
+	}
+	if before == 0 || filepath.Base(p) != "old" {
+		t.Fatalf("expected the same file to continue (before=%d, path=%s)", before, p)
+	}
 }

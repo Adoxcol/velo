@@ -43,6 +43,7 @@ type Request struct {
 	Title                                       string // page/video title, used to name videos
 	Dir                                         string `json:",omitempty"` // save here instead of the default/category folder
 	Segments                                    int    `json:",omitempty"` // connections for this download (0 = engine default)
+	Checksum                                    string `json:",omitempty"` // expected MD5/SHA-1/SHA-256/SHA-512 (hex), checked when done
 }
 
 // Segment is the byte range [Pos, End] still to fetch. Guarded by Download.mu.
@@ -100,14 +101,15 @@ type errBusy struct{ retryAfter time.Duration }
 func (e errBusy) Error() string { return "server busy" }
 
 type Download struct {
-	ID     int
-	Req    Request
-	Path   string
-	Total  int64 // -1 if unknown
-	Ranged bool
-	Done   atomic.Int64
-	Status string // queued, downloading, paused, done, error
-	Err    error
+	ID       int
+	Req      Request
+	Path     string
+	Total    int64 // -1 if unknown
+	Ranged   bool
+	Done     atomic.Int64
+	Status   string // queued, downloading, paused, done, error
+	Err      error
+	Verified bool // matched Req.Checksum
 
 	mu     sync.Mutex
 	segs   []*Segment
@@ -163,6 +165,15 @@ func (d *Download) SetStatus(s string) {
 	d.mu.Lock()
 	d.Status = s
 	d.mu.Unlock()
+}
+
+// SetRequest replaces the download's request (a refreshed link) while it
+// isn't running; progress and the file are kept.
+func (d *Download) SetRequest(r Request) {
+	d.mu.Lock()
+	d.Req = r
+	d.mu.Unlock()
+	d.direct.Store(nil)
 }
 
 // Connections reports how many connections are currently downloading.
@@ -343,8 +354,21 @@ func (e *Engine) Run(ctx context.Context, d *Download) error {
 	default:
 		err = e.run(ctx, d)
 	}
+	if err == nil && d.Req.Checksum != "" {
+		d.SetStatus("verifying")
+		p, _ := d.Info()
+		err = verifyChecksum(p, d.Req.Checksum)
+		d.mu.Lock()
+		d.Verified = err == nil
+		d.mu.Unlock()
+	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	var bad *ChecksumError
+	if errors.As(err, &bad) { // the file is complete: keep it so it can be inspected
+		d.Status, d.Err = "error", err
+		return err
+	}
 	if err != nil && !d.isStream() && (d.segs == nil || !d.Ranged) {
 		// Nothing resumable yet (stopped while probing) or the server can't
 		// resume: drop the partial file and start over next time.
