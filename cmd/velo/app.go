@@ -549,6 +549,9 @@ func (a *app) setSettings(s Settings) error {
 	if err := s.validate(); err != nil {
 		return err
 	}
+	if s.MiniPos == nil { // the settings page doesn't know about it
+		s.MiniPos = a.getSettings().MiniPos
+	}
 	dir := s.DownloadDir
 	if dir == "" {
 		dir = a.defaultDir
@@ -579,6 +582,13 @@ func (a *app) setSettings(s Settings) error {
 	}
 	a.kick()
 	return nil
+}
+
+// updateSettings changes settings in place.
+func (a *app) updateSettings(f func(*Settings)) error {
+	s := a.getSettings()
+	f(&s)
+	return a.setSettings(s)
 }
 
 func (a *app) setSpeedLimit(kb int) error {

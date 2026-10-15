@@ -23,13 +23,28 @@
   .acts { display: flex; gap: 2px; align-self: start; }
   button { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 7px; background: none; color: var(--muted); cursor: pointer; }
   button:hover { background: var(--hover); color: var(--ink); }
+  .ask { position: fixed; inset: 0; background: var(--bg); border-radius: 8px; display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 0 14px; }
+  .ask .q { font-weight: 600; }
+  .ask .row { display: flex; gap: 6px; }
+  .ask button { width: auto; height: 30px; padding: 0 12px; border: 1px solid var(--line); font: inherit; font-size: 12.5px; color: var(--ink); white-space: nowrap; }
+  .ask button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .ask button.primary:hover { filter: brightness(1.08); }
+  .ask button.link { border: 0; color: var(--muted); margin-left: auto; }
 </style>
 </head>
 <body>
 <div class="wrap" id="wrap" title="Open Velo">
   <div class="tile" id="tile"></div>
   <div class="info"><div class="name" id="name">Starting…</div><div class="meta" id="meta"></div><div class="bar"><i id="bar" style="width:0"></i></div></div>
-  <div class="acts"><button id="pp" title="Pause"></button><button id="close" title="Hide until the next download"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="acts"><button id="pp" title="Pause"></button><button id="close" title="Hide Velo Mini"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+</div>
+<div class="ask" id="ask" hidden>
+  <div class="q">Hide Velo Mini?</div>
+  <div class="row">
+    <button class="primary" id="hideNow" title="It comes back when you start another download">Until downloads finish</button>
+    <button id="hideNever" title="Turn it back on in Settings or the tray menu">Don't show again</button>
+    <button class="link" id="hideCancel">Cancel</button>
+  </div>
 </div>
 <script>
 const $ = (s) => document.querySelector(s);
@@ -69,13 +84,26 @@ async function refresh() {
   $("#pp").title = r.status === "downloading" ? "Pause" : "Done";
 }
 $("#pp").onclick = (e) => { e.stopPropagation(); if (current?.status === "downloading") pause(current.id).then(refresh); };
-$("#close").onclick = (e) => { e.stopPropagation(); dismissMini(); };
-$("#wrap").onclick = () => openMain();
+$("#close").onclick = (e) => { e.stopPropagation(); $("#ask").hidden = false; };
+$("#hideNow").onclick = () => hideMini("now");
+$("#hideNever").onclick = () => hideMini("never");
+$("#hideCancel").onclick = () => { $("#ask").hidden = true; };
+addEventListener("keydown", (e) => { if (e.key === "Escape") $("#ask").hidden = true; });
+
+// Drag anywhere to move it (it has no title bar); a plain click opens Velo.
+let down = null, dragged = false, moved = false;
+$("#wrap").addEventListener("mousedown", (e) => { dragged = false; if (e.button === 0 && !e.target.closest("button")) down = [e.screenX, e.screenY]; });
+addEventListener("mousemove", (e) => {
+  if (!down || !(e.buttons & 1)) return (down = null);
+  if (Math.hypot(e.screenX - down[0], e.screenY - down[1]) > 4) { down = null; dragged = moved = true; dragMini(); }
+});
+addEventListener("mouseup", () => { down = null; });
+$("#wrap").onclick = () => { if (dragged) { dragged = false; return; } openMain(); };
 getSettings().then((s) => {
   const dark = s.theme === "dark" || (s.theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
   document.documentElement.dataset.theme = dark ? "dark" : "light";
 });
-refresh(); setInterval(refresh, 1000);
+refresh(); setInterval(() => { refresh(); if (moved) miniMoved(); }, 1000);
 </script>
 </body>
 </html>

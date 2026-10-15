@@ -29,6 +29,10 @@ var (
 	pIsIconic         = user32n.NewProc("IsIconic")
 	pSysParamsInfo    = user32n.NewProc("SystemParametersInfoW")
 	pDwmSetAttr       = syscall.NewLazyDLL("dwmapi.dll").NewProc("DwmSetWindowAttribute")
+	pReleaseCapture   = user32n.NewProc("ReleaseCapture")
+	pPostMessage      = user32n.NewProc("PostMessageW")
+	pGetWindowRect    = user32n.NewProc("GetWindowRect")
+	pGetSystemMetrics = user32n.NewProc("GetSystemMetrics")
 
 	miniMu      sync.Mutex
 	mini        webview2.WebView
@@ -36,18 +40,37 @@ var (
 )
 
 const (
-	gwlStyle, gwlExStyle = -16, -20
-	wsPopup              = 0x80000000
-	wsVisible            = 0x10000000
-	wsExToolWindow       = 0x80
-	wsExTopmost          = 0x8
-	swpNoActivate        = 0x10
-	swpFrameChanged      = 0x20
-	swpShowWindow        = 0x40
-	hwndTopmost          = ^uintptr(0) // -1
-	spiGetWorkArea       = 0x30
-	miniW, miniH         = 440, 104
+	gwlStyle, gwlExStyle                             = -16, -20
+	wsPopup                                          = 0x80000000
+	wsVisible                                        = 0x10000000
+	wsExToolWindow                                   = 0x80
+	wsExTopmost                                      = 0x8
+	swpNoActivate                                    = 0x10
+	swpFrameChanged                                  = 0x20
+	swpShowWindow                                    = 0x40
+	hwndTopmost                                      = ^uintptr(0) // -1
+	spiGetWorkArea                                   = 0x30
+	miniW, miniH                                     = 440, 104
+	wmNCLButtonDown                                  = 0xA1
+	htCaption                                        = 2
+	smXVirtual, smYVirtual, smCXVirtual, smCYVirtual = 76, 77, 78, 79
 )
+
+// miniPlace is where Velo Mini opens: where it was last dragged to if that
+// is still on a screen, else the bottom-right corner.
+func miniPlace(saved *[2]int) (int32, int32) {
+	if saved != nil {
+		m := func(i uintptr) int32 { v, _, _ := pGetSystemMetrics.Call(i); return int32(v) }
+		x, y := int32(saved[0]), int32(saved[1])
+		vx, vy := m(smXVirtual), m(smYVirtual)
+		if x >= vx && y >= vy && x+miniW <= vx+m(smCXVirtual) && y+miniH <= vy+m(smCYVirtual) {
+			return x, y
+		}
+	}
+	var wa rect
+	pSysParamsInfo.Call(spiGetWorkArea, 0, uintptr(unsafe.Pointer(&wa)), 0)
+	return wa.R - miniW - 16, wa.B - miniH - 16
+}
 
 type rect struct{ L, T, R, B int32 }
 
@@ -86,9 +109,7 @@ func showMini(a *app) {
 		pSetWindowLongPtr.Call(hwnd, index(gwlExStyle), ex|wsExToolWindow|wsExTopmost)
 		corner := uint32(2) // DWMWCP_ROUND
 		pDwmSetAttr.Call(hwnd, 33, uintptr(unsafe.Pointer(&corner)), 4)
-		var wa rect
-		pSysParamsInfo.Call(spiGetWorkArea, 0, uintptr(unsafe.Pointer(&wa)), 0)
-		x, y := wa.R-miniW-16, wa.B-miniH-16
+		x, y := miniPlace(a.getSettings().MiniPos)
 		pSetWindowPos.Call(hwnd, hwndTopmost, uintptr(x), uintptr(y), miniW, miniH, swpNoActivate|swpFrameChanged|swpShowWindow)
 
 		w.Bind("appStatus", func() status { return a.status() })
@@ -96,11 +117,28 @@ func showMini(a *app) {
 		w.Bind("pause", func(id int) error { return a.pause(id) })
 		w.Bind("resume", func(id int) error { return a.resume(id) })
 		w.Bind("openMain", func() { go a.show() })
-		w.Bind("dismissMini", func() {
-			a.mu.Lock()
-			a.miniDismissed = true
-			a.mu.Unlock()
+		// mode "now": until these downloads finish; "never": turn Velo Mini off.
+		w.Bind("hideMini", func(mode string) {
+			if mode == "never" {
+				a.updateSettings(func(s *Settings) { s.ShowMini = false })
+			} else {
+				a.mu.Lock()
+				a.miniDismissed = true
+				a.mu.Unlock()
+			}
 			go closeMini()
+		})
+		w.Bind("dragMini", func() { // the window has no title bar: drag it from anywhere
+			pReleaseCapture.Call()
+			pPostMessage.Call(hwnd, wmNCLButtonDown, htCaption, 0)
+		})
+		w.Bind("miniMoved", func() { // after a drag: remember where it is
+			var r rect
+			pGetWindowRect.Call(hwnd, uintptr(unsafe.Pointer(&r)))
+			pos := [2]int{int(r.L), int(r.T)}
+			if cur := a.getSettings().MiniPos; cur == nil || *cur != pos {
+				a.updateSettings(func(s *Settings) { s.MiniPos = &pos })
+			}
 		})
 		w.SetHtml(miniHTML)
 		mini = w

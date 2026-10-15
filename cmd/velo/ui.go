@@ -99,7 +99,13 @@ func runTray(a *app, openWindow bool) {
 			}
 			limitItems = append(limitItems, mLimit.AddSubMenuItemCheckbox(label, "", false))
 		}
+		mMini := systray.AddMenuItemCheckbox("Show Velo Mini", "The small progress window while downloading", a.getSettings().ShowMini)
 		syncLimit := func() {
+			if a.getSettings().ShowMini {
+				mMini.Check()
+			} else {
+				mMini.Uncheck()
+			}
 			cur := a.getSettings().SpeedLimitKB
 			for i, kb := range limits {
 				if kb == cur {
@@ -135,6 +141,8 @@ func runTray(a *app, openWindow bool) {
 					a.all("pause")
 				case <-mResumeAll.ClickedCh:
 					a.all("resume")
+				case <-mMini.ClickedCh:
+					a.updateSettings(func(s *Settings) { s.ShowMini = !s.ShowMini })
 				case <-mSched.ClickedCh:
 					a.show()
 					evalMain("go('settings')")

@@ -29,6 +29,7 @@ type Settings struct {
 	Onboarded      bool     `json:"onboarded"`      // first-run setup done
 	AutoUpdate     bool     `json:"autoUpdate"`     // install verified updates when idle
 	AskOnCapture   bool     `json:"askOnCapture"`   // show the download dialog for browser downloads
+	MiniPos        *[2]int  `json:"miniPos,omitempty"` // where Velo Mini was dragged to (nil = bottom right)
 }
 
 // Schedule restricts downloading to a daily time window.
