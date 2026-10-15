@@ -34,7 +34,7 @@ import (
 )
 
 // MinSplit is the smallest remaining range worth splitting for a new connection.
-const MinSplit = 512 << 10
+const MinSplit = 128 << 10
 
 type Request struct {
 	URL, Referrer, Cookies, UserAgent, Filename string
@@ -68,7 +68,8 @@ type Download struct {
 
 	mu     sync.Mutex
 	segs   []*Segment
-	active atomic.Int32 // live connections
+	active atomic.Int32           // live connections
+	direct atomic.Pointer[string] // where the URL redirected to, so segments skip the hop
 
 	parts, partsDone atomic.Int64 // HLS: segments total / on disk
 	partBytes        atomic.Int64 // HLS: bytes in the segments on disk
@@ -200,7 +201,7 @@ type Engine struct {
 func New(dir string) *Engine {
 	e := &Engine{Client: newClient(60 * time.Second), Limit: &Limiter{}}
 	e.SetDir(dir)
-	e.SetSegments(8)
+	e.SetSegments(16)
 	return e
 }
 
@@ -331,6 +332,9 @@ func (e *Engine) run(ctx context.Context, d *Download) error {
 		return fmt.Errorf("server returned %s", resp.Status)
 	}
 
+	if u := resp.Request.URL.String(); u != d.Req.URL {
+		d.direct.Store(&u)
+	}
 	name := fileName(d.Req, resp)
 	dir := e.targetDir(d.Req, name)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -454,8 +458,31 @@ func (e *Engine) segmented(ctx context.Context, d *Download, f *os.File) error {
 	var wg sync.WaitGroup
 	var firstErr error
 	var errOnce sync.Once
-	worker := func(s *Segment) {
-		defer wg.Done()
+	var sawBusy atomic.Bool
+	var liveMu sync.Mutex
+	live, allDone := 0, make(chan struct{})
+	var worker func(s *Segment)
+	spawn := func(s *Segment) bool { // false once every worker has finished
+		liveMu.Lock()
+		defer liveMu.Unlock()
+		if live < 0 {
+			return false
+		}
+		live++
+		wg.Add(1)
+		go worker(s)
+		return true
+	}
+	worker = func(s *Segment) {
+		defer func() {
+			liveMu.Lock()
+			if live--; live == 0 {
+				live = -1
+				close(allDone)
+			}
+			liveMu.Unlock()
+			wg.Done()
+		}()
 		d.active.Add(1)
 		defer d.active.Add(-1)
 		busy := 0
@@ -463,6 +490,7 @@ func (e *Engine) segmented(ctx context.Context, d *Download, f *os.File) error {
 			err := e.fetch(ctx, d, f, s)
 			var b errBusy
 			if errors.As(err, &b) {
+				sawBusy.Store(true)
 				if d.active.Load() > 1 { // others are working: drop this connection
 					d.mu.Lock()
 					s.owned = false
@@ -508,14 +536,108 @@ func (e *Engine) segmented(ctx context.Context, d *Download, f *os.File) error {
 		start = append(start, s)
 	}
 	for _, s := range start {
+		spawn(s)
+	}
+	if len(start) > 0 && d.Req.Segments == 0 {
 		wg.Add(1)
-		go worker(s)
+		go func() { defer wg.Done(); e.grow(ctx, d, allDone, &sawBusy, spawn) }()
 	}
 	wg.Wait()
 	if firstErr == nil {
 		firstErr = ctx.Err()
 	}
+	if firstErr == nil {
+		d.mu.Lock()
+		for _, s := range d.segs {
+			if s.Pos <= s.End {
+				firstErr = fmt.Errorf("incomplete: bytes %d-%d missing", s.Pos, s.End)
+				break
+			}
+		}
+		d.mu.Unlock()
+	}
 	return firstErr
+}
+
+// Growth limits: servers that cap each connection (GitHub, many CDNs) get
+// extra connections, one at a time, while each one stays slow and adding
+// them keeps helping.
+var ( // vars so tests can speed them up
+	maxConnections int64 = 32
+	slowConn       int64 = 1 << 20 // bytes/s per connection below which we add more
+	growEvery            = 3 * time.Second
+)
+
+// grow adds connections to a running download while that raises its speed.
+// It stops for good when the server reports it is busy or a new connection
+// did not help, and pauses while a speed limit is set.
+func (e *Engine) grow(ctx context.Context, d *Download, allDone <-chan struct{}, busy *atomic.Bool, spawn func(*Segment) bool) {
+	t := time.NewTicker(growEvery)
+	defer t.Stop()
+	last, lastSpeed := d.Done.Load(), int64(0)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-allDone:
+			return
+		case <-t.C:
+		}
+		done := d.Done.Load()
+		speed := (done - last) * int64(time.Second) / int64(growEvery)
+		last = done
+		if busy.Load() {
+			return
+		}
+		n := int64(d.active.Load())
+		if (e.Limit != nil && e.Limit.Rate() > 0) || n == 0 || n >= maxConnections {
+			continue
+		}
+		if lastSpeed > 0 && speed < lastSpeed*21/20 { // the last one added less than 5%
+			return
+		}
+		if speed/n >= slowConn {
+			lastSpeed = 0
+			continue
+		}
+		s := d.steal()
+		if s == nil {
+			continue
+		}
+		if !spawn(s) {
+			d.mu.Lock()
+			s.owned = false
+			d.mu.Unlock()
+			return
+		}
+		lastSpeed = speed
+	}
+}
+
+// segReq builds a segment request, going straight to the redirect target
+// when the probe was redirected (GitHub releases, CDNs). Cookies are only
+// sent there if it is the same host, like a redirect would.
+func (e *Engine) segReq(ctx context.Context, d *Download) (*http.Request, bool, error) {
+	u := d.direct.Load()
+	if u == nil {
+		req, err := e.newReq(ctx, d.Req)
+		return req, false, err
+	}
+	r := d.Req
+	r.URL = *u
+	if a, b := hostOf(d.Req.URL), hostOf(*u); a != b && !strings.HasSuffix(b, "."+a) {
+		r.Cookies = ""
+	}
+	req, err := e.newReq(ctx, r)
+	return req, true, err
+}
+
+func hostOf(s string) string {
+	u, err := url.Parse(s)
+	if err != nil {
+		return ""
+	}
+	return strings.ToLower(u.Hostname())
 }
 
 // fetch downloads s until s.Pos passes s.End (End can shrink while it runs
@@ -537,7 +659,7 @@ func (e *Engine) fetch(ctx context.Context, d *Download, f *os.File, s *Segment)
 		if pos > end {
 			return nil
 		}
-		req, err := e.newReq(ctx, d.Req)
+		req, direct, err := e.segReq(ctx, d)
 		if err != nil {
 			return err
 		}
@@ -554,6 +676,12 @@ func (e *Engine) fetch(ctx context.Context, d *Download, f *os.File, s *Segment)
 			resp.Body.Close()
 			secs, _ := strconv.Atoi(resp.Header.Get("Retry-After"))
 			return errBusy{time.Duration(secs) * time.Second}
+		}
+		if direct && resp.StatusCode >= 400 { // the redirect link expired: go through the original URL again
+			resp.Body.Close()
+			d.direct.Store(nil)
+			attempt--
+			continue
 		}
 		if resp.StatusCode != http.StatusPartialContent {
 			resp.Body.Close()

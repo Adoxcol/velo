@@ -47,7 +47,7 @@ func defaultSettings() Settings {
 		Notify:         true,
 		WatchClipboard: true,
 		Theme:          "light",
-		Connections:    8,
+		Connections:    16,
 		ShowMini:       true,
 		AutoUpdate:     true,
 		AskOnCapture:   true,

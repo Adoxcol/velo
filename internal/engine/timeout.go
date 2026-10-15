@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"io"
 	"net"
@@ -23,8 +24,10 @@ func newClient(idle time.Duration) *http.Client {
 		TLSHandshakeTimeout:   15 * time.Second,
 		ResponseHeaderTimeout: 30 * time.Second,
 		IdleConnTimeout:       90 * time.Second,
-		MaxIdleConnsPerHost:   16,
-		ForceAttemptHTTP2:     true,
+		MaxIdleConnsPerHost:   32,
+		// HTTP/1.1 only: HTTP/2 would put every segment on one TCP connection,
+		// and servers that cap per-connection speed (GitHub, CDNs) cap it all.
+		TLSNextProto: map[string]func(string, *tls.Conn) http.RoundTripper{},
 	}
 	return &http.Client{Transport: &idleTransport{base: base, idle: idle}}
 }

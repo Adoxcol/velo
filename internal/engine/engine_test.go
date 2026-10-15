@@ -242,3 +242,50 @@ func TestStalledConnectionRetries(t *testing.T) {
 	}
 	check(t, d, data)
 }
+
+// A server that caps each connection gets extra connections, and segments
+// go straight to the redirect target instead of through the redirect.
+func TestGrowAndRedirect(t *testing.T) {
+	oldEvery, oldSlow := growEvery, slowConn
+	growEvery, slowConn = 200*time.Millisecond, 1<<20
+	t.Cleanup(func() { growEvery, slowConn = oldEvery, oldSlow })
+
+	data := randomData(t, 6<<20)
+	srv, _ := testServer(t, data, 0, 256<<10) // 256 KB/s per connection
+	var hops atomic.Int32
+	front := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hops.Add(1)
+		http.Redirect(w, r, srv.URL+"/file.bin", http.StatusFound)
+	}))
+	t.Cleanup(front.Close)
+
+	e := New(t.TempDir())
+	e.SetSegments(2)
+	d := &Download{Req: Request{URL: front.URL + "/get", Cookies: "secret=1"}}
+	var peak atomic.Int32
+	stop := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-stop:
+				return
+			case <-time.After(20 * time.Millisecond):
+				if n := d.active.Load(); n > peak.Load() {
+					peak.Store(n)
+				}
+			}
+		}
+	}()
+	err := e.Run(context.Background(), d)
+	close(stop)
+	if err != nil {
+		t.Fatal(err)
+	}
+	check(t, d, data)
+	if p := peak.Load(); p <= 2 {
+		t.Errorf("connections never grew past 2 (peak %d)", p)
+	}
+	if h := hops.Load(); h != 1 {
+		t.Errorf("redirect followed %d times, want once (the probe)", h)
+	}
+}
