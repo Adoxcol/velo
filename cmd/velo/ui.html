@@ -318,7 +318,7 @@
         </div>
         <div class="opt"><div><div class="t">Downloads at once</div><div class="d">Others wait in the queue.</div></div>
           <select class="sel" data-s="maxConcurrent" data-num>${[1,2,3,4,5,6,8,10].map(n=>`<option>${n}</option>`)}</select></div>
-        <div class="opt"><div><div class="t">When all downloads finish</div><div class="d">Shut down gives a 1-minute warning (<code>shutdown /a</code> cancels).</div></div>
+        <div class="opt"><div><div class="t">When all downloads finish</div><div class="d" data-i18n-html>Shut down gives a 1-minute warning (<code>shutdown /a</code> cancels).</div></div>
           <select class="sel" data-s="onFinish"><option value="none">Do nothing</option><option value="exit">Exit Velo</option><option value="sleep">Sleep</option><option value="shutdown">Shut down</option></select></div>
       </div>
       <div class="qhead"><div><h2>Other queues</h2><p class="hint">Give some downloads their own hours and limit, like big files only at night. Everything else uses the main queue above.</p></div>
@@ -330,12 +330,12 @@
     <section class="page" data-page="extension">
       <h1>Browser Extension</h1>
       <div class="panel" style="max-width:720px">
-        <h2 style="margin:0 0 6px;font-size:16px;color:var(--ink)">One-click downloads from Chrome and Edge</h2>
+        <h2 style="margin:0 0 6px;font-size:16px;color:var(--ink)">One-click downloads from your browser</h2>
         <p class="hint" style="margin:0 0 16px">The extension hands downloads to Velo, finds videos on pages (HLS, DASH and media files) and adds “Download with Velo” to the right-click menu. It talks to Velo through the browser's native messaging, never an open network port.</p>
         <ol class="steps">
-          <li>Open <code>chrome://extensions</code> or <code>edge://extensions</code> and turn on <b>Developer mode</b>.</li>
-          <li>Click <b>Load unpacked</b> and choose the <code>extension</code> folder from the Velo source.</li>
-          <li>The extension ID should be <code id="extId">dmdcijgljocjdmafenflenjhdjhenokc</code>. Run <code>install.ps1</code> once so the browser can reach Velo.</li>
+          <li data-i18n-html>Open <code>chrome://extensions</code> or <code>edge://extensions</code> and turn on <b>Developer mode</b>.</li>
+          <li data-i18n-html>Click <b>Load unpacked</b> and choose the <code>extension</code> folder in Velo's install folder.</li>
+          <li><span data-i18n-html>The extension ID should be:</span> <code id="extId">dmdcijgljocjdmafenflenjhdjhenokc</code></li>
         </ol>
         <div id="extStatus"></div>
       </div>
@@ -371,14 +371,16 @@
           </div>
           <div class="sec" data-sec="browser"><h2>Browser integration</h2>
             <div class="opt"><div><div class="t">Show the download dialog for browser downloads</div><div class="d">When you click a download link, Velo takes over and asks where to save it. Turn off to start downloads straight away.</div></div><span class="switch"><input type="checkbox" data-s="askOnCapture"><i></i></span></div>
-            <p class="hint">Downloads of common file types in Chrome and Edge are handed to Velo automatically. See <b>Browser Extension</b> in the sidebar to set it up.</p>
+            <p class="hint" data-i18n-html>Downloads of common file types in your browser are handed to Velo automatically. See <b>Browser Extension</b> in the sidebar to set it up.</p>
           </div>
           <div class="sec" data-sec="video"><h2>Video grabber</h2>
-            <p class="hint">The extension detects HLS (<code>.m3u8</code>) and DASH (<code>.mpd</code>) streams and media files while a video plays. Velo picks the best quality and merges audio and video with ffmpeg. Encrypted (DRM) and live streams, and sites that protect their videos (such as YouTube), are not supported.</p>
+            <p class="hint" data-i18n-html>The extension detects HLS (<code>.m3u8</code>) and DASH (<code>.mpd</code>) streams and media files while a video plays. Velo picks the best quality and merges audio and video with ffmpeg. Encrypted (DRM) and live streams, and sites that protect their videos (such as YouTube), are not supported.</p>
           </div>
           <div class="sec" data-sec="appearance"><h2>Appearance</h2>
             <div class="opt"><div><div class="t">Theme</div></div>
               <span class="seg"><label><input type="radio" name="theme" value="light" data-s="theme">Light</label><label><input type="radio" name="theme" value="dark" data-s="theme">Dark</label><label><input type="radio" name="theme" value="system" data-s="theme">System</label></span></div>
+            <div class="opt"><div><div class="t">Language</div><div class="d">Velo's menus and windows. The browser extension follows your browser's language.</div></div>
+              <select class="sel" id="langSel" translate="no"></select></div>
           </div>
           <div class="sec" data-sec="advanced"><h2>Advanced</h2>
             <p class="hint">Velo version <b id="verText"></b> · <span style="user-select:text">github.com/Adoxcol/velo</span></p>
@@ -387,7 +389,7 @@
               <span class="row2"><button class="btn" id="updCheck">Check for updates</button><button class="btn primary" id="updInstall" hidden>Install update</button></span></div>
             <div class="opt"><div><div class="t">Report a problem</div><div class="d">Copies Velo's version, settings and recent log to paste into a bug report. Link details and your user folder are left out.</div></div>
               <button class="btn" id="dbgCopy">Copy debug info</button></div>
-            <p class="hint">Settings and history are stored in <code>%APPDATA%\Velo</code>. Velo can also be controlled from the command line with <code>veloctl</code>.</p>
+            <p class="hint" data-i18n-html>Settings and history are stored in <code>%APPDATA%\Velo</code>. Velo can also be controlled from the command line with <code>veloctl</code>.</p>
           </div>
         </div>
       </div>
@@ -975,6 +977,10 @@ async function loadSettings() {
   $("#proxyBox").hidden = pm !== "manual";
   if (pm === "manual" && document.activeElement !== $("#proxyUrl")) $("#proxyUrl").value = S.proxy;
   renderQueues();
+  languages().then(({ list }) => {
+    $("#langSel").innerHTML = `<option value="">${globalThis.veloI18n ? veloI18n.t("Windows language") : "Windows language"}</option>` + list.map((l) => `<option value="${l.code}">${l.name}</option>`).join("");
+    $("#langSel").value = S.language || "";
+  });
   $("#dirShow").value = S.downloadDir || defaultFolder;
   $("#dirReset").disabled = !S.downloadDir;
 }
@@ -997,6 +1003,7 @@ document.addEventListener("change", (e) => {
   if (el.dataset.s === "theme") applyTheme(v);
   save((s) => setPath(s, el.dataset.s, v));
 });
+$("#langSel").onchange = () => save((s) => (s.language = $("#langSel").value));
 $("#proxyMode").onchange = () => {
   const m = $("#proxyMode").value;
   $("#proxyBox").hidden = m !== "manual";
@@ -1091,22 +1098,22 @@ async function extStatusHTML() {
 const OB = [
   () => `<div class="ob"><div class="big">${icon('<path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z"/>')}</div>
     <h2>Welcome to Velo</h2><p>Fast, open-source downloads for Windows. Here's what it does:</p>
-    <ul><li>${icon(I.dl)}<span><b>Splits files into parts</b> and downloads them in parallel, with pause and resume.</span></li>
-    <li>${icon(I.media)}<span><b>Grabs videos</b> (HLS and DASH streams) from pages you visit.</span></li>
-    <li>${icon(I.clock)}<span><b>Queues and schedules</b> downloads, with a speed limit when you need it.</span></li></ul></div>`,
+    <ul><li>${icon(I.dl)}<span data-i18n-html><b>Splits files into parts</b> and downloads them in parallel, with pause and resume.</span></li>
+    <li>${icon(I.media)}<span data-i18n-html><b>Grabs videos</b> (HLS and DASH streams) from pages you visit.</span></li>
+    <li>${icon(I.clock)}<span data-i18n-html><b>Queues and schedules</b> downloads, with a speed limit when you need it.</span></li></ul></div>`,
   () => `<div class="ob"><h2>Where should downloads go?</h2><p>You can change this any time in Settings.</p>
     <div class="field"><span class="lbl">Download folder</span><div class="inp ro"><input id="obDir" readonly value="${escapeHtml(S.downloadDir || defaultFolder)}"><button class="link" id="obDirChange">Change</button></div></div>
     <div class="opt"><div><div class="t">Sort into folders by type</div><div class="d">Video, Music, Images, Documents, E-books, Compressed, Disk images, Programs, Torrents and Fonts.</div></div><span class="switch"><input type="checkbox" id="obSort"${S.sortByType ? " checked" : ""}><i></i></span></div>
     <div class="opt"><div><div class="t">Start Velo with Windows</div><div class="d">So browser downloads and schedules always work.</div></div><span class="switch"><input type="checkbox" id="obAuto"${S.autostart ? " checked" : ""}><i></i></span></div></div>`,
-  async () => `<div class="ob"><h2>Connect your browser</h2><p>The Velo extension sends downloads and videos from Chrome or Edge to Velo.</p>
-    <ol class="steps"><li>Open <code>chrome://extensions</code> or <code>edge://extensions</code> and turn on <b>Developer mode</b>.</li>
-    <li>Click <b>Load unpacked</b> and choose the <code>extension</code> folder from Velo.</li>
+  async () => `<div class="ob"><h2>Connect your browser</h2><p>The Velo extension sends downloads and videos from your browser to Velo.</p>
+    <ol class="steps"><li data-i18n-html>Open <code>chrome://extensions</code> or <code>edge://extensions</code> and turn on <b>Developer mode</b>.</li>
+    <li data-i18n-html>Click <b>Load unpacked</b> and choose the <code>extension</code> folder in Velo's install folder.</li>
     <li>Open any web page. Velo shows ✓ below when the extension connects.</li></ol>
     <div id="obStatus">${await extStatusHTML()}</div></div>`,
   () => `<div class="ob"><div class="big" style="background:var(--ok)">${icon(I.check)}</div><h2>You're all set</h2><p>A few tips:</p>
     <ul><li>${icon(I.plus)}<span><b>Ctrl+N</b> adds a download; you can also drop a link onto the window.</span></li>
-    <li>${icon(I.dl)}<span>While downloading, <b>Velo Mini</b> shows progress in the corner. Click it to open Velo.</span></li>
-    <li>${icon(I.globe)}<span>Right-click a page and choose <b>Download all links with Velo</b> to grab many files at once.</span></li></ul></div>`,
+    <li>${icon(I.dl)}<span data-i18n-html>While downloading, <b>Velo Mini</b> shows progress in the corner. Click it to open Velo.</span></li>
+    <li>${icon(I.globe)}<span data-i18n-html>Right-click a page and choose <b>Download all links with Velo</b> to grab many files at once.</span></li></ul></div>`,
 ];
 let obStep = 0, obTimer;
 async function obShow() {

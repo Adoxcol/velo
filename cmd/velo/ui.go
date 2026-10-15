@@ -15,6 +15,7 @@ import (
 	webview2 "github.com/jchv/go-webview2"
 
 	"velo/internal/engine"
+	"velo/internal/i18n"
 	"velo/internal/ipc"
 	"velo/internal/version"
 )
@@ -49,7 +50,7 @@ func runTray(a *app, openWindow bool) {
 		p, _ := d.Info()
 		systray.SetTooltip("Velo — finished " + filepath.Base(p))
 		if a.getSettings().Notify {
-			toast.Show("Download complete", filepath.Base(p)+"\nClick to show it in its folder.", func() {
+			toast.Show(a.tr("Download complete"), filepath.Base(p)+"\n"+a.tr("Click to show it in its folder."), func() {
 				a.openFile(d.ID, true)
 			})
 		}
@@ -63,7 +64,7 @@ func runTray(a *app, openWindow bool) {
 			if name == "" {
 				name = linkName(d.Req.URL)
 			}
-			toast.Show("Download failed", name+"\n"+err.Error(), a.show)
+			toast.Show(a.tr("Download failed"), name+"\n"+err.Error(), a.show)
 		}
 	}
 	go a.watchClipboard()
@@ -79,14 +80,26 @@ func runTray(a *app, openWindow bool) {
 		systray.SetTitle("Velo")
 		systray.SetTooltip("Velo")
 		systray.SetOnTapped(a.show) // left click
-		mOpen := systray.AddMenuItem("Show Velo", "Show the download list")
-		mAdd := systray.AddMenuItem("Add Download…", "Add a link")
-		mFolder := systray.AddMenuItem("Open downloads folder", "")
+		// Menu items remember their English text so a language change can retitle them.
+		type titled struct {
+			m       *systray.MenuItem
+			en, tip string
+		}
+		var titledItems []titled
+		item := func(m *systray.MenuItem, en, tip string) *systray.MenuItem {
+			titledItems = append(titledItems, titled{m, en, tip})
+			m.SetTitle(a.tr(en))
+			m.SetTooltip(a.tr(tip))
+			return m
+		}
+		mOpen := item(systray.AddMenuItem("Show Velo", ""), "Show Velo", "Show the download list")
+		mAdd := item(systray.AddMenuItem("Add Download…", ""), "Add Download…", "Add a link")
+		mFolder := item(systray.AddMenuItem("Open downloads folder", ""), "Open downloads folder", "")
 		systray.AddSeparator()
-		mPauseAll := systray.AddMenuItem("Pause all", "")
-		mResumeAll := systray.AddMenuItem("Resume all", "")
+		mPauseAll := item(systray.AddMenuItem("Pause all", ""), "Pause all", "")
+		mResumeAll := item(systray.AddMenuItem("Resume all", ""), "Resume all", "")
 		systray.AddSeparator()
-		mLimit := systray.AddMenuItem("Speed limit", "")
+		mLimit := item(systray.AddMenuItem("Speed limit", ""), "Speed limit", "")
 		limits := []int{0, 256, 1024, 5 * 1024} // KB/s
 		var limitItems []*systray.MenuItem
 		for _, kb := range limits {
@@ -94,9 +107,9 @@ func runTray(a *app, openWindow bool) {
 			if kb > 0 {
 				label = sizeKB(kb) + "/s"
 			}
-			limitItems = append(limitItems, mLimit.AddSubMenuItemCheckbox(label, "", false))
+			limitItems = append(limitItems, item(mLimit.AddSubMenuItemCheckbox(label, "", false), label, ""))
 		}
-		mMini := systray.AddMenuItemCheckbox("Show Velo Mini", "The small progress window while downloading", a.getSettings().ShowMini)
+		mMini := item(systray.AddMenuItemCheckbox("Show Velo Mini", "", a.getSettings().ShowMini), "Show Velo Mini", "The small progress window while downloading")
 		syncLimit := func() {
 			if a.getSettings().ShowMini {
 				mMini.Check()
@@ -113,7 +126,18 @@ func runTray(a *app, openWindow bool) {
 			}
 		}
 		syncLimit()
-		a.changed = syncLimit
+		lang := a.lang()
+		a.changed = func() {
+			syncLimit()
+			if l := a.lang(); l != lang { // language changed: retitle the menu, reload the windows
+				lang = l
+				for _, t := range titledItems {
+					t.m.SetTitle(a.tr(t.en))
+					t.m.SetTooltip(a.tr(t.tip))
+				}
+				go reloadWindows(a)
+			}
+		}
 		a.onTick = a.updateTaskbar
 		for i, kb := range limits {
 			go func() {
@@ -122,9 +146,9 @@ func runTray(a *app, openWindow bool) {
 				}
 			}()
 		}
-		mSched := systray.AddMenuItem("Settings…", "Download folder, scheduler, when finished")
+		mSched := item(systray.AddMenuItem("Settings…", ""), "Settings…", "Download folder, scheduler, when finished")
 		systray.AddSeparator()
-		mQuit := systray.AddMenuItem("Exit", "Pause everything and quit")
+		mQuit := item(systray.AddMenuItem("Exit", ""), "Exit", "Pause everything and quit")
 		go func() {
 			for {
 				select {
@@ -221,7 +245,7 @@ func showMain(a *app) {
 		}
 		setWindowIcon(uintptr(w.Window()))
 		bind(w, a)
-		w.SetHtml(uiHTML)
+		w.SetHtml(i18n.Inject(uiHTML, a.lang()))
 		win = w
 		winMu.Unlock()
 		w.Run() // until the window is closed
@@ -271,6 +295,9 @@ func bind(w webview2.WebView, a *app) {
 	w.Bind("appVersion", func() string { return version.Version })
 	w.Bind("updateInfo", func() updateInfo { return a.upd.info() })
 	w.Bind("debugInfo", func() string { return a.debugInfo() })
+	w.Bind("languages", func() map[string]any {
+		return map[string]any{"list": i18n.Languages, "current": a.lang()}
+	})
 	w.Bind("setQueue", func(id int, q string) error { return a.setQueue(id, q) })
 	w.Bind("reorder", func(id int, how string) error { return a.reorder(id, how) })
 	w.Bind("refreshLink", func(id int, u string) error { return a.refreshLink(id, u) })
@@ -303,4 +330,18 @@ func bind(w webview2.WebView, a *app) {
 	w.Bind("pickFolder", func(start string) (string, error) {
 		return pickFolder(uintptr(w.Window()), "Choose download folder", start)
 	})
+}
+
+// reloadWindows redraws open windows in the current language. Velo Mini and
+// the download dialog are closed; they reopen in the new language when needed.
+func reloadWindows(a *app) {
+	closeMini()
+	winMu.Lock()
+	w := win
+	winMu.Unlock()
+	if w != nil {
+		w.Dispatch(func() {
+			w.SetHtml(i18n.Inject(uiHTML, a.lang()))
+		})
+	}
 }

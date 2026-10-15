@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -123,7 +124,7 @@ func (u *updater) check(a *app) {
 	u.notified = rel.Version
 	u.mu.Unlock()
 	if first {
-		toast.Show("Velo "+rel.Version+" is ready", "Click to update now. Downloads resume afterwards.", func() { u.install(a) })
+		toast.Show(strings.ReplaceAll(a.tr("Velo {0} is ready"), "{0}", rel.Version), a.tr("Click to update now. Downloads resume afterwards."), func() { u.install(a) })
 	}
 }
 

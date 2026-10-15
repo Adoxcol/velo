@@ -10,6 +10,7 @@ import (
 	webview2 "github.com/jchv/go-webview2"
 
 	"velo/internal/engine"
+	"velo/internal/i18n"
 	"velo/internal/ipc"
 )
 
@@ -86,7 +87,7 @@ func showCapture(a *app) {
 		w.Bind("pickFolder", func(start string) (string, error) {
 			return pickFolder(uintptr(w.Window()), "Choose download folder", start)
 		})
-		w.SetHtml(captureHTML)
+		w.SetHtml(i18n.Inject(captureHTML, a.lang()))
 		capWin = w
 		capMu.Unlock()
 		setForeground.Call(hwnd)

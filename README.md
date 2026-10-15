@@ -29,6 +29,7 @@ browser extension for Chrome, Edge, Brave and Firefox.
   continue the same file; optional **checksum** (SHA-256, SHA-1, MD5) checked when done.
 - **Proxy** (follows Windows by default) and **password-protected downloads**.
 - **Portable version**: unzip and run; settings stay next to the program.
+- **Eight languages**: English, বাংলা, Deutsch, Español, Français, हिन्दी, Português (Brasil) and 简体中文, following your Windows language (the extension follows the browser's).
 - **Speed limit**, **auto-categorized folders** (Video, Music, Images, Documents, Compressed, Programs),
   **history**, **notifications**, **clipboard link detection**, light and dark themes.
 
@@ -78,6 +79,14 @@ To change the icon, edit `tools/mkicon` and run `go run ./tools/mkicon` then `go
 Then load the extension: open `chrome://extensions` or `edge://extensions`, turn on **Developer mode**,
 click **Load unpacked** and choose the `extension` folder. Its ID is
 `dmdcijgljocjdmafenflenjhdjhenokc`.
+
+## Translations
+
+Velo's text is written in English and translated at runtime. To add or fix a language:
+
+1. Run `node tools/i18n/extract.js` to see any new English text, and add it to `internal/i18n/locales/app/keys.json` (or `ext/keys.json` for the extension).
+2. Add the translation at the same position in `tools/i18n/app/<code>.json` (and `tools/i18n/ext/<code>.json`). A new language also goes in `Languages` in `internal/i18n/i18n.go`.
+3. Run `node tools/i18n/build.js`. It checks every line keeps its `{0}` placeholders and HTML tags, and writes the files Velo and the extension load.
 
 ## Layout
 

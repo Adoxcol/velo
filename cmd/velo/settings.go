@@ -1,14 +1,17 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 	"velo/internal/engine"
+	"velo/internal/i18n"
 
 	"velo/internal/ipc"
 )
@@ -31,6 +34,7 @@ type Settings struct {
 	AutoUpdate     bool     `json:"autoUpdate"`        // install verified updates when idle
 	AskOnCapture   bool     `json:"askOnCapture"`      // show the download dialog for browser downloads
 	Queues         []Queue  `json:"queues"`            // named queues besides the main one
+	Language       string   `json:"language"`          // "" = Windows language, or a code from i18n.Languages
 	Proxy          string   `json:"proxy"`             // "" = Windows setting, "none", or a proxy URL
 	MiniPos        *[2]int  `json:"miniPos,omitempty"` // where Velo Mini was dragged to (nil = bottom right)
 }
@@ -73,7 +77,10 @@ func settingsPath() string { return filepath.Join(ipc.Dir(), "settings.json") }
 func loadSettings() Settings {
 	s := defaultSettings()
 	if b, err := os.ReadFile(settingsPath()); err == nil {
-		json.Unmarshal(b, &s)
+		b = bytes.TrimPrefix(b, []byte{0xEF, 0xBB, 0xBF}) // a byte-order mark, if edited in Notepad
+		if err := json.Unmarshal(b, &s); err != nil {
+			log.Printf("settings.json is not valid JSON, using defaults: %v", err)
+		}
 	}
 	if s.validate() != nil {
 		return defaultSettings()
@@ -135,6 +142,9 @@ func (s *Settings) validate() error {
 	}
 	if len(s.Queues) > 20 {
 		return fmt.Errorf("at most 20 queues")
+	}
+	if s.Language != "" && i18n.Resolve(s.Language) != s.Language {
+		return fmt.Errorf("unknown language %q", s.Language)
 	}
 	p, err := engine.ParseProxy(s.Proxy)
 	if err != nil {

@@ -1,6 +1,9 @@
 // Velo browser integration (MV3 service worker; an event page in Firefox).
 // Firefox: use its promise-based browser.* API under the chrome name.
 try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = browser; } catch {}
+// Translations (Firefox loads i18n.js as a background script before this one).
+if (!globalThis.veloI18n && typeof importScripts === "function") importScripts("i18n.js");
+const tr = (s) => (globalThis.veloI18n ? veloI18n.t(s) : s);
 
 // Flow: pause the browser's download, hand it to the app,
 // then cancel (app accepted) or resume (app unavailable / declined).
@@ -152,9 +155,9 @@ if (chrome.downloads.onDeterminingFilename) {
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll().then(() => {
-    chrome.contextMenus.create({ id: "velo-link", title: "Download with Velo", contexts: ["link", "video", "audio", "image"] });
-    chrome.contextMenus.create({ id: "velo-all", title: "Download all links with Velo", contexts: ["page"] });
-    chrome.contextMenus.create({ id: "velo-selection", title: "Download selected links with Velo", contexts: ["selection"] });
+    chrome.contextMenus.create({ id: "velo-link", title: tr("Download with Velo"), contexts: ["link", "video", "audio", "image"] });
+    chrome.contextMenus.create({ id: "velo-all", title: tr("Download all links with Velo"), contexts: ["page"] });
+    chrome.contextMenus.create({ id: "velo-selection", title: tr("Download selected links with Velo"), contexts: ["selection"] });
   });
 });
 

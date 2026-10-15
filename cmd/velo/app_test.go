@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -435,5 +436,18 @@ func TestNamedQueues(t *testing.T) {
 	bad.Queues = []Queue{{ID: "x", Name: "A"}, {ID: "x", Name: "B"}}
 	if bad.validate() == nil {
 		t.Fatal("accepted duplicate queue IDs")
+	}
+}
+
+func TestSettingsWithBOM(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("VELO_HOME", home)
+	s := defaultSettings()
+	s.Theme, s.Language = "dark", "bn"
+	b, _ := json.Marshal(s)
+	os.WriteFile(filepath.Join(home, "settings.json"), append([]byte("\xef\xbb\xbf"), b...), 0o644)
+	got := loadSettings()
+	if got.Theme != "dark" || got.Language != "bn" {
+		t.Fatalf("settings with a BOM were not read: %+v", got)
 	}
 }

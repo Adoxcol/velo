@@ -89,7 +89,7 @@ func writeManifest(w io.Writer, path, ver string, firefox bool) error {
 	if firefox {
 		// Firefox runs background scripts as an event page, not a service
 		// worker, and needs a fixed add-on ID for native messaging.
-		m["background"] = map[string]any{"scripts": []string{"background.js"}}
+		m["background"] = map[string]any{"scripts": []string{"i18n.js", "background.js"}}
 		m["browser_specific_settings"] = map[string]any{"gecko": map[string]any{
 			"id":                          hostreg.FirefoxID,
 			"strict_min_version":          "142.0",

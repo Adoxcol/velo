@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"velo/internal/engine"
+	"velo/internal/i18n"
 	"velo/internal/ipc"
 	"velo/internal/version"
 )
@@ -1044,3 +1045,9 @@ var extVersionOnce = sync.OnceValue(func() string {
 // extensionVersion is the version of the extension installed with Velo, so
 // an unpacked copy can tell it's out of date and reload itself.
 func extensionVersion() string { return extVersionOnce() }
+
+// lang is the interface language in use.
+func (a *app) lang() string { return i18n.Resolve(a.getSettings().Language) }
+
+// tr translates an English interface string.
+func (a *app) tr(s string) string { return i18n.T(a.lang(), s) }

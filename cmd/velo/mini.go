@@ -12,6 +12,7 @@ import (
 
 	webview2 "github.com/jchv/go-webview2"
 
+	"velo/internal/i18n"
 	"velo/internal/ipc"
 )
 
@@ -140,7 +141,7 @@ func showMini(a *app) {
 				a.updateSettings(func(s *Settings) { s.MiniPos = &pos })
 			}
 		})
-		w.SetHtml(miniHTML)
+		w.SetHtml(i18n.Inject(miniHTML, a.lang()))
 		mini = w
 		miniMu.Unlock()
 		w.Run()

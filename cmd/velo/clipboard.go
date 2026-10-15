@@ -101,7 +101,7 @@ func (a *app) watchClipboard() {
 		}
 		offered = url
 		log.Printf("clipboard: offering %s", url)
-		toast.Show("Download copied link?", linkName(url)+"\nClick to download with Velo.", func() {
+		toast.Show(a.tr("Download copied link?"), linkName(url)+"\n"+a.tr("Click to download with Velo."), func() {
 			a.add(engine.Request{URL: url, Kind: kind})
 			a.show()
 		})

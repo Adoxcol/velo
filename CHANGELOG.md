@@ -2,6 +2,15 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.4.0 — 2026-10-16
+
+### New
+- **Velo speaks your language.** The app, the download dialog, Velo Mini, the tray menu, notifications and the browser extension are translated into বাংলা (Bengali), Deutsch, Español, Français, हिन्दी (Hindi), Português (Brasil) and 简体中文 (Simplified Chinese). Velo follows your Windows language by default; pick another in **Settings → Appearance → Language**, and it switches straight away. The extension follows your browser's language.
+
+### Fixed
+- Velo now reads its settings file even if it was saved with a byte-order mark (for example after editing it in Notepad), instead of falling back to defaults.
+- The Browser Extension page no longer mentions the old `install.ps1` setup script.
+
 ## 0.3.4 — 2026-10-16
 
 ### New

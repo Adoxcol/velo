@@ -15,6 +15,7 @@ try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = br
   const host = document.createElement("div");
   host.style.cssText = "position:fixed;z-index:2147483647;display:none;top:0;left:0;";
   const shadow = host.attachShadow({ mode: "closed" }); // page CSS can't restyle it
+  if (globalThis.veloI18n) veloI18n.observe(shadow);
   shadow.innerHTML = `
     <style>
       * { box-sizing: border-box; }
@@ -166,6 +167,7 @@ try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = br
   const cardHost = document.createElement("div");
   cardHost.style.cssText = "position:fixed;z-index:2147483647;right:20px;bottom:20px;";
   const cs = cardHost.attachShadow({ mode: "closed" });
+  if (globalThis.veloI18n) veloI18n.observe(cs);
   cs.innerHTML = `
     <style>
       .card { all: initial; display: block; width: 300px; background: #fff; color: #1b2433; border-radius: 14px;

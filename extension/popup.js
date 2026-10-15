@@ -1,5 +1,6 @@
 // Firefox: use its promise-based browser.* API under the chrome name.
 try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = browser; } catch {}
+if (globalThis.veloI18n) veloI18n.setup(veloI18n.STRINGS[veloI18n.lang] || {});
 
 // Velo popup: the videos found on the current tab, quality choice, and
 // "download all links on this page".
