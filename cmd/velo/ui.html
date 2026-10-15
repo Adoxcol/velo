@@ -22,6 +22,7 @@
     --shadow-lg: 0 12px 40px rgba(0,0,0,.5);
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html, body { margin: 0; height: 100%; }
   body {
     background: var(--bg); color: var(--text); display: flex; overflow: hidden;
@@ -128,7 +129,9 @@
   .card.error .bar > i { background: var(--err); }
   .badge { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; font-size: 12.5px; }
   .badge.ok { color: var(--ok); } .badge.warn { color: var(--warn); } .badge.err { color: var(--err); } .badge.blue { color: var(--primary); }
-  .card .actions { display: flex; gap: 4px; }
+  .card .actions { display: flex; gap: 4px; align-items: center; }
+  .done-badge { margin-right: 10px; white-space: nowrap; }
+  .done-badge svg.i { width: 16px; height: 16px; }
   .card.selected { border-color: var(--primary); }
   .menu {
     position: fixed; z-index: 50; min-width: 190px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
@@ -349,6 +352,7 @@
               <select class="sel" data-s="speedLimitKB" data-num id="limitSel"><option value="0">No limit</option><option value="256">256 KB/s</option><option value="512">512 KB/s</option><option value="1024">1 MB/s</option><option value="2048">2 MB/s</option><option value="5120">5 MB/s</option><option value="10240">10 MB/s</option></select></div>
           </div>
           <div class="sec" data-sec="browser"><h2>Browser integration</h2>
+            <div class="opt"><div><div class="t">Show the download dialog for browser downloads</div><div class="d">When you click a download link, Velo takes over and asks where to save it. Turn off to start downloads straight away.</div></div><span class="switch"><input type="checkbox" data-s="askOnCapture"><i></i></span></div>
             <p class="hint">Downloads of common file types in Chrome and Edge are handed to Velo automatically. See <b>Browser Extension</b> in the sidebar to set it up.</p>
           </div>
           <div class="sec" data-sec="video"><h2>Video grabber</h2>
@@ -359,6 +363,10 @@
               <span class="seg"><label><input type="radio" name="theme" value="light" data-s="theme">Light</label><label><input type="radio" name="theme" value="dark" data-s="theme">Dark</label><label><input type="radio" name="theme" value="system" data-s="theme">System</label></span></div>
           </div>
           <div class="sec" data-sec="advanced"><h2>Advanced</h2>
+            <p class="hint">Velo version <b id="verText"></b> · <span style="user-select:text">github.com/Adoxcol/velo</span></p>
+            <div class="opt"><div><div class="t">Install updates automatically</div><div class="d">Updates are verified, then installed when nothing is downloading and the window is closed.</div></div><span class="switch"><input type="checkbox" data-s="autoUpdate"><i></i></span></div>
+            <div class="opt"><div><div class="t">Updates</div><div class="d" id="updStatus">Not checked yet.</div></div>
+              <span class="row2"><button class="btn" id="updCheck">Check for updates</button><button class="btn primary" id="updInstall" hidden>Install update</button></span></div>
             <p class="hint">Settings and history are stored in <code>%APPDATA%\Velo</code>. Velo can also be controlled from the command line with <code>veloctl</code>.</p>
           </div>
         </div>
@@ -372,7 +380,7 @@
 <div class="dropzone" id="dropzone">Drop a link to download it</div>
 
 <dialog id="addDlg">
-  <div class="dh">Add Download<button class="iconbtn" data-close title="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="dh"><span id="aTitle">Add Download</span><button class="iconbtn" data-close title="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="db">
     <div class="inp" style="margin-bottom:10px"><svg class="i" viewBox="0 0 24 24" style="color:var(--faint)"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>
       <input id="aUrl" placeholder="https://example.com/file.zip" spellcheck="false"><button class="iconbtn" id="aClear" title="Clear"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
@@ -525,9 +533,11 @@ function card(r) {
     if (known && r.speed > 0) right = `<span class="left">${eta((r.total - r.done) / r.speed)} left</span>`;
     acts = `<button class="iconbtn" data-act="pause" title="Pause">${icon(I.pause)}</button>`;
   } else if (r.status === "done") {
-    meta = `<span>${size(r.total || r.done)}</span><span class="dot">${r.finished ? ago(r.finished) : "Done"}</span>`;
-    right = `<span class="left badge ok">${icon(I.check)}Completed</span>`;
-    acts = `<button class="iconbtn" data-act="folder" title="Show in folder">${icon(I.folder)}</button>`;
+    const bytes = r.total > 0 ? r.total : r.done;
+    meta = `<span>${bytes > 0 ? size(bytes) : "Size unknown"}</span><span class="dot">${r.finished ? ago(r.finished) : "Done"}</span>`;
+    // The badge sits with the buttons so they share one centred row.
+    acts = `<span class="badge ok done-badge">${icon(I.check)}Completed</span>` +
+      `<button class="iconbtn" data-act="folder" title="Show in folder">${icon(I.folder)}</button>`;
   } else if (r.status === "error") {
     meta = `<span class="badge err" title="${escapeHtml(r.error || "")}">${escapeHtml(shorten(r.error || "Failed", 80))}</span>`;
     acts = `<button class="iconbtn" data-act="resume" title="Retry">${icon(I.retry)}</button>`;
@@ -678,7 +688,12 @@ function partsOptions(def) {
     `<option value="${n}"${n === def ? " selected" : ""}>${n} part${n > 1 ? "s" : ""}${n === def ? " (Recommended)" : ""}</option>`).join("");
 }
 async function showAddDir() { $("#aDir").value = addDir || (await downloadDir()); }
+let pendingId = 0; // a browser download being confirmed in the dialog
 async function openAdd(url = "") {
+  pendingId = 0;
+  $("#aTitle").textContent = "Add Download";
+  $("#aUrl").readOnly = false;
+  $("#aClear").hidden = false;
   addDir = "";
   defConn = await connections();
   partsOptions(defConn);
@@ -689,6 +704,30 @@ async function openAdd(url = "") {
   if (url) runProbe(); else $("#aUrl").focus();
 }
 window.openAdd = openAdd;
+
+// A download clicked in the browser (like IDM's "Download File Info").
+async function openPending() {
+  if ($("#addDlg").open) return; // shown when the current dialog closes
+  const v = await nextPending();
+  if (!v) return;
+  await openAdd();
+  pendingId = v.id;
+  $("#aTitle").textContent = v.site ? `Download from ${v.site}` : "New download";
+  $("#aUrl").value = v.url;
+  $("#aUrl").readOnly = true;
+  $("#aClear").hidden = true;
+  $("#aName").value = v.filename || "";
+  $("#aName").dataset.auto = "0";
+  const cat = (v.filename.match(/\.([a-z0-9]+)$/i) || [])[1];
+  $("#aProbe").className = "probe";
+  $("#aProbe").textContent = [v.size > 0 ? size(v.size) : "Size unknown", cat ? cat.toUpperCase() + " file" : null, "from your browser"].filter(Boolean).join(" · ");
+  $("#aGo").focus();
+}
+window.openPending = openPending;
+$("#addDlg").addEventListener("close", () => {
+  if (pendingId) { dropPending(pendingId); pendingId = 0; } // closed without downloading
+  setTimeout(openPending, 150); // next captured download, if any
+});
 let probeTimer;
 async function runProbe() {
   const url = $("#aUrl").value.trim(), seq = ++probeSeq, p = $("#aProbe");
@@ -715,7 +754,8 @@ $("#aGo").onclick = async () => {
   const start = $('input[name="aStart"]:checked').value === "now";
   const parts = +$("#aParts").value;
   try {
-    await addDownload({ url: $("#aUrl").value.trim(), filename: $("#aName").value.trim(), dir: addDir, segments: parts === defConn ? 0 : parts, start });
+    await addDownload({ pendingId, url: $("#aUrl").value.trim(), filename: $("#aName").value.trim(), dir: addDir, segments: parts === defConn ? 0 : parts, start });
+    pendingId = 0;
     $("#addDlg").close();
     toast(start ? "Download started" : "Added to the queue");
     $("#heroUrl").value = "";
@@ -914,7 +954,18 @@ async function maybeOnboard() {
 }
 
 // ---------- start ----------
-loadSettings().then(() => { go("home"); maybeOnboard(); openBatch(); });
+loadSettings().then(() => { go("home"); maybeOnboard(); openBatch(); openPending(); });
+appVersion().then((v) => ($("#verText").textContent = v));
+async function showUpdate() {
+  const u = await updateInfo();
+  $("#updStatus").textContent = u.checking ? "Checking…" : (u.status || "Not checked yet.");
+  $("#updInstall").hidden = !u.ready;
+  if (u.ready) $("#updInstall").textContent = `Install ${u.available}`;
+  $("#updCheck").disabled = u.checking;
+}
+$("#updCheck").onclick = async () => { await checkUpdate(); setTimeout(showUpdate, 300); };
+$("#updInstall").onclick = () => act(installUpdate);
+setInterval(() => { if (page === "settings") showUpdate(); }, 1500);
 refresh();
 setInterval(refresh, 1000);
 </script>

@@ -4,7 +4,15 @@
 
 const HOST = "com.velo.host";
 const MIN_SIZE = 0; // bytes; set e.g. 1_000_000 to ignore small files
-const DEFAULT_EXTS = "zip rar 7z gz tar iso exe msi mp4 mkv avi mov mp3 flac pdf apk dmg";
+// File types Velo takes over from the browser (like IDM's default list).
+const DEFAULT_EXTS = [
+  "zip rar 7z gz tgz tar bz2 xz zst z arj lzh cab iso img bin",
+  "exe msi msix msu appx apk dmg pkg deb rpm appimage",
+  "mp4 m4v mkv avi mov webm wmv flv mpg mpeg 3gp ogv ts",
+  "mp3 m4a aac flac wav ogg opus wma aif aiff",
+  "pdf doc docx xls xlsx ppt pptx odt ods odp epub mobi rtf csv",
+  "psd ai tif tiff torrent",
+].join(" ");
 
 async function settings() {
   const s = await chrome.storage.local.get({ enabled: true, exts: DEFAULT_EXTS, skipHosts: "" });
@@ -18,10 +26,33 @@ async function settings() {
 function send(msg) {
   return new Promise((resolve) => {
     chrome.runtime.sendNativeMessage(HOST, msg, (reply) => {
-      if (chrome.runtime.lastError) resolve({ ok: false, error: chrome.runtime.lastError.message });
-      else resolve(reply || { ok: false, error: "empty reply" });
+      if (chrome.runtime.lastError) return resolve({ ok: false, error: chrome.runtime.lastError.message });
+      if (reply?.ext) maybeReload(reply.ext);
+      resolve(reply || { ok: false, error: "empty reply" });
     });
   });
+}
+
+// Keeping an unpacked extension up to date: Velo's updater replaces the
+// extension files next to the app and reports their version. If that's newer
+// than what's running, reload to pick them up (once per version, so a copy
+// loaded from another folder can't loop). Store installs update themselves.
+function newerVersion(a, b) {
+  const pa = a.split(".").map(Number), pb = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) > (pb[i] || 0);
+  }
+  return false;
+}
+async function maybeReload(diskVersion) {
+  const running = chrome.runtime.getManifest().version;
+  if (!/^\d+(\.\d+)*$/.test(diskVersion) || !newerVersion(diskVersion, running)) return;
+  const self = await chrome.management.getSelf();
+  if (self.installType !== "development") return;
+  const { reloadedFor } = await chrome.storage.local.get("reloadedFor");
+  if (reloadedFor === diskVersion) return;
+  await chrome.storage.local.set({ reloadedFor: diskVersion });
+  setTimeout(() => chrome.runtime.reload(), 1500); // let the current reply finish
 }
 
 async function cookieHeader(url) {
@@ -33,7 +64,7 @@ async function cookieHeader(url) {
   }
 }
 
-async function handOff({ url, referrer, filename, kind, title }) {
+async function handOff({ url, referrer, filename, kind, title, source, size }) {
   return send({
     type: "download",
     url,
@@ -41,6 +72,8 @@ async function handOff({ url, referrer, filename, kind, title }) {
     filename: filename || "",
     kind: kind || "",
     title: title || "",
+    source: source || "",
+    size: size > 0 ? size : 0,
     cookies: await cookieHeader(url),
     userAgent: navigator.userAgent,
   });
@@ -51,42 +84,62 @@ function extOf(name) {
   return m ? m[1].toLowerCase() : "";
 }
 
-const pending = new Set();
-
-chrome.downloads.onCreated.addListener(async (item) => {
+// Taking over browser downloads (like IDM). Chrome/Edge: decide in
+// onDeterminingFilename, before the browser's own "Save as" box can appear.
+// Other browsers: pause the download as soon as it's created, then decide.
+async function takeOver(item, name) {
   const url = item.finalUrl || item.url;
-  if (!/^https?:/i.test(url)) return; // skip blob:, data:, file:
+  if (!/^https?:/i.test(url)) return false; // blob:, data:, file:
   const s = await settings();
-  if (!s.enabled) return;
+  if (!s.enabled) return false;
   try {
-    if (s.skipHosts.some((h) => new URL(url).hostname.endsWith(h))) return;
+    if (s.skipHosts.some((h) => new URL(url).hostname.endsWith(h))) return false;
   } catch {
-    return;
+    return false;
   }
-  // Pause immediately; filename may not be known yet, decide once it is.
-  pending.add(item.id);
-  chrome.downloads.pause(item.id, () => void chrome.runtime.lastError);
-});
+  const size = item.totalBytes > 0 ? item.totalBytes : item.fileSize;
+  if (!s.exts.has(extOf(name)) || (size > 0 && size < MIN_SIZE)) return false;
+  // "capture": Velo shows its download dialog.
+  const reply = await handOff({ url, referrer: item.referrer, filename: name, source: "capture", size });
+  if (!reply.ok) console.warn("Velo unavailable, downloading in the browser:", reply.error);
+  return !!reply.ok;
+}
 
-chrome.downloads.onChanged.addListener(async (delta) => {
-  if (!pending.has(delta.id) || !delta.filename) return;
-  pending.delete(delta.id);
-  const [item] = await chrome.downloads.search({ id: delta.id });
-  if (!item) return;
-  const s = await settings();
-  const name = item.filename.split(/[\\/]/).pop();
-  const wanted = s.exts.has(extOf(name)) && (item.totalBytes <= 0 || item.totalBytes >= MIN_SIZE);
-  if (!wanted) return chrome.downloads.resume(item.id);
-
-  const reply = await handOff({ url: item.finalUrl || item.url, referrer: item.referrer, filename: name });
-  if (reply.ok) {
-    chrome.downloads.cancel(item.id);
-    chrome.downloads.erase({ id: item.id });
-  } else {
-    console.warn("Velo unavailable, resuming in browser:", reply.error);
-    chrome.downloads.resume(item.id);
-  }
-});
+if (chrome.downloads.onDeterminingFilename) {
+  chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
+    const name = (item.filename || "").split(/[\\/]/).pop();
+    takeOver(item, name).then((taken) => {
+      if (taken) {
+        chrome.downloads.cancel(item.id, () => {
+          void chrome.runtime.lastError;
+          chrome.downloads.erase({ id: item.id });
+        });
+      } else {
+        suggest(); // keep the browser's own handling
+      }
+    });
+    return true; // suggest() is called asynchronously
+  });
+} else {
+  const pending = new Set();
+  chrome.downloads.onCreated.addListener((item) => {
+    if (!/^https?:/i.test(item.finalUrl || item.url)) return;
+    pending.add(item.id);
+    chrome.downloads.pause(item.id, () => void chrome.runtime.lastError);
+  });
+  chrome.downloads.onChanged.addListener(async (delta) => {
+    if (!pending.has(delta.id) || !delta.filename) return;
+    pending.delete(delta.id);
+    const [item] = await chrome.downloads.search({ id: delta.id });
+    if (!item) return;
+    if (await takeOver(item, item.filename.split(/[\\/]/).pop())) {
+      chrome.downloads.cancel(item.id);
+      chrome.downloads.erase({ id: item.id });
+    } else {
+      chrome.downloads.resume(item.id);
+    }
+  });
+}
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {

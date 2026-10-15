@@ -16,6 +16,7 @@ import (
 
 	"velo/internal/engine"
 	"velo/internal/ipc"
+	"velo/internal/version"
 )
 
 //go:embed ui.html
@@ -67,6 +68,11 @@ func runTray(a *app, openWindow bool) {
 	}
 	go a.watchClipboard()
 	go a.runMini()
+	go a.upd.run(a)
+	a.showPending = func() {
+		a.show()
+		evalMain("openPending()")
+	}
 	a.showBatch = func() {
 		a.show()
 		evalMain("openBatch()")
@@ -252,8 +258,14 @@ func bind(w webview2.WebView, a *app) {
 	})
 	w.Bind("addDownload", func(o addOptions) (int, error) { return a.addWith(o) })
 	w.Bind("takeBatch", func() *batchView { return a.takeBatch() })
+	w.Bind("nextPending", func() *pendingView { return a.nextPendingDL() })
+	w.Bind("dropPending", func(id int) { a.takePending(id) })
 	w.Bind("finishBatch", func(urls []string, start bool) int { return a.finishBatch(urls, start) })
 	w.Bind("extensionSeen", func() int64 { return a.extensionSeen() })
+	w.Bind("appVersion", func() string { return version.Version })
+	w.Bind("updateInfo", func() updateInfo { return a.upd.info() })
+	w.Bind("checkUpdate", func() { go a.upd.check(a) })
+	w.Bind("installUpdate", func() error { return a.upd.install(a) })
 	w.Bind("pasteText", func() string {
 		t, _ := clipboardText()
 		return strings.TrimSpace(t)

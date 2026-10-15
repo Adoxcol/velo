@@ -10,3 +10,8 @@ notes/
 .vscode/
 .idea/
 Thumbs.db
+
+# Installer payload (built by tools/release.ps1)
+/cmd/velo-setup/payload/*
+!/cmd/velo-setup/payload/README.md
+/dist/

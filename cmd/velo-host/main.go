@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"velo/internal/ipc"
@@ -92,10 +93,12 @@ func main() {
 	e, err := ipc.ReadEndpoint()
 	var r ipc.Reply
 	if err == nil {
+		allowForeground(e.PID)
 		r, err = post(e, path, msg)
 	}
 	if err != nil { // stale endpoint or app not running
 		if e, err = startApp(); err == nil {
+			allowForeground(e.PID)
 			r, err = post(e, path, msg)
 		}
 	}
@@ -103,4 +106,11 @@ func main() {
 		r = ipc.Reply{Error: err.Error()}
 	}
 	writeMsg(os.Stdout, r)
+}
+
+// allowForeground lets Velo bring its download dialog in front of the
+// browser. Windows only lets the foreground app (the browser, which started
+// this host) grant that.
+func allowForeground(pid int) {
+	syscall.NewLazyDLL("user32.dll").NewProc("AllowSetForegroundWindow").Call(uintptr(pid))
 }

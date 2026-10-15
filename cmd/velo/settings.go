@@ -27,6 +27,8 @@ type Settings struct {
 	Connections    int      `json:"connections"`    // default connections per download, 1-32
 	ShowMini       bool     `json:"showMini"`       // floating Velo Mini window while downloading
 	Onboarded      bool     `json:"onboarded"`      // first-run setup done
+	AutoUpdate     bool     `json:"autoUpdate"`     // install verified updates when idle
+	AskOnCapture   bool     `json:"askOnCapture"`   // show the download dialog for browser downloads
 }
 
 // Schedule restricts downloading to a daily time window.
@@ -47,6 +49,8 @@ func defaultSettings() Settings {
 		Theme:          "light",
 		Connections:    8,
 		ShowMini:       true,
+		AutoUpdate:     true,
+		AskOnCapture:   true,
 		Schedule:       Schedule{Start: "01:00", Stop: "07:00", Days: [7]bool{true, true, true, true, true, true, true}},
 	}
 }

@@ -10,8 +10,11 @@ browser extension for Chrome and Edge.
 - **Pause and resume**, even after closing Velo or restarting the PC.
 - **Video grabber**: the extension finds HLS (`.m3u8`) and DASH (`.mpd`) streams and media files while
   a video plays. Velo picks the best quality and merges audio and video with ffmpeg.
-- **Browser integration**: downloads in Chrome and Edge are handed to Velo, plus a
-  "Download with Velo" right-click item.
+- **Browser integration**: click a download link in Chrome or Edge and Velo takes over: its download
+  dialog opens (file name, size, folder, parts) instead of the browser's downloader. Can be set to
+  start straight away instead. Plus a "Download with Velo" right-click item.
+- **Updates**: Velo checks GitHub Releases, verifies the installer's SHA-256 and updates itself when
+  idle; an unpacked extension reloads itself after an update.
 - **Queue and scheduler**: downloads at once, a daily download window, and sleep or shut down when
   everything finishes.
 - **Velo Mini**: a small always-on-top progress window in the corner while downloads run.
@@ -25,7 +28,26 @@ browser extension for Chrome and Edge.
 Velo downloads what websites serve openly. It does not bypass DRM, encryption or other protections,
 so protected streaming services and sites like YouTube are not supported.
 
-## Install (from source)
+## Install
+
+Download `Velo-Setup-<version>.exe` from the releases page and run it. It installs for your user account
+only (no administrator rights), adds Velo to the Start menu and to **Settings → Apps** for uninstalling,
+and connects Chrome, Edge and Brave. Then load the browser extension from
+`%LOCALAPPDATA%\Programs\Velo\extension` (see below) until it's available in the browser stores.
+
+The installer is not code-signed yet, so Windows SmartScreen may warn about an unknown publisher.
+
+## Build a release
+
+```powershell
+.\tools\release.ps1 -Version 0.1.0
+```
+
+Writes `dist\Velo-Setup-0.1.0.exe` (the installer, which embeds the app and the extension) and
+`dist\velo-extension-0.1.0.zip` (for the Chrome Web Store and Edge Add-ons; see
+[docs/store-listing.md](docs/store-listing.md) and [docs/privacy.md](docs/privacy.md)).
+
+## Install (from source, for development)
 
 Requirements: Windows 10/11, [Go](https://go.dev/) 1.27+, the WebView2 runtime (included with
 Windows 11), and optionally [ffmpeg](https://ffmpeg.org/) on `PATH` for video streams.
@@ -49,6 +71,7 @@ click **Load unpacked** and choose the `extension` folder. Its ID is
 |---|---|
 | `cmd/velo/` | The desktop app: tray icon, window (WebView2, `ui.html`), queue, scheduler, settings |
 | `cmd/velo-host/` | Native messaging host: the browser starts it per message; it forwards to the app |
+| `cmd/velo-setup/` | Installer and uninstaller (per user); embeds the release build |
 | `cmd/veloctl/` | Command-line control: `list`, `add`, `pause`, `resume`, `remove`, `limit`, `get` |
 | `internal/engine/` | Download engine: segmented HTTP, HLS, DASH, speed limit, categories |
 | `internal/ipc/` | How the host and CLI find the app: `%APPDATA%\Velo\endpoint.json` (port + token) |

@@ -18,6 +18,7 @@ import (
 
 	"velo/internal/engine"
 	"velo/internal/ipc"
+	"velo/internal/version"
 )
 
 type item struct {
@@ -48,13 +49,17 @@ type app struct {
 	showBatch func() // opens the window's batch dialog
 	changed   func() // settings changed (updates the tray menu)
 
-	lastHistory   []byte    // last saved history.json contents
-	speedHist     []float64 // total speed per second, last minute
-	extSeen       time.Time // last message from the browser extension
-	batch         *batchReq // links waiting in the batch dialog
-	miniDismissed bool      // Velo Mini closed by the user until downloads stop
-	defaultDir    string    // download folder when the setting is empty
-	home          string    // data folder (%APPDATA%\Velo), fixed at start
+	lastHistory   []byte      // last saved history.json contents
+	speedHist     []float64   // total speed per second, last minute
+	extSeen       time.Time   // last message from the browser extension
+	batch         *batchReq   // links waiting in the batch dialog
+	miniDismissed bool        // Velo Mini closed by the user until downloads stop
+	upd           updater     // GitHub Releases updates
+	pending       []pendingDL // browser downloads waiting for the download dialog
+	nextPending   int
+	showPending   func() // opens the download dialog for pending downloads
+	defaultDir    string // download folder when the setting is empty
+	home          string // data folder (%APPDATA%\Velo), fixed at start
 }
 
 func newApp(eng *engine.Engine) *app {
@@ -205,16 +210,84 @@ func (a *app) extensionSeen() int64 {
 	return a.extSeen.UnixMilli()
 }
 
-// addOptions come from the Add Download dialog.
-type addOptions struct {
+// pendingDL is a browser download waiting for the user in the download dialog.
+type pendingDL struct {
+	ID   int            `json:"id"`
+	Req  engine.Request `json:"-"`
+	Size int64          `json:"size"`
+}
+
+// pendingView is what the dialog shows for a pending download.
+type pendingView struct {
+	ID       int    `json:"id"`
 	URL      string `json:"url"`
 	Filename string `json:"filename"`
-	Dir      string `json:"dir"`      // "" = default folder
-	Segments int    `json:"segments"` // 0 = default
-	Start    bool   `json:"start"`    // false = add paused
+	Size     int64  `json:"size"`
+	Site     string `json:"site"`
+	Kind     string `json:"kind"`
+}
+
+// nextPendingDL returns the oldest pending browser download, or nil.
+func (a *app) nextPendingDL() *pendingView {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if len(a.pending) == 0 {
+		return nil
+	}
+	p := a.pending[0]
+	v := &pendingView{ID: p.ID, URL: p.Req.URL, Filename: p.Req.Filename, Size: p.Size, Kind: p.Req.Kind}
+	if u, err := url.Parse(p.Req.Referrer); err == nil && u.Host != "" {
+		v.Site = u.Host
+	} else if u, err := url.Parse(p.Req.URL); err == nil {
+		v.Site = u.Host
+	}
+	return v
+}
+
+// takePending removes a pending download and returns its request.
+func (a *app) takePending(id int) (engine.Request, bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for i, p := range a.pending {
+		if p.ID == id {
+			a.pending = append(a.pending[:i], a.pending[i+1:]...)
+			return p.Req, true
+		}
+	}
+	return engine.Request{}, false
+}
+
+// addOptions come from the Add Download dialog.
+type addOptions struct {
+	PendingID int    `json:"pendingId"` // a browser download being confirmed
+	URL       string `json:"url"`
+	Filename  string `json:"filename"`
+	Dir       string `json:"dir"`      // "" = default folder
+	Segments  int    `json:"segments"` // 0 = default
+	Start     bool   `json:"start"`    // false = add paused
 }
 
 func (a *app) addWith(o addOptions) (int, error) {
+	if o.PendingID != 0 {
+		base, ok := a.takePending(o.PendingID)
+		if !ok {
+			return 0, errors.New("that download was already handled")
+		}
+		// Keep the browser's cookies, referrer and user agent.
+		if name := strings.TrimSpace(o.Filename); name != "" {
+			base.Filename = name // otherwise keep the browser's suggested name
+		}
+		base.Dir, base.Segments = o.Dir, o.Segments
+		if o.Dir != "" && !filepath.IsAbs(o.Dir) {
+			return 0, errors.New("choose a full folder path")
+		}
+		if !o.Start {
+			it := a.register(&engine.Download{Req: base, Status: "paused"})
+			a.kick()
+			return it.d.ID, nil
+		}
+		return a.add(base), nil
+	}
 	ok, kind := engine.Downloadable(o.URL)
 	u := strings.ToLower(o.URL)
 	if !ok && !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
@@ -609,9 +682,9 @@ func (a *app) handle(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
 	reply := func(id int, err error) {
 		if err != nil {
-			enc.Encode(ipc.Reply{Error: err.Error()})
+			enc.Encode(ipc.Reply{Error: err.Error(), Ext: extensionVersion()})
 		} else {
-			enc.Encode(ipc.Reply{OK: true, ID: id})
+			enc.Encode(ipc.Reply{OK: true, ID: id, Ext: extensionVersion()})
 		}
 	}
 	id, _ := strconv.Atoi(r.URL.Query().Get("id"))
@@ -649,8 +722,20 @@ func (a *app) handle(w http.ResponseWriter, r *http.Request) {
 			reply(0, fmt.Errorf("unknown kind %q", j.Kind))
 			return
 		}
-		reply(a.add(engine.Request{URL: j.URL, Referrer: j.Referrer, Cookies: j.Cookies,
-			UserAgent: j.UserAgent, Filename: j.Filename, Kind: j.Kind, Title: j.Title}), nil)
+		r := engine.Request{URL: j.URL, Referrer: j.Referrer, Cookies: j.Cookies,
+			UserAgent: j.UserAgent, Filename: j.Filename, Kind: j.Kind, Title: j.Title}
+		// Like IDM: a download the browser started opens Velo's download
+		// dialog (unless turned off); the browser's own download is stopped.
+		if j.Source == "capture" && a.getSettings().AskOnCapture && a.showPending != nil {
+			a.mu.Lock()
+			a.nextPending++
+			a.pending = append(a.pending, pendingDL{ID: a.nextPending, Req: r, Size: j.Size})
+			a.mu.Unlock()
+			go a.showPending()
+			reply(0, nil)
+			return
+		}
+		reply(a.add(r), nil)
 	case "/list":
 		enc.Encode(a.rows())
 	case "/pause":
@@ -661,6 +746,13 @@ func (a *app) handle(w http.ResponseWriter, r *http.Request) {
 		reply(id, a.remove(id))
 	case "/limit": // id = KB/s, 0 = unlimited
 		reply(id, a.setSpeedLimit(id))
+	case "/quit": // used by the installer before replacing files
+		reply(0, nil)
+		if a.quit != nil {
+			go a.quit()
+		}
+	case "/version":
+		enc.Encode(map[string]string{"version": version.Version})
 	case "/show":
 		if a.show != nil {
 			a.show()
@@ -670,3 +762,23 @@ func (a *app) handle(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 	}
 }
+
+var extVersionOnce = sync.OnceValue(func() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	b, err := os.ReadFile(filepath.Join(filepath.Dir(exe), "extension", "manifest.json"))
+	if err != nil {
+		return "" // source builds run from bin\ without a bundled extension
+	}
+	var m struct {
+		Version string `json:"version"`
+	}
+	json.Unmarshal(b, &m)
+	return m.Version
+})
+
+// extensionVersion is the version of the extension installed with Velo, so
+// an unpacked copy can tell it's out of date and reload itself.
+func extensionVersion() string { return extVersionOnce() }

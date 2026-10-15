@@ -76,8 +76,11 @@ type Download struct {
 
 func (d *Download) isStream() bool { return d.Req.Kind == "hls" || d.Req.Kind == "dash" }
 
-// Progress returns percent complete (0 if unknown).
+// Progress returns percent complete (0 if unknown, 100 once done).
 func (d *Download) Progress() float64 {
+	if s, _ := d.State(); s == "done" {
+		return 100
+	}
 	if n := d.parts.Load(); n > 0 {
 		done := d.partsDone.Load()
 		if done == n {

@@ -26,14 +26,17 @@ type Job struct {
 	Filename  string `json:"filename"`
 	Cookies   string `json:"cookies"`
 	UserAgent string `json:"userAgent"`
-	Kind      string `json:"kind"`  // "" = file, "hls" = video stream
-	Title     string `json:"title"` // page title, used to name videos
+	Kind      string `json:"kind"`   // "" = file, "hls" = video stream
+	Title     string `json:"title"`  // page title, used to name videos
+	Source    string `json:"source"` // "capture" = a download the browser started
+	Size      int64  `json:"size"`   // size the browser reported, if known
 }
 
 type Reply struct {
 	OK    bool   `json:"ok"`
 	ID    int    `json:"id,omitempty"`
 	Error string `json:"error,omitempty"`
+	Ext   string `json:"ext,omitempty"` // version of the extension installed next to Velo
 }
 
 type Endpoint struct {
