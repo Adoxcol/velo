@@ -26,14 +26,14 @@ Ticked items are done. Work goes roughly top to bottom.
 - [x] Survive network drops: wait and resume by itself (5s, 10s, 20s, then every minute)
 - [x] Check free disk space before starting
 - [x] Verify a pasted SHA-256, SHA-1 or MD5 when done
-- [ ] Proxy settings
+- [x] Proxy: follows the Windows proxy by default, or none, or a custom http:// / socks5:// proxy
 
 ## Features IDM users expect
 - [x] Right-click "Download with Velo" on links, images, video and audio, opening Velo's dialog
 - [x] Download all links on a page, filtered by type (counts on each type, `*.pdf *.zip` patterns)
 - [x] Refresh an expired link and continue the same file (checks it is the same size)
 - [ ] Queue control: reorder, download next, several queues
-- [ ] Login-protected downloads (username and password)
+- [x] Login-protected downloads: username and password in the Add dialog, shown when a site asks; never sent to other hosts
 
 ## Reach
 - [ ] Firefox

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"sync/atomic"
 	"time"
 )
@@ -17,9 +18,9 @@ var ErrStalled = errors.New("connection stalled (no data received)")
 
 // newClient returns an HTTP client that gives up on servers that don't
 // answer, and drops connections that stop sending data mid-download.
-func newClient(idle time.Duration) *http.Client {
+func newClient(idle time.Duration, proxy func(*http.Request) (*url.URL, error)) *http.Client {
 	base := &http.Transport{
-		Proxy:                 http.ProxyFromEnvironment,
+		Proxy:                 proxy,
 		DialContext:           (&net.Dialer{Timeout: 15 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
 		TLSHandshakeTimeout:   15 * time.Second,
 		ResponseHeaderTimeout: 30 * time.Second,

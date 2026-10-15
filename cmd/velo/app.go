@@ -82,6 +82,7 @@ func newApp(eng *engine.Engine) *app {
 		eng.SetDir(a.settings.DownloadDir)
 	}
 	eng.SetSortByType(a.settings.SortByType)
+	eng.SetProxy(a.settings.Proxy)
 	if a.settings.Connections > 0 {
 		eng.SetSegments(a.settings.Connections)
 	}
@@ -279,6 +280,8 @@ type addOptions struct {
 	Segments  int    `json:"segments"` // 0 = default
 	Start     bool   `json:"start"`    // false = add paused
 	Checksum  string `json:"checksum"` // optional, verified when done
+	User      string `json:"user"`     // optional HTTP login
+	Pass      string `json:"pass"`
 }
 
 func (a *app) addWith(o addOptions) (int, error) {
@@ -299,6 +302,9 @@ func (a *app) addWith(o addOptions) (int, error) {
 			base.Filename = name // otherwise keep the browser's suggested name
 		}
 		base.Dir, base.Segments, base.Checksum = o.Dir, o.Segments, sum
+		if o.User != "" {
+			base.User, base.Pass = o.User, o.Pass
+		}
 		if o.Dir != "" && !filepath.IsAbs(o.Dir) {
 			return 0, errors.New("choose a full folder path")
 		}
@@ -317,7 +323,7 @@ func (a *app) addWith(o addOptions) (int, error) {
 	if o.Dir != "" && !filepath.IsAbs(o.Dir) {
 		return 0, errors.New("choose a full folder path")
 	}
-	r := engine.Request{URL: o.URL, Filename: strings.TrimSpace(o.Filename), Dir: o.Dir, Segments: o.Segments, Kind: kind, Checksum: sum}
+	r := engine.Request{URL: o.URL, Filename: strings.TrimSpace(o.Filename), Dir: o.Dir, Segments: o.Segments, Kind: kind, Checksum: sum, User: o.User, Pass: o.Pass}
 	if !o.Start {
 		it := a.register(&engine.Download{Req: r, Status: "paused"})
 		a.kick()
@@ -635,6 +641,7 @@ func (a *app) setSettings(s Settings) error {
 		return err
 	}
 	a.eng.SetSortByType(s.SortByType)
+	a.eng.SetProxy(s.Proxy)
 	if s.Connections > 0 {
 		a.eng.SetSegments(s.Connections)
 	}

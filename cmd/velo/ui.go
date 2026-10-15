@@ -259,10 +259,10 @@ func closeMain() {
 
 // bind exposes the app to the page's JavaScript (each returns a Promise).
 func bind(w webview2.WebView, a *app) {
-	w.Bind("probe", func(url string) (engine.Info, error) {
+	w.Bind("probe", func(url, user, pass string) (engine.Info, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
-		return a.eng.Probe(ctx, engine.Request{URL: strings.TrimSpace(url)})
+		return a.eng.Probe(ctx, engine.Request{URL: strings.TrimSpace(url), User: user, Pass: pass})
 	})
 	w.Bind("addDownload", func(o addOptions) (int, error) { return a.addWith(o) })
 	w.Bind("takeBatch", func() *batchView { return a.takeBatch() })

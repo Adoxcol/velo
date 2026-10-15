@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"velo/internal/engine"
 
 	"velo/internal/ipc"
 )
@@ -29,6 +30,7 @@ type Settings struct {
 	Onboarded      bool     `json:"onboarded"`         // first-run setup done
 	AutoUpdate     bool     `json:"autoUpdate"`        // install verified updates when idle
 	AskOnCapture   bool     `json:"askOnCapture"`      // show the download dialog for browser downloads
+	Proxy          string   `json:"proxy"`             // "" = Windows setting, "none", or a proxy URL
 	MiniPos        *[2]int  `json:"miniPos,omitempty"` // where Velo Mini was dragged to (nil = bottom right)
 }
 
@@ -100,6 +102,11 @@ func (s *Settings) validate() error {
 	if s.Connections < 0 || s.Connections > 32 {
 		return fmt.Errorf("connections must be 1-32")
 	}
+	p, err := engine.ParseProxy(s.Proxy)
+	if err != nil {
+		return err
+	}
+	s.Proxy = p
 	if s.DownloadDir != "" && !filepath.IsAbs(s.DownloadDir) {
 		return fmt.Errorf(`download folder must be a full path like C:\Downloads`)
 	}

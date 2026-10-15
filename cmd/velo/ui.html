@@ -346,6 +346,9 @@
           <div class="sec" data-sec="connection"><h2>Connection</h2>
             <div class="opt"><div><div class="t">Connections per download</div><div class="d">Velo splits files into parts and downloads them in parallel. Busy servers automatically get fewer.</div></div>
               <select class="sel" data-s="connections" data-num><option>1</option><option>2</option><option>4</option><option>8</option><option>16</option><option>32</option></select></div>
+            <div class="opt"><div><div class="t">Proxy</div><div class="d">Windows setting uses the proxy from Windows Settings, like your browser.</div></div>
+              <span class="row2"><select class="sel" id="proxyMode"><option value="">Windows setting</option><option value="none">No proxy</option><option value="manual">Custom</option></select>
+              <span class="inp" id="proxyBox" hidden style="width:220px"><input id="proxyUrl" spellcheck="false" placeholder="http://host:8080 or socks5://host:1080"></span></span></div>
           </div>
           <div class="sec" data-sec="speed"><h2>Speed limit</h2>
             <div class="opt"><div><div class="t">Limit total download speed</div><div class="d">Shared by all downloads. Also in the tray menu.</div></div>
@@ -389,6 +392,9 @@
     <div class="probe" id="aProbe"></div>
     <div class="formrow"><span>Save to</span><div class="inp ro"><svg class="i" viewBox="0 0 24 24" style="color:var(--faint)"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><input id="aDir" readonly><button class="link" id="aDirChange">Change</button></div></div>
     <div class="formrow"><span>File name</span><div class="inp"><input id="aName" spellcheck="false" placeholder="From the server"></div></div>
+    <div class="formrow" id="aLoginRow" hidden><span>Login</span><div style="display:flex;gap:8px;flex:1">
+      <div class="inp" style="flex:1"><input id="aUser" spellcheck="false" autocomplete="off" placeholder="Username"></div>
+      <div class="inp" style="flex:1"><input id="aPass" type="password" autocomplete="off" placeholder="Password"></div></div></div>
     <div class="formrow"><span>Checksum</span><div class="inp"><input id="aSum" spellcheck="false" placeholder="Optional: SHA-256, SHA-1 or MD5 to check the file"></div></div>
     <div class="formrow"><span>Split into</span><div class="inp"><select id="aParts"></select></div></div>
     <div style="display:grid;gap:10px;margin:14px 0 4px">
@@ -729,7 +735,7 @@ async function openAdd(url = "") {
   addDir = "";
   defConn = await connections();
   partsOptions(defConn);
-  $("#aUrl").value = url; $("#aName").value = ""; $("#aSum").value = ""; $("#aProbe").textContent = ""; $("#aProbe").className = "probe";
+  $("#aUrl").value = url; $("#aName").value = ""; $("#aSum").value = ""; $("#aUser").value = ""; $("#aPass").value = ""; $("#aLoginRow").hidden = true; $("#aProbe").textContent = ""; $("#aProbe").className = "probe";
   $$('input[name="aStart"]')[0].checked = true;
   await showAddDir();
   $("#addDlg").showModal();
@@ -766,18 +772,24 @@ async function runProbe() {
   if (!/^https?:\/\//i.test(url)) { p.textContent = url ? "Enter a link starting with http:// or https://" : ""; p.className = "probe" + (url ? " err" : ""); return; }
   p.className = "probe"; p.textContent = "Checking link…";
   try {
-    const info = await probe(url);
+    const info = await probe(url, $("#aUser").value, $("#aPass").value);
     if (seq !== probeSeq) return;
     if (!$("#aName").value || $("#aName").dataset.auto === "1") { $("#aName").value = info.kind ? "" : info.name; $("#aName").dataset.auto = "1"; }
     p.textContent = info.kind ? `Video stream (${info.kind.toUpperCase()}) · best quality is picked automatically`
       : [info.size > 0 ? size(info.size) : "Size unknown", info.category || null, info.resumable ? "Resumable" : "Can't resume (server doesn't support it)"].filter(Boolean).join(" · ");
   } catch (e) {
     if (seq !== probeSeq) return;
-    p.className = "probe err"; p.textContent = "Couldn't check the link: " + String(e);
+    p.className = "probe err";
+    if (/401/.test(String(e))) { // the site asks for a username and password
+      p.textContent = $("#aUser").value ? "Wrong username or password." : "This site needs a username and password.";
+      $("#aLoginRow").hidden = false;
+      if (!$("#aUser").value) $("#aUser").focus();
+    } else p.textContent = "Couldn't check the link: " + String(e);
   }
 }
 $("#aUrl").oninput = () => { clearTimeout(probeTimer); probeTimer = setTimeout(runProbe, 450); };
 $("#aName").oninput = () => ($("#aName").dataset.auto = "0");
+$("#aPass").onchange = runProbe;
 $("#aClear").onclick = () => { $("#aUrl").value = ""; $("#aName").value = ""; $("#aProbe").textContent = ""; $("#aUrl").focus(); };
 $("#aDirChange").onclick = async () => {
   try { const p = await pickFolder(addDir || (await downloadDir())); if (p) { addDir = p; showAddDir(); } } catch (e) { toast(String(e), true); }
@@ -786,7 +798,7 @@ $("#aGo").onclick = async () => {
   const start = $('input[name="aStart"]:checked').value === "now";
   const parts = +$("#aParts").value;
   try {
-    await addDownload({ pendingId, url: $("#aUrl").value.trim(), filename: $("#aName").value.trim(), dir: addDir, segments: parts === defConn ? 0 : parts, start, checksum: $("#aSum").value.trim() });
+    await addDownload({ pendingId, url: $("#aUrl").value.trim(), filename: $("#aName").value.trim(), dir: addDir, segments: parts === defConn ? 0 : parts, start, checksum: $("#aSum").value.trim(), user: $("#aUser").value, pass: $("#aPass").value });
     pendingId = 0;
     $("#addDlg").close();
     toast(start ? "Download started" : "Added to the queue");
@@ -843,6 +855,10 @@ async function loadSettings() {
   });
   $$("#sDays input").forEach((c) => (c.checked = S.schedule.days[+c.dataset.day]));
   $("#sFields").classList.toggle("off", !S.schedule.enabled);
+  const pm = !S.proxy ? "" : S.proxy === "none" ? "none" : "manual";
+  $("#proxyMode").value = pm;
+  $("#proxyBox").hidden = pm !== "manual";
+  if (pm === "manual" && document.activeElement !== $("#proxyUrl")) $("#proxyUrl").value = S.proxy;
   $("#dirShow").value = S.downloadDir || defaultFolder;
   $("#dirReset").disabled = !S.downloadDir;
 }
@@ -865,6 +881,13 @@ document.addEventListener("change", (e) => {
   if (el.dataset.s === "theme") applyTheme(v);
   save((s) => setPath(s, el.dataset.s, v));
 });
+$("#proxyMode").onchange = () => {
+  const m = $("#proxyMode").value;
+  $("#proxyBox").hidden = m !== "manual";
+  if (m === "manual") return $("#proxyUrl").focus(); // saved once an address is entered
+  save((s) => (s.proxy = m));
+};
+$("#proxyUrl").onchange = () => { const v = $("#proxyUrl").value.trim(); if (v) save((s) => (s.proxy = v)); };
 $("#dirChange").onclick = async () => {
   try { const p = await pickFolder(S.downloadDir || defaultFolder); if (p) save((s) => (s.downloadDir = p.toLowerCase() === defaultFolder.toLowerCase() ? "" : p)); } catch (e) { toast(String(e), true); }
 };

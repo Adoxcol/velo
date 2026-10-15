@@ -39,6 +39,9 @@ type hlsPlaylist struct {
 func (e *Engine) fetchText(ctx context.Context, r Request, u string) (string, error) {
 	rr := r
 	rr.URL = u
+	if hostOf(u) != hostOf(r.URL) { // a login stays with the site it is for
+		rr.User, rr.Pass = "", ""
+	}
 	req, err := e.newReq(ctx, rr)
 	if err != nil {
 		return "", err
@@ -308,6 +311,9 @@ func (e *Engine) fetchPart(ctx context.Context, d *Download, u, dst string) (int
 		}
 		rr := d.Req
 		rr.URL = u
+		if hostOf(u) != hostOf(d.Req.URL) { // a login stays with the site it is for
+			rr.User, rr.Pass = "", ""
+		}
 		req, err := e.newReq(ctx, rr)
 		if err != nil {
 			return 0, err

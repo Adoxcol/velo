@@ -238,7 +238,7 @@ func TestStalledConnectionRetries(t *testing.T) {
 	}))
 	defer srv.Close()
 	e := New(t.TempDir())
-	e.Client = newClient(300 * time.Millisecond)
+	e.Client = newClient(300*time.Millisecond, nil)
 	d := &Download{Req: Request{URL: srv.URL + "/s.bin"}}
 	if err := e.Run(context.Background(), d); err != nil {
 		t.Fatal(err)
@@ -382,5 +382,82 @@ func TestChecksum(t *testing.T) {
 		t.Fatal("file should be kept for inspection")
 	} else if _, err := os.Stat(p); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// Downloads go through a custom proxy, and "none" goes direct.
+func TestProxy(t *testing.T) {
+	data := randomData(t, 1<<20)
+	var proxied atomic.Int32
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !r.URL.IsAbs() {
+			http.Error(w, "not a proxy request", http.StatusBadRequest)
+			return
+		}
+		proxied.Add(1)
+		http.ServeContent(w, r, "f.bin", time.Time{}, bytes.NewReader(data))
+	}))
+	t.Cleanup(proxy.Close)
+
+	e := New(t.TempDir())
+	p, err := ParseProxy(strings.TrimPrefix(proxy.URL, "http://")) // host:port is enough
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.SetProxy(p)
+	d := &Download{Req: Request{URL: "http://example.invalid/f.bin"}} // only the proxy can serve this
+	if err := e.Run(context.Background(), d); err != nil {
+		t.Fatal(err)
+	}
+	check(t, d, data)
+	if proxied.Load() == 0 {
+		t.Fatal("nothing went through the proxy")
+	}
+	for _, bad := range []string{"ftp://x:1", "http://nohost", "::"} {
+		if _, err := ParseProxy(bad); err == nil {
+			t.Errorf("ParseProxy(%q) accepted", bad)
+		}
+	}
+	if !wildcardMatch("*.corp.com", "a.corp.com") || wildcardMatch("*.corp.com", "corp.org") || !wildcardMatch("10.*", "10.1.2.3") {
+		t.Error("wildcardMatch")
+	}
+	if m := parseProxyServer("http=h:1;https=h:2;socks=s:3"); m["https"] != "h:2" || m["socks"] != "s:3" {
+		t.Errorf("parseProxyServer: %v", m)
+	}
+}
+
+// A login is sent to the site that needs it, never to another host the
+// download is redirected to.
+func TestBasicAuth(t *testing.T) {
+	data := randomData(t, 2<<20)
+	var leaked atomic.Bool
+	cdn := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "" {
+			leaked.Store(true)
+		}
+		http.ServeContent(w, r, "f.bin", time.Time{}, bytes.NewReader(data))
+	}))
+	t.Cleanup(cdn.Close)
+	site := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if u, p, ok := r.BasicAuth(); !ok || u != "ann" || p != "pw" {
+			w.Header().Set("WWW-Authenticate", `Basic realm="files"`)
+			http.Error(w, "login", http.StatusUnauthorized)
+			return
+		}
+		http.Redirect(w, r, strings.Replace(cdn.URL, "127.0.0.1", "localhost", 1)+"/f.bin", http.StatusFound)
+	}))
+	t.Cleanup(site.Close)
+
+	e := New(t.TempDir())
+	if _, err := e.Probe(context.Background(), Request{URL: site.URL + "/f"}); err == nil || !strings.Contains(err.Error(), "401") {
+		t.Fatalf("probe without login: %v", err)
+	}
+	d := &Download{Req: Request{URL: site.URL + "/f", User: "ann", Pass: "pw"}}
+	if err := e.Run(context.Background(), d); err != nil {
+		t.Fatal(err)
+	}
+	check(t, d, data)
+	if leaked.Load() {
+		t.Fatal("the login was sent to the other host")
 	}
 }

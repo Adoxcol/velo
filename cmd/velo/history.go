@@ -48,7 +48,7 @@ func (a *app) snapshot() []histEntry {
 		e := histEntry{Req: d.Req, Path: p, Total: total, Status: status, Added: it.added.UnixMilli()}
 		if status == "done" {
 			e.Verified = d.Verified
-			e.Req.Cookies = "" // only needed to finish the download
+			e.Req.Cookies, e.Req.Pass = "", "" // only needed to finish the download
 		}
 		if !it.finished.IsZero() {
 			e.Finished = it.finished.UnixMilli()
@@ -128,15 +128,16 @@ func (a *app) restore() {
 		}
 	}
 	a.loadHistory(entries, skip)
-	cookies := map[string]string{} // .part.json files don't keep cookies; history does
+	// .part.json files don't keep logins; history does.
+	logins := map[string]engine.Request{}
 	for _, e := range entries {
-		if e.Path != "" && e.Req.Cookies != "" {
-			cookies[e.Path] = e.Req.Cookies
+		if e.Path != "" {
+			logins[e.Path] = e.Req
 		}
 	}
 	for _, d := range paused {
-		if d.Req.Cookies == "" {
-			d.Req.Cookies = cookies[d.Path]
+		if r, ok := logins[d.Path]; ok {
+			d.Req.Cookies, d.Req.User, d.Req.Pass = r.Cookies, r.User, r.Pass
 		}
 		a.register(d)
 		log.Printf("#%d paused at %.1f%%: %s", d.ID, pct(d), d.Path)

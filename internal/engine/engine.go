@@ -43,6 +43,7 @@ type Request struct {
 	Title                                       string // page/video title, used to name videos
 	Dir                                         string `json:",omitempty"` // save here instead of the default/category folder
 	Segments                                    int    `json:",omitempty"` // connections for this download (0 = engine default)
+	User, Pass                                  string `json:",omitempty"` // HTTP login for sites that ask for one
 	Checksum                                    string `json:",omitempty"` // expected MD5/SHA-1/SHA-256/SHA-512 (hex), checked when done
 }
 
@@ -190,7 +191,7 @@ func statePath(p string) string { return p + ".part.json" }
 func (d *Download) saveState() error {
 	d.mu.Lock()
 	st := state{Req: d.Req, Total: d.Total}
-	st.Req.Cookies = "" // this file sits in the download folder: keep logins out of it
+	st.Req.Cookies, st.Req.Pass = "", "" // this file sits in the download folder: keep logins out of it
 	for _, s := range d.segs {
 		if s.Pos <= s.End {
 			c := *s
@@ -249,12 +250,14 @@ type Engine struct {
 	dir        atomic.Pointer[string] // download folder for new downloads
 	sortByType atomic.Bool            // put new downloads in category subfolders
 	segments   atomic.Int32           // default connections per download
+	proxy      atomic.Pointer[string] // see SetProxy
 	Client     *http.Client
 	Limit      *Limiter // shared speed limit; nil = unlimited
 }
 
 func New(dir string) *Engine {
-	e := &Engine{Client: newClient(60 * time.Second), Limit: &Limiter{}}
+	e := &Engine{Limit: &Limiter{}}
+	e.Client = newClient(60*time.Second, e.proxyFor)
 	e.SetDir(dir)
 	e.SetSegments(16)
 	return e
@@ -278,6 +281,9 @@ func (e *Engine) newReq(ctx context.Context, r Request) (*http.Request, error) {
 	}
 	if r.Cookies != "" {
 		req.Header.Set("Cookie", r.Cookies)
+	}
+	if r.User != "" || r.Pass != "" {
+		req.SetBasicAuth(r.User, r.Pass)
 	}
 	return req, nil
 }
@@ -719,7 +725,7 @@ func (e *Engine) segReq(ctx context.Context, d *Download) (*http.Request, bool, 
 	r := d.Req
 	r.URL = *u
 	if a, b := hostOf(d.Req.URL), hostOf(*u); a != b && !strings.HasSuffix(b, "."+a) {
-		r.Cookies = ""
+		r.Cookies, r.User, r.Pass = "", "", "" // logins stay with the site they are for
 	}
 	req, err := e.newReq(ctx, r)
 	return req, true, err
