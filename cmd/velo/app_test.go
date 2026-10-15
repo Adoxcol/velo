@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -344,4 +345,46 @@ func TestRefreshLink(t *testing.T) {
 	if before == 0 || filepath.Base(p) != "old" {
 		t.Fatalf("expected the same file to continue (before=%d, path=%s)", before, p)
 	}
+}
+
+func TestQueueOrder(t *testing.T) {
+	url := slowServer(t, 2<<20)
+	s := defaultSettings()
+	s.MaxConcurrent = 1
+	s.SpeedLimitKB = 256 // keep the first download running
+	a := testApp(t, s)
+	first := a.add(engine.Request{URL: url})
+	waitFor(t, "first to start", func() bool { return statusOf(a, first) == "downloading" })
+	b, c, d := a.add(engine.Request{URL: url}), a.add(engine.Request{URL: url}), a.add(engine.Request{URL: url})
+	order := func() (ids []int) {
+		for _, r := range a.rows() {
+			if r.Status == "queued" {
+				ids = append(ids, r.ID)
+			}
+		}
+		return
+	}
+	if err := a.reorder(d, "next"); err != nil {
+		t.Fatal(err)
+	}
+	if got := order(); fmt.Sprint(got) != fmt.Sprint([]int{d, b, c}) {
+		t.Fatalf("after next: %v", got)
+	}
+	a.reorder(b, "down")
+	if got := order(); fmt.Sprint(got) != fmt.Sprint([]int{d, c, b}) {
+		t.Fatalf("after down: %v", got)
+	}
+	a.reorder(b, "up")
+	if got := order(); fmt.Sprint(got) != fmt.Sprint([]int{d, b, c}) {
+		t.Fatalf("after up: %v", got)
+	}
+	a.reorder(c, "now") // past the one-at-a-time limit
+	waitFor(t, "c to start now", func() bool { return statusOf(a, c) == "downloading" })
+	if statusOf(a, first) != "downloading" {
+		t.Fatal("start now stopped the running download")
+	}
+	for _, id := range []int{first, b, c, d} {
+		a.pause(id)
+	}
+	waitFor(t, "all stopped", func() bool { a.mu.Lock(); defer a.mu.Unlock(); return a.running == 0 })
 }

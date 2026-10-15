@@ -32,7 +32,8 @@ Ticked items are done. Work goes roughly top to bottom.
 - [x] Right-click "Download with Velo" on links, images, video and audio, opening Velo's dialog
 - [x] Download all links on a page, filtered by type (counts on each type, `*.pdf *.zip` patterns)
 - [x] Refresh an expired link and continue the same file (checks it is the same size)
-- [ ] Queue control: reorder, download next, several queues
+- [x] Queue control: start now, download next, move up and down
+- [ ] Several named queues (each with its own schedule)
 - [x] Login-protected downloads: username and password in the Add dialog, shown when a site asks; never sent to other hosts
 
 ## Reach

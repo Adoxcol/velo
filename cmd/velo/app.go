@@ -496,6 +496,72 @@ func (a *app) pause(id int) error {
 	return nil
 }
 
+// reorder moves a waiting download in the queue: "next" to the front,
+// "up"/"down" past its neighbour in the queue, "now" starts it at once even
+// when the downloads-at-once limit is reached.
+func (a *app) reorder(id int, how string) error {
+	it := a.get(id)
+	if it == nil {
+		return errors.New("no such download")
+	}
+	if s, _ := it.d.State(); s != "queued" && s != "paused" && s != "error" {
+		return errors.New("only waiting downloads can be moved")
+	}
+	a.mu.Lock()
+	idx := -1
+	var waiting []int // indexes of items in the queue, in order
+	for i, x := range a.items {
+		if x == it {
+			idx = i
+		}
+		if s, _ := x.d.State(); !x.running && (s == "queued" || s == "paused" || s == "error") {
+			waiting = append(waiting, i)
+		}
+	}
+	pos := -1
+	for k, i := range waiting {
+		if i == idx {
+			pos = k
+		}
+	}
+	move := func(to int) { // to an index in a.items
+		x := a.items[idx]
+		a.items = append(a.items[:idx], a.items[idx+1:]...)
+		a.items = append(a.items[:to], append([]*item{x}, a.items[to:]...)...)
+	}
+	switch how {
+	case "next", "now":
+		if pos > 0 {
+			move(waiting[0])
+		}
+	case "up":
+		if pos > 0 {
+			move(waiting[pos-1])
+		}
+	case "down":
+		if pos >= 0 && pos < len(waiting)-1 {
+			move(waiting[pos+1])
+		}
+	default:
+		a.mu.Unlock()
+		return fmt.Errorf("unknown move %q", how)
+	}
+	start := how == "now"
+	if start {
+		it.retryAt, it.retries = time.Time{}, 0
+		it.d.SetStatus("queued")
+		a.launch(it) // past the limit: the user asked for this one now
+	}
+	a.mu.Unlock()
+	if how == "next" {
+		if s, _ := it.d.State(); s != "queued" {
+			a.enqueue(it)
+		}
+	}
+	a.kick()
+	return nil
+}
+
 // refreshLink swaps an expired link for a fresh one and resumes the same
 // file, like IDM's "refresh download address". The new link must serve a
 // file of the same size, so two different files are never stitched together.

@@ -443,6 +443,9 @@ const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const icon = (d, cls = "i") => `<svg class="${cls}" viewBox="0 0 24 24">${d}</svg>`;
 const I = {
+  up: '<path d="M12 19V5M6 11l6-6 6 6"/>',
+  down: '<path d="M12 5v14M6 13l6 6 6-6"/>',
+  next: '<path d="M5 5l7 7-7 7M13 5l7 7-7 7"/>',
   home: '<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/>',
   dl: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
   queue: '<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>',
@@ -549,7 +552,7 @@ function rowsFor(view) {
   let rows = data.slice().reverse();
   if (query) rows = rows.filter((r) => (r.file + " " + r.url).toLowerCase().includes(query));
   switch (view) {
-    case "queue": return rows.filter((r) => ["queued", "paused", "error"].includes(r.status));
+    case "queue": return rows.reverse().filter((r) => ["queued", "paused", "error"].includes(r.status)); // in the order they will run
     case "completed": return rows.filter((r) => r.status === "done").sort((a, b) => b.finished - a.finished);
     case "media": return rows.filter((r) => r.category === "Video" || r.category === "Music");
   }
@@ -670,6 +673,12 @@ function openMenu(anchor, r) {
   if (r.status === "downloading" || r.status === "queued") items.push(["pause", I.pause, "Pause"]);
   if (r.status === "paused" || r.status === "error") items.push(["resume", I.play, "Resume"]);
   if ((r.status === "paused" || r.status === "error") && !r.kind) items.push(["relink", I.retry, "Refresh link…"]);
+  if (["queued", "paused", "error"].includes(r.status)) {
+    items.push(["hr"], ["now", I.play, "Start now"], ["next", I.next, "Download next"]);
+    const q = rowsFor("queue"), i = q.findIndex((x) => x.id === r.id);
+    if (i > 0) items.push(["up", I.up, "Move up"]);
+    if (i >= 0 && i < q.length - 1) items.push(["down", I.down, "Move down"]);
+  }
   items.push(["hr"], ["remove", I.trash, r.status === "done" ? "Remove from list" : "Cancel and delete", "danger"]);
   m.innerHTML = items.map(([k, ic, l, cls]) => k === "hr" ? "<hr>" : `<button data-m="${k}" class="${cls || ""}">${icon(ic)}${l}</button>`).join("");
   const rect = anchor.getBoundingClientRect();
@@ -686,6 +695,7 @@ function openMenu(anchor, r) {
     if (k === "resume") act(resume, r.id);
     if (k === "remove") act(remove, r.id);
     if (k === "relink") openRelink(r);
+    if (["now", "next", "up", "down"].includes(k)) act(reorder, r.id, k);
   };
 }
 document.addEventListener("mousedown", (e) => { if (!e.target.closest("#menu")) $("#menu").style.display = "none"; });
