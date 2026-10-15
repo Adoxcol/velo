@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -287,5 +288,64 @@ func TestGrowAndRedirect(t *testing.T) {
 	}
 	if h := hops.Load(); h != 1 {
 		t.Errorf("redirect followed %d times, want once (the probe)", h)
+	}
+}
+
+func TestDiskFull(t *testing.T) {
+	old := freeSpace
+	freeSpace = func(string) int64 { return 1 << 20 }
+	t.Cleanup(func() { freeSpace = old })
+	data := randomData(t, 2<<20)
+	srv, _ := testServer(t, data, 0, 0)
+	d := &Download{Req: Request{URL: srv.URL + "/file.bin"}}
+	err := New(t.TempDir()).Run(context.Background(), d)
+	var full *DiskFullError
+	if !errors.As(err, &full) || Transient(err) {
+		t.Fatalf("want a disk full error, got %v", err)
+	}
+	t.Log(err)
+	if free := old(t.TempDir()); free <= 0 {
+		t.Fatalf("real free space looks wrong: %d", free)
+	}
+}
+
+func TestSafeName(t *testing.T) {
+	long := strings.Repeat("a", 300) + ".zip"
+	for in, want := range map[string]string{
+		"..":              "download",
+		"...":             "download",
+		"../../evil.exe":  ".._.._evil.exe",
+		`..\..\evil.exe`:  ".._.._evil.exe",
+		"C:evil.txt":      "C_evil.txt",
+		"file.txt:stream": "file.txt_stream",
+		"CON":             "_CON",
+		"nul.txt":         "_nul.txt",
+		"COM1.zip":        "_COM1.zip",
+		"console.txt":     "console.txt",
+		"report.pdf. . .": "report.pdf",
+		"  spaced.zip  ":  "spaced.zip",
+		"a\x00b\x1fc.bin": "a_b_c.bin",
+		"":                "download",
+		long:              strings.Repeat("a", 176) + ".zip",
+	} {
+		if got := safeName(in, "download"); got != want {
+			t.Errorf("safeName(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestStateFileHasNoCookies(t *testing.T) {
+	dir := t.TempDir()
+	d := &Download{Req: Request{URL: "http://x/f", Cookies: "session=secret"}, Total: 10, Path: filepath.Join(dir, "f"),
+		segs: []*Segment{{Pos: 0, End: 9}}}
+	if err := d.saveState(); err != nil {
+		t.Fatal(err)
+	}
+	b, _ := os.ReadFile(statePath(d.Path))
+	if bytes.Contains(b, []byte("secret")) {
+		t.Fatalf("cookies written to %s: %s", statePath(d.Path), b)
+	}
+	if d.Req.Cookies == "" {
+		t.Fatal("saveState cleared the live download's cookies")
 	}
 }

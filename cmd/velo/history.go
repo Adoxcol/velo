@@ -45,6 +45,9 @@ func (a *app) snapshot() []histEntry {
 			status = "queued" // was interrupted: start again on the next run
 		}
 		e := histEntry{Req: d.Req, Path: p, Total: total, Status: status, Added: it.added.UnixMilli()}
+		if status == "done" {
+			e.Req.Cookies = "" // only needed to finish the download
+		}
 		if !it.finished.IsZero() {
 			e.Finished = it.finished.UnixMilli()
 		}
@@ -123,7 +126,16 @@ func (a *app) restore() {
 		}
 	}
 	a.loadHistory(entries, skip)
+	cookies := map[string]string{} // .part.json files don't keep cookies; history does
+	for _, e := range entries {
+		if e.Path != "" && e.Req.Cookies != "" {
+			cookies[e.Path] = e.Req.Cookies
+		}
+	}
 	for _, d := range paused {
+		if d.Req.Cookies == "" {
+			d.Req.Cookies = cookies[d.Path]
+		}
 		a.register(d)
 		log.Printf("#%d paused at %.1f%%: %s", d.ID, pct(d), d.Path)
 	}

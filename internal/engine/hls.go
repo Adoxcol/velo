@@ -176,11 +176,11 @@ func videoName(r Request) string {
 			name = strings.TrimSuffix(path.Base(u.Path), path.Ext(u.Path))
 		}
 	}
-	name = strings.TrimSpace(unsafeChars.ReplaceAllString(name, "_"))
 	if len([]rune(name)) > 120 {
 		name = string([]rune(name)[:120])
 	}
-	if name == "" || name == "." || name == "_" || name == "index" || name == "master" || name == "playlist" {
+	name = safeName(name, "video")
+	if name == "index" || name == "master" || name == "playlist" {
 		name = "video"
 	}
 	return name
@@ -322,7 +322,7 @@ func (e *Engine) fetchPart(ctx context.Context, d *Download, u, dst string) (int
 		}
 		if resp.StatusCode != http.StatusOK {
 			resp.Body.Close()
-			lastErr = fmt.Errorf("segment: %s", resp.Status)
+			lastErr = &StatusError{resp.StatusCode, "segment: " + resp.Status}
 			if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500 {
 				continue
 			}

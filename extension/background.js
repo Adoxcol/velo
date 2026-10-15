@@ -153,9 +153,28 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "velo-all" || info.menuItemId === "velo-selection") {
     return downloadAll(tab, info.menuItemId === "velo-selection");
   }
-  const url = info.linkUrl || info.srcUrl;
-  if (url) handOff({ url, referrer: tab?.url, filename: "" });
+  menuDownload(info, tab);
 });
+
+// "Download with Velo" on a link, image, video or audio. Velo shows its
+// download dialog, as for a captured download.
+async function menuDownload(info, tab) {
+  let url = info.mediaType === "video" || info.mediaType === "audio" ? info.srcUrl || info.linkUrl : info.linkUrl || info.srcUrl;
+  let reply;
+  if (url && /^https?:/i.test(url)) {
+    reply = await handOff({ url, referrer: info.frameUrl || tab?.url, filename: "", source: "capture" });
+  } else if (info.mediaType === "video" || info.mediaType === "audio") {
+    // Streamed players use blob: URLs; download the stream Velo detected instead.
+    if (tab && unsupportedSite(tab.url)) return notifyTab(tab.id, "This site uses a protected streaming format that Velo doesn't support.");
+    const entry = tab?.id != null && best((await getMedia(tab.id)).items);
+    if (!entry) return notifyTab(tab.id, "Velo hasn't found this video's stream yet. Play it for a moment and try again.");
+    reply = await grab(tab.id, entry);
+  } else {
+    return tab?.id != null && notifyTab(tab.id, "Velo can't download this kind of link.");
+  }
+  if (!reply.ok && tab?.id != null) notifyTab(tab.id, reply.error && /not running|native host|exited/i.test(reply.error)
+    ? "Velo isn't running. Start Velo and try again." : "Velo: " + (reply.error || "couldn't start the download."));
+}
 
 // Runs in the page: collects the links on it (or in the selection).
 function collectLinks(selectionOnly) {

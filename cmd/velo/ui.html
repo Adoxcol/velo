@@ -542,9 +542,10 @@ function card(r) {
     meta = `<span class="badge err" title="${escapeHtml(r.error || "")}">${escapeHtml(shorten(r.error || "Failed", 80))}</span>`;
     acts = `<button class="iconbtn" data-act="resume" title="Retry">${icon(I.retry)}</button>`;
   } else {
-    const label = r.status === "queued" ? "Waiting in queue" : "Paused";
+    const label = r.retrying ? (r.retryIn > 0 ? "Connection lost · retrying in " + r.retryIn + "s" : "Reconnecting…")
+      : r.status === "queued" ? "Waiting in queue" : "Paused";
     meta = `<span>${known ? size(r.done) + " / " + size(r.total) : r.done ? size(r.done) : "Not started"}</span>` +
-      (pct > 0 ? `<span class="dot">${pct.toFixed(0)}%</span>` : "") + `<span class="dot badge warn">${label}</span>`;
+      (pct > 0 ? `<span class="dot">${pct.toFixed(0)}%</span>` : "") + `<span class="dot badge warn" title="${escapeHtml(r.retrying ? r.error || "" : "")}">${label}</span>`;
     acts = r.status === "paused" ? `<button class="iconbtn" data-act="resume" title="Resume">${icon(I.play)}</button>`
                                  : `<button class="iconbtn" data-act="pause" title="Hold">${icon(I.pause)}</button>`;
   }

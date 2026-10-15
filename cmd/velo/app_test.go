@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -226,4 +227,50 @@ func TestBatchCookiesStayOnSameSite(t *testing.T) {
 			t.Fatalf("%s got cookies %q", it.d.Req.URL, it.d.Req.Cookies)
 		}
 	}
+}
+
+// A download that loses the network waits and resumes by itself; a missing
+// file fails straight away.
+func TestRetriesAfterNetworkDrop(t *testing.T) {
+	old := retryDelay
+	retryDelay = func(int) time.Duration { return 100 * time.Millisecond }
+	t.Cleanup(func() { retryDelay = old })
+
+	data := make([]byte, 2<<20)
+	rand.Read(data)
+	var down atomic.Bool
+	down.Store(true)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/missing" {
+			http.NotFound(w, r)
+			return
+		}
+		if down.Load() { // drop the connection like a lost network
+			c, _, _ := w.(http.Hijacker).Hijack()
+			c.Close()
+			return
+		}
+		http.ServeContent(w, r, "f.bin", time.Time{}, bytes.NewReader(data))
+	}))
+	t.Cleanup(srv.Close)
+
+	a := testApp(t, defaultSettings())
+	id := a.add(engine.Request{URL: srv.URL + "/f.bin"})
+	waitFor(t, "a retry to be scheduled", func() bool {
+		for _, r := range a.rows() {
+			if r.ID == id && r.Retrying {
+				return true
+			}
+		}
+		return false
+	})
+	down.Store(false)
+	waitFor(t, "download to finish after the network is back", func() bool { return statusOf(a, id) == "done" })
+	got, _ := os.ReadFile(func() string { p, _ := a.get(id).d.Info(); return p }())
+	if !bytes.Equal(got, data) {
+		t.Fatal("content mismatch")
+	}
+
+	miss := a.add(engine.Request{URL: srv.URL + "/missing"})
+	waitFor(t, "404 to fail", func() bool { return statusOf(a, miss) == "error" })
 }

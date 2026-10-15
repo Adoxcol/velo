@@ -60,7 +60,8 @@ func main() {
 		log.Fatal(err)
 	}
 	log.Printf("Velo listening on 127.0.0.1:%d, saving to %s", ep.Port, eng.Dir())
-	go http.Serve(ln, http.HandlerFunc(a.handle))
+	srv := &http.Server{Handler: http.HandlerFunc(a.handle), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second}
+	go srv.Serve(ln)
 
 	runTray(a, !*background) // blocks until Exit
 	ipc.RemoveEndpoint()

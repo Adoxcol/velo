@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,7 +31,19 @@ type item struct {
 	speed    float64   // bytes/s, updated every second
 	added    time.Time // when it was added
 	finished time.Time // when it completed (zero until then)
+
+	// Network drops: the download waits in the queue until retryAt.
+	retryAt   time.Time
+	retries   int   // in a row without progress
+	retryDone int64 // bytes done at the last failure
 }
+
+// retryDelay is how long to wait before the nth retry in a row.
+var retryDelay = func(n int) time.Duration {
+	return min(5*time.Second<<(n-1), time.Minute)
+}
+
+const maxRetries = 30 // in a row without progress: about half an hour
 
 type app struct {
 	eng       *engine.Engine
@@ -313,6 +326,9 @@ func (a *app) add(r engine.Request) int {
 }
 
 func (a *app) enqueue(it *item) {
+	a.mu.Lock()
+	it.retryAt, it.retries = time.Time{}, 0
+	a.mu.Unlock()
 	it.d.SetStatus("queued")
 	a.kick()
 }
@@ -349,7 +365,7 @@ func (a *app) dispatch(now time.Time) {
 			it.cancel()
 			log.Printf("#%d stopped by schedule", it.d.ID)
 		}
-		if s, _ := it.d.State(); s == "queued" && !it.running {
+		if s, _ := it.d.State(); s == "queued" && !it.running && !now.Before(it.retryAt) {
 			if allowed && a.running < a.settings.MaxConcurrent {
 				a.launch(it)
 			} else {
@@ -386,9 +402,26 @@ func (a *app) launch(it *item) {
 		requeue := it.requeue
 		if err == nil {
 			a.finished = true
+			it.retries = 0
+		}
+		retry := time.Duration(0)
+		if engine.Transient(err) {
+			if done := d.Done.Load(); done > it.retryDone {
+				it.retries = 0 // it got further: the connection works sometimes
+				it.retryDone = done
+			}
+			if it.retries < maxRetries {
+				it.retries++
+				retry = retryDelay(it.retries)
+				it.retryAt = time.Now().Add(retry)
+			}
 		}
 		a.mu.Unlock()
 		switch {
+		case retry > 0:
+			log.Printf("#%d interrupted (%v); retrying in %s", d.ID, err, retry)
+			d.SetStatus("queued")
+			time.AfterFunc(retry, a.kick)
 		case requeue && errors.Is(err, context.Canceled):
 			d.SetStatus("queued") // resumes when the schedule allows
 		case errors.Is(err, context.Canceled):
@@ -575,9 +608,9 @@ func (a *app) openDir() error {
 	return exec.Command("explorer", dir).Start()
 }
 
-// measure updates each download's speed once a second.
 // measure updates each download's speed once a second, and keeps the last
-// minute of total speed for the sidebar graph.
+// minute of total speed for the sidebar graph. It also keeps Windows from
+// sleeping while anything downloads.
 func (a *app) measure() {
 	for range time.Tick(time.Second) {
 		a.mu.Lock()
@@ -594,7 +627,9 @@ func (a *app) measure() {
 		if len(a.speedHist) > 60 {
 			a.speedHist = a.speedHist[len(a.speedHist)-60:]
 		}
+		busy := a.running > 0
 		a.mu.Unlock()
+		keepAwake(busy)
 	}
 }
 
@@ -616,6 +651,8 @@ type row struct {
 	Added       int64   `json:"added"`    // unix ms
 	Finished    int64   `json:"finished"` // unix ms, 0 until done
 	Error       string  `json:"error,omitempty"`
+	Retrying    bool    `json:"retrying,omitempty"` // waiting after a network drop
+	RetryIn     int     `json:"retryIn,omitempty"`  // seconds until the next try
 }
 
 func (a *app) rows() []row {
@@ -651,6 +688,10 @@ func (a *app) rows() []row {
 		if err != nil {
 			r.Error = err.Error()
 		}
+		if status == "queued" && !it.retryAt.IsZero() {
+			r.RetryIn = max(int(time.Until(it.retryAt).Seconds()+0.99), 0)
+			r.Retrying = true
+		}
 		rows = append(rows, r)
 	}
 	return rows
@@ -675,7 +716,7 @@ func (a *app) status() status {
 
 // handle serves the token-protected API used by velo-host and veloctl.
 func (a *app) handle(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" || r.Header.Get(ipc.TokenHeader) != a.token {
+	if r.Method != "POST" || subtle.ConstantTimeCompare([]byte(r.Header.Get(ipc.TokenHeader)), []byte(a.token)) != 1 {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
@@ -728,6 +769,11 @@ func (a *app) handle(w http.ResponseWriter, r *http.Request) {
 		// dialog (unless turned off); the browser's own download is stopped.
 		if j.Source == "capture" && a.getSettings().AskOnCapture && a.showPending != nil {
 			a.mu.Lock()
+			if len(a.pending) >= 50 { // a page firing downloads in a loop
+				a.mu.Unlock()
+				reply(0, fmt.Errorf("too many downloads waiting for the download dialog"))
+				return
+			}
 			a.nextPending++
 			a.pending = append(a.pending, pendingDL{ID: a.nextPending, Req: r, Size: j.Size})
 			a.mu.Unlock()

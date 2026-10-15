@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"mime"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -52,6 +53,48 @@ type Segment struct {
 }
 
 // errBusy means the server refused another connection (429/503).
+// DiskFullError means the file is bigger than the space left on the drive.
+type DiskFullError struct {
+	Need, Free int64
+	Dir        string
+}
+
+func (e *DiskFullError) Error() string {
+	return fmt.Sprintf("not enough disk space: the file needs %s but only %s is free on %s", mb(e.Need), mb(e.Free), filepath.VolumeName(e.Dir))
+}
+
+func mb(n int64) string {
+	if n >= 1<<30 {
+		return fmt.Sprintf("%.1f GB", float64(n)/(1<<30))
+	}
+	return fmt.Sprintf("%.0f MB", float64(n)/(1<<20))
+}
+
+// StatusError is an HTTP error response.
+type StatusError struct {
+	Code int
+	Msg  string
+}
+
+func (e *StatusError) Error() string { return e.Msg }
+
+// Transient reports whether err is worth retrying later: the network dropped
+// or the server had a temporary problem. A missing file, a refused link or a
+// full disk is not.
+func Transient(err error) bool {
+	if err == nil || errors.Is(err, context.Canceled) {
+		return false
+	}
+	var se *StatusError
+	if errors.As(err, &se) {
+		return se.Code >= 500 || se.Code == http.StatusRequestTimeout || se.Code == http.StatusTooManyRequests
+	}
+	var ne net.Error
+	var b errBusy
+	return errors.As(err, &ne) || errors.As(err, &b) || errors.Is(err, ErrStalled) ||
+		errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.EOF)
+}
+
 type errBusy struct{ retryAfter time.Duration }
 
 func (e errBusy) Error() string { return "server busy" }
@@ -136,6 +179,7 @@ func statePath(p string) string { return p + ".part.json" }
 func (d *Download) saveState() error {
 	d.mu.Lock()
 	st := state{Req: d.Req, Total: d.Total}
+	st.Req.Cookies = "" // this file sits in the download folder: keep logins out of it
 	for _, s := range d.segs {
 		if s.Pos <= s.End {
 			c := *s
@@ -241,9 +285,30 @@ func fileName(r Request, resp *http.Response) string {
 			name, _ = url.PathUnescape(path.Base(u.Path))
 		}
 	}
-	name = strings.TrimSpace(unsafeChars.ReplaceAllString(name, "_"))
-	if name == "" || name == "." || name == "_" {
-		name = "download"
+	return safeName(name, "download")
+}
+
+var reservedNames = regexp.MustCompile(`(?i)^(con|prn|aux|nul|com[0-9¹²³]|lpt[0-9¹²³])(\.|$)`)
+
+// safeName makes name (from a web server, so untrusted) a plain file name
+// inside the download folder: no path separators or "..", no Windows device
+// names, no trailing dots or spaces, and short enough for Windows.
+func safeName(name, fallback string) string {
+	name = unsafeChars.ReplaceAllString(name, "_")
+	name = strings.TrimRight(strings.TrimSpace(name), ". ")
+	name = strings.TrimLeft(name, " ")
+	if strings.Trim(name, "._ ") == "" {
+		return fallback
+	}
+	if reservedNames.MatchString(name) {
+		name = "_" + name
+	}
+	if r := []rune(name); len(r) > 180 { // leaves room for " (2)" and ".part.json"
+		ext := []rune(filepath.Ext(name))
+		if len(ext) > 16 {
+			ext = nil
+		}
+		name = strings.TrimRight(string(r[:180-len(ext)]), ". ") + string(ext)
 	}
 	return name
 }
@@ -329,7 +394,7 @@ func (e *Engine) run(ctx context.Context, d *Download) error {
 		total = resp.ContentLength
 	} else {
 		resp.Body.Close()
-		return fmt.Errorf("server returned %s", resp.Status)
+		return &StatusError{resp.StatusCode, "server returned " + resp.Status}
 	}
 
 	if u := resp.Request.URL.String(); u != d.Req.URL {
@@ -340,6 +405,10 @@ func (e *Engine) run(ctx context.Context, d *Download) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		resp.Body.Close()
 		return err
+	}
+	if free := freeSpace(dir); total > 0 && free >= 0 && total > free {
+		resp.Body.Close()
+		return &DiskFullError{Need: total, Free: free, Dir: dir}
 	}
 	d.mu.Lock()
 	d.Total, d.Ranged = total, ranged
@@ -685,7 +754,7 @@ func (e *Engine) fetch(ctx context.Context, d *Download, f *os.File, s *Segment)
 		}
 		if resp.StatusCode != http.StatusPartialContent {
 			resp.Body.Close()
-			return fmt.Errorf("range %d-%d: %s", pos, end, resp.Status)
+			return &StatusError{resp.StatusCode, fmt.Sprintf("range %d-%d: %s", pos, end, resp.Status)}
 		}
 		finished, err := d.copySeg(ctx, e.Limit, f, s, resp.Body, buf)
 		resp.Body.Close()
