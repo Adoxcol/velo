@@ -92,7 +92,7 @@ func writeManifest(w io.Writer, path, ver string, firefox bool) error {
 		m["background"] = map[string]any{"scripts": []string{"background.js"}}
 		m["browser_specific_settings"] = map[string]any{"gecko": map[string]any{
 			"id":                          hostreg.FirefoxID,
-			"strict_min_version":          "128.0",
+			"strict_min_version":          "142.0",
 			"data_collection_permissions": map[string]any{"required": []string{"none"}},
 		}}
 	}
