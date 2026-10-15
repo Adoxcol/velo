@@ -46,4 +46,5 @@ Ticked items are done. Work goes roughly top to bottom.
 - [x] Taskbar progress bar
 - [x] Search downloads (Ctrl+K)
 - [x] Keyboard shortcuts: Ctrl+N add, Ctrl+V paste a link, arrows to select, Space pause/resume, Enter open, Delete remove, ? for the list
-- [ ] Landing page for launch
+- [x] Landing page (site/), ready for velo.adoxcol.com
+- [ ] Deploy the landing page to Vercel at velo.adoxcol.com

@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Velo — fast, free download manager for Windows</title>
+<meta name="description" content="Velo is a free, open-source download manager for Windows. Up to 32 connections per file, pause and resume, a video grabber, and browser integration for Chrome, Edge, Brave and Firefox.">
+<meta name="theme-color" content="#0d1728">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="img/icon.png">
+<meta property="og:title" content="Velo — fast, free download manager for Windows">
+<meta property="og:description" content="Open source. Up to 32 connections per file, pause and resume, a video grabber and browser integration.">
+<meta property="og:image" content="https://velo.adoxcol.com/img/app.png">
+<meta property="og:url" content="https://velo.adoxcol.com/">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  :root {
+    --primary: #1677ff; --primary-2: #4c9bff; --navy: #0d1728; --navy-2: #13213a;
+    --bg: #ffffff; --bg-2: #f5f8fc; --surface: #ffffff; --ink: #0d1728; --muted: #64748b; --faint: #94a3b8;
+    --line: #e6ebf2; --ok: #22c55e; --soft: #eef5ff;
+    --mock-bg: #ffffff; --mock-side: #f7f9fc; --mock-line: #e9eef5; --track: #e8eef6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0a1120; --bg-2: #0d1628; --surface: #111b2e; --ink: #edf2f9; --muted: #97a6ba; --faint: #64748b;
+      --line: #1d2a41; --soft: #12233f;
+      --mock-bg: #111b2e; --mock-side: #0e1727; --mock-line: #1d2a41; --track: #1d2a41;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+  svg.i { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  h1, h2, h3 { letter-spacing: -.022em; }
+
+  /* ---------- nav (sits on the navy hero) ---------- */
+  nav { position: absolute; inset: 0 0 auto; z-index: 5; }
+  nav .wrap { display: flex; align-items: center; gap: 28px; height: 72px; }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 21px; text-decoration: none; }
+  .brand svg { width: 22px; height: 22px; }
+  nav .brand { color: #fff; }
+  nav .links { display: flex; align-items: center; gap: 26px; margin-left: auto; font-size: 15px; }
+  nav .links a { text-decoration: none; color: #b8c4d6; transition: color .15s; }
+  nav .links a:hover { color: #fff; }
+
+  .btn { display: inline-flex; align-items: center; gap: 9px; padding: 13px 22px; border-radius: 11px; font-weight: 600; font-size: 15.5px; text-decoration: none; border: 1px solid transparent; transition: transform .15s, background .15s, box-shadow .15s; white-space: nowrap; }
+  .btn:hover { transform: translateY(-1px); }
+  .btn.primary { background: var(--primary); color: #fff; box-shadow: 0 12px 28px -12px rgba(22, 119, 255, .9); }
+  .btn.primary:hover { background: #0f6ae6; }
+  .btn.glass { color: #fff; background: rgba(255, 255, 255, .06); border-color: rgba(255, 255, 255, .14); }
+  .btn.glass:hover { background: rgba(255, 255, 255, .1); }
+  nav .btn { padding: 9px 16px; font-size: 14.5px; color: #fff !important; }
+
+  /* ---------- hero ---------- */
+  .hero { position: relative; overflow: hidden; background: var(--navy); color: #fff; padding: 148px 0 0; text-align: center; }
+  .hero::before { content: ""; position: absolute; inset: 0; background:
+      radial-gradient(60% 50% at 50% 0%, rgba(22, 119, 255, .45), transparent 70%),
+      radial-gradient(40% 40% at 85% 60%, rgba(76, 155, 255, .15), transparent 70%); }
+  .hero::after { content: ""; position: absolute; inset: 0; opacity: .5;
+      background-image: linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+      background-size: 48px 48px; mask-image: radial-gradient(70% 60% at 50% 20%, #000, transparent 75%); }
+  .hero .wrap { position: relative; z-index: 1; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 99px; background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .12); color: #c9d6ea; font-size: 13.5px; }
+  .pill b { color: #fff; font-weight: 600; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px rgba(34, 197, 94, .18); }
+  h1 { font-size: clamp(40px, 7vw, 76px); line-height: 1.02; margin: 22px auto 20px; letter-spacing: -.035em; }
+  h1 .grad { background: linear-gradient(90deg, #7db6ff, #1677ff 60%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lead { font-size: clamp(17px, 2vw, 20px); color: #aebbd0; max-width: 600px; margin: 0 auto 32px; }
+  .ctas { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .fine { margin: 16px 0 0; color: #7f8ea6; font-size: 14px; }
+
+  /* ---------- the app mockup ---------- */
+  .stage { margin: 64px auto 0; max-width: 980px; padding: 0 0 0; }
+  .window { background: var(--mock-bg); color: var(--ink); border-radius: 14px 14px 0 0; border: 1px solid rgba(255, 255, 255, .12); border-bottom: 0;
+    box-shadow: 0 -10px 80px -20px rgba(22, 119, 255, .55), 0 30px 80px rgba(0, 0, 0, .35); text-align: left; overflow: hidden; }
+  .titlebar { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px; border-bottom: 1px solid var(--mock-line); font-size: 12.5px; color: var(--muted); }
+  .titlebar svg { width: 14px; height: 14px; }
+  .titlebar .ctl { margin-left: auto; display: flex; gap: 18px; color: var(--faint); }
+  .app { display: grid; grid-template-columns: 200px 1fr; min-height: 380px; }
+  .side { background: var(--mock-side); border-right: 1px solid var(--mock-line); padding: 18px 12px; display: flex; flex-direction: column; gap: 3px; font-size: 13.5px; }
+  .side .logo { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: 17px; padding: 0 8px 14px; }
+  .side .logo svg { width: 18px; height: 18px; }
+  .nav-i { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; color: var(--muted); }
+  .nav-i svg { width: 16px; height: 16px; }
+  .nav-i.on { background: var(--primary); color: #fff; }
+  .nav-i .n { margin-left: auto; font-size: 11px; background: var(--soft); color: var(--primary); border-radius: 99px; padding: 0 7px; }
+  .speed { margin-top: auto; border: 1px solid var(--mock-line); background: var(--mock-bg); border-radius: 10px; padding: 10px 12px; }
+  .speed small { color: var(--muted); font-size: 11.5px; }
+  .speed b { display: block; font-size: 19px; }
+  .speed svg { width: 100%; height: 26px; display: block; margin-top: 4px; }
+  .main { padding: 20px 22px 24px; }
+  .main h4 { margin: 0 0 14px; font-size: 15px; display: flex; align-items: center; justify-content: space-between; }
+  .main h4 span { color: var(--muted); font-weight: 400; font-size: 13px; }
+  .dl { display: grid; grid-template-columns: 42px 1fr auto; gap: 14px; align-items: center; padding: 14px; border: 1px solid var(--mock-line); border-radius: 12px; margin-bottom: 10px; background: var(--mock-bg); }
+  .tile { width: 42px; height: 42px; border-radius: 10px; display: grid; place-items: center; color: #fff; }
+  .tile svg { width: 20px; height: 20px; }
+  .t-arch { background: linear-gradient(135deg, #facc15, #eab308); }
+  .t-vid { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+  .t-doc { background: linear-gradient(135deg, #fb923c, #ea580c); }
+  .dl .name { font-weight: 600; font-size: 14px; }
+  .dl .meta { color: var(--muted); font-size: 12.5px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .dl .meta i { font-style: normal; color: var(--primary); }
+  .dl .right { color: var(--muted); font-size: 12px; text-align: right; }
+  .done { color: var(--ok); font-weight: 600; font-size: 12.5px; display: inline-flex; gap: 5px; align-items: center; }
+  .done svg { width: 15px; height: 15px; }
+
+  /* the segmented bar: one file, many parts filling at once */
+  .segs { display: grid; grid-template-columns: repeat(16, 1fr); gap: 3px; margin-top: 9px; }
+  .segs i { display: block; height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; position: relative; }
+  .segs i::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, var(--primary), var(--primary-2)); transform-origin: left; transform: scaleX(var(--p, .3)); animation: fill var(--d, 6s) ease-in-out infinite alternate; }
+  .bar { height: 6px; border-radius: 3px; background: var(--track); margin-top: 9px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 41%; background: linear-gradient(90deg, var(--primary), var(--primary-2)); border-radius: 3px; }
+  @keyframes fill { from { transform: scaleX(var(--p, .3)); } to { transform: scaleX(calc(var(--p, .3) + .55)); } }
+  @media (prefers-reduced-motion: reduce) { .segs i::after { animation: none; } }
+
+  /* ---------- sections ---------- */
+  section { padding: 104px 0; }
+  section.alt { background: var(--bg-2); }
+  .head { max-width: 640px; margin-bottom: 52px; }
+  .head.center { margin-left: auto; margin-right: auto; text-align: center; }
+  .eyebrow { color: var(--primary); font-weight: 600; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+  h2 { font-size: clamp(30px, 4.2vw, 44px); line-height: 1.1; margin: 10px 0 14px; }
+  .sub { color: var(--muted); font-size: 18px; margin: 0; }
+
+  /* features */
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+  .feat { background: var(--surface); padding: 30px 28px; }
+  .feat .ic { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; background: var(--soft); color: var(--primary); margin-bottom: 18px; }
+  .feat .ic svg { width: 20px; height: 20px; }
+  .feat h3 { margin: 0 0 6px; font-size: 17.5px; }
+  .feat p { margin: 0; color: var(--muted); font-size: 15px; }
+  .also { margin-top: 26px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; color: var(--muted); font-size: 14px; }
+  .also span { padding: 6px 13px; border: 1px solid var(--line); border-radius: 99px; background: var(--surface); }
+
+  /* split rows */
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 72px; align-items: center; }
+  .split + .split { margin-top: 112px; }
+  .split.rev .text { order: 2; }
+  ul.ticks { list-style: none; padding: 0; margin: 26px 0 0; display: grid; gap: 12px; }
+  ul.ticks li { display: flex; gap: 12px; color: var(--ink); font-size: 15.5px; }
+  ul.ticks li svg { color: var(--ok); margin-top: 4px; }
+  .browsers { display: flex; gap: 8px; margin-top: 28px; flex-wrap: wrap; }
+  .browsers span { padding: 6px 13px; border-radius: 99px; background: var(--soft); color: var(--primary); font-size: 13.5px; font-weight: 600; }
+
+  /* video mockup */
+  .vid { position: relative; aspect-ratio: 16 / 10; border-radius: 18px; overflow: hidden; box-shadow: 0 30px 60px -30px rgba(13, 23, 40, .45);
+    background: linear-gradient(180deg, #3e5a8c 0%, #8f7da1 45%, #e9a46b 72%, #2c4370 72.2%, #1a2b4d 100%); }
+  .vid .m1 { position: absolute; inset: auto -10% 28% -10%; height: 46%; background: #2e4672; clip-path: polygon(0 100%, 22% 30%, 38% 70%, 55% 10%, 72% 60%, 86% 35%, 100% 100%); }
+  .vid .m2 { position: absolute; inset: auto -10% 28% -10%; height: 30%; background: #22365c; clip-path: polygon(0 100%, 18% 40%, 35% 85%, 52% 35%, 70% 90%, 88% 45%, 100% 100%); }
+  .vid .sun { position: absolute; width: 11%; aspect-ratio: 1; border-radius: 50%; background: #fde7c4; left: 66%; top: 47%; box-shadow: 0 0 60px #fbc98a; }
+  .vid .ctrl { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 18px; display: flex; align-items: center; gap: 12px; background: linear-gradient(transparent, rgba(0,0,0,.55)); color: #fff; }
+  .vid .ctrl svg { width: 16px; height: 16px; fill: #fff; stroke: none; }
+  .vid .prog { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,.3); }
+  .vid .prog i { display: block; height: 100%; width: 38%; background: #fff; border-radius: 2px; }
+  .pillbtn { position: absolute; top: 16px; right: 16px; display: flex; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 22px rgba(0,0,0,.3); font-size: 13.5px; font-weight: 600; color: #fff; }
+  .pillbtn span { background: var(--primary); padding: 8px 13px; display: flex; gap: 7px; align-items: center; }
+  .pillbtn span + span { border-left: 1px solid rgba(255,255,255,.3); padding: 8px 10px; }
+  .pillbtn svg { width: 14px; height: 14px; }
+  .menu { position: absolute; top: 58px; right: 16px; width: 230px; background: #fff; color: #0d1728; border-radius: 12px; padding: 8px; box-shadow: 0 18px 40px rgba(0,0,0,.3); font-size: 13px; }
+  .menu .h { color: #64748b; font-size: 11.5px; padding: 4px 10px 6px; }
+  .menu div.r { display: flex; justify-content: space-between; padding: 7px 10px; border-radius: 7px; }
+  .menu div.r.on { background: #eef5ff; }
+  .menu div.r b { font-weight: 600; }
+  .menu div.r span { color: #64748b; font-size: 12px; }
+
+  /* batch mockup */
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 30px 60px -34px rgba(13, 23, 40, .4); padding: 20px; }
+  .panel .top { display: flex; justify-content: space-between; align-items: center; font-weight: 600; margin-bottom: 14px; }
+  .panel .top span { color: var(--muted); font-weight: 400; font-size: 13px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .chips span { font-size: 12.5px; padding: 4px 11px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); }
+  .chips span.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .chips span em { font-style: normal; opacity: .65; margin-left: 4px; }
+  .row { display: grid; grid-template-columns: 18px 32px 1fr; gap: 12px; align-items: center; padding: 9px 4px; border-top: 1px solid var(--line); font-size: 13.5px; }
+  .row .cb { width: 16px; height: 16px; border-radius: 5px; border: 1.5px solid var(--faint); }
+  .row .cb.on { background: var(--primary); border-color: var(--primary); display: grid; place-items: center; }
+  .row .cb.on::after { content: ""; width: 7px; height: 4px; border: 2px solid #fff; border-top: 0; border-right: 0; transform: rotate(-45deg) translate(1px, -1px); }
+  .row .tile { width: 32px; height: 32px; border-radius: 8px; }
+  .row .tile svg { width: 16px; height: 16px; }
+  .row small { display: block; color: var(--muted); font-size: 12px; }
+  .panel .go { margin-top: 14px; display: flex; justify-content: flex-end; }
+  .panel .go span { background: var(--primary); color: #fff; font-weight: 600; font-size: 13.5px; padding: 8px 16px; border-radius: 9px; }
+
+  /* steps */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .step { padding: 28px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); }
+  .step .num { width: 30px; height: 30px; border-radius: 50%; background: var(--soft); color: var(--primary); display: grid; place-items: center; font-weight: 700; font-size: 14px; margin-bottom: 16px; }
+  .step h3 { margin: 0 0 6px; font-size: 17.5px; }
+  .step p { margin: 0; color: var(--muted); font-size: 15px; }
+
+  /* honest + faq */
+  .note { display: flex; gap: 18px; padding: 26px 28px; border-radius: 16px; background: var(--soft); margin-top: 56px; }
+  .note svg { width: 22px; height: 22px; color: var(--primary); margin-top: 2px; }
+  .note h3 { margin: 0 0 4px; font-size: 17px; }
+  .note p { margin: 0; color: var(--muted); font-size: 15px; }
+  .faq { max-width: 760px; margin: 0 auto; }
+  details { border-bottom: 1px solid var(--line); padding: 20px 4px; }
+  details:first-child { border-top: 1px solid var(--line); }
+  summary { cursor: pointer; font-weight: 600; font-size: 17px; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: ""; width: 10px; height: 10px; border-right: 2px solid var(--faint); border-bottom: 2px solid var(--faint); transform: rotate(45deg); transition: transform .2s; flex: none; margin-right: 6px; }
+  details[open] summary::after { transform: rotate(-135deg); }
+  details p { color: var(--muted); margin: 10px 0 0; font-size: 15.5px; }
+  details a { color: var(--primary); }
+
+  /* download band */
+  .band { position: relative; overflow: hidden; background: var(--navy); color: #fff; border-radius: 24px; padding: 72px 32px; text-align: center; }
+  .band::before { content: ""; position: absolute; inset: 0; background: radial-gradient(50% 80% at 50% 0%, rgba(22, 119, 255, .45), transparent 70%); }
+  .band > * { position: relative; }
+  .band h2 { margin-top: 0; }
+  .band p { color: #aebbd0; max-width: 520px; margin: 0 auto 30px; font-size: 17px; }
+
+  footer { padding: 48px 0 64px; color: var(--muted); font-size: 14px; }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: center; }
+  footer .links { display: flex; gap: 22px; margin-left: auto; flex-wrap: wrap; }
+  footer a { text-decoration: none; }
+  footer a:hover { color: var(--ink); }
+
+  @media (max-width: 920px) {
+    .features, .steps { grid-template-columns: 1fr 1fr; }
+    .split { grid-template-columns: 1fr; gap: 40px; }
+    .split.rev .text { order: 0; }
+    .app { grid-template-columns: 1fr; }
+    .side { display: none; }
+  }
+  @media (max-width: 640px) {
+    .wrap { padding: 0 16px; }
+    nav .links a:not(.btn) { display: none; }
+    .hero { padding-top: 112px; }
+    .features, .steps { grid-template-columns: 1fr; }
+    section { padding: 72px 0; }
+    .split + .split { margin-top: 72px; }
+    .segs { grid-template-columns: repeat(8, 1fr); }
+    .segs i:nth-child(n+9) { display: none; }
+    .dl { grid-template-columns: 38px 1fr; }
+    .dl .right { display: none; }
+    .menu { width: 190px; }
+    .band { padding: 52px 20px; }
+    footer .links { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="bolt" viewBox="0 0 24 24"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z" fill="#1677ff"/></symbol>
+  <symbol id="bolt-w" viewBox="0 0 24 24"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z" fill="#fff"/></symbol>
+  <symbol id="win" viewBox="0 0 24 24"><path d="M3 5.5 10.5 4.5v7H3zM12 4.3 21 3v8.5h-9zM3 12.5h7.5v7L3 18.5zM12 12.5h9V21l-9-1.3z" fill="currentColor"/></symbol>
+  <symbol id="gh" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.5 2.3 1.1 2.9.8.1-.6.3-1.1.6-1.3-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.8 1a9.6 9.6 0 0 1 5 0c1.9-1.3 2.8-1 2.8-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.9-2.3 4.7-4.6 5 .4.3.7.9.7 1.9v2.8c0 .3.2.6.7.5A10 10 0 0 0 12 2z" fill="currentColor"/></symbol>
+  <symbol id="check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="zip" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M12 3v2M12 7v2M12 11v2"/><rect x="10.5" y="14" width="3" height="4" rx="1"/></g></symbol>
+  <symbol id="play" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/></g></symbol>
+  <symbol id="doc" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 13h6M9 17h6"/></g></symbol>
+</svg>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#"><svg><use href="#bolt"/></svg>velo.</a>
+    <div class="links">
+      <a href="#features">Features</a>
+      <a href="#browser">Browser</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://github.com/Adoxcol/velo">GitHub</a>
+      <a class="btn primary" href="#download">Download</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="pill"><span class="dot"></span><b>Free &amp; open source</b> · No ads · No tracking</span>
+    <h1>Fast downloads.<br><span class="grad">A smoother internet.</span></h1>
+    <p class="lead">Velo is a download manager for Windows. It splits every file into parts that download at once, picks up where it left off, and takes over downloads from your browser.</p>
+    <div class="ctas">
+      <a class="btn primary" href="#download"><svg class="i"><use href="#win"/></svg>Download for Windows</a>
+      <a class="btn glass" href="https://github.com/Adoxcol/velo"><svg class="i"><use href="#gh"/></svg>Star on GitHub</a>
+    </div>
+    <p class="fine">Windows 10 and 11 · Chrome, Edge, Brave and Firefox</p>
+
+    <div class="stage" aria-hidden="true">
+      <div class="window">
+        <div class="titlebar"><svg><use href="#bolt"/></svg>Velo<span class="ctl"><span>–</span><span>▢</span><span>✕</span></span></div>
+        <div class="app">
+          <div class="side">
+            <div class="logo"><svg><use href="#bolt"/></svg>velo.</div>
+            <div class="nav-i on"><svg class="i"><path d="M3 11 12 4l9 7M5 10v10h14V10"/></svg>Home</div>
+            <div class="nav-i"><svg class="i"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Downloads<span class="n">2</span></div>
+            <div class="nav-i"><svg class="i"><path d="m12 3 9 5-9 5-9-5zM3 13l9 5 9-5"/></svg>Queue</div>
+            <div class="nav-i"><svg class="i"><path d="m5 12 5 5 9-10"/></svg>Completed</div>
+            <div class="nav-i"><svg class="i"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/></svg>Video/Audio</div>
+            <div class="speed"><small>Download speed</small><b>48.6 MB/s</b>
+              <svg viewBox="0 0 120 26" preserveAspectRatio="none"><path d="M0 22 L12 20 L24 21 L36 14 L48 15 L60 9 L72 11 L84 6 L96 7 L108 4 L120 5" fill="none" stroke="#22c55e" stroke-width="2"/></svg></div>
+          </div>
+          <div class="main">
+            <h4>Downloads <span>2 active</span></h4>
+            <div class="dl">
+              <div class="tile t-arch"><svg><use href="#zip"/></svg></div>
+              <div>
+                <div class="name">ubuntu-24.04-desktop-amd64.iso</div>
+                <div class="meta"><span>2.6 GB / 5.7 GB</span><span>32.4 MB/s</span><i>16 connections</i></div>
+                <div class="segs">
+                  <i style="--p:.62;--d:5s"></i><i style="--p:.48;--d:7s"></i><i style="--p:.70;--d:6s"></i><i style="--p:.35;--d:8s"></i>
+                  <i style="--p:.55;--d:5.5s"></i><i style="--p:.41;--d:6.5s"></i><i style="--p:.66;--d:7.5s"></i><i style="--p:.30;--d:5s"></i>
+                  <i style="--p:.52;--d:6s"></i><i style="--p:.44;--d:8s"></i><i style="--p:.60;--d:5s"></i><i style="--p:.38;--d:7s"></i>
+                  <i style="--p:.57;--d:6.5s"></i><i style="--p:.33;--d:5.5s"></i><i style="--p:.64;--d:7s"></i><i style="--p:.45;--d:6s"></i>
+                </div>
+              </div>
+              <div class="right">1 min left</div>
+            </div>
+            <div class="dl">
+              <div class="tile t-vid"><svg><use href="#play"/></svg></div>
+              <div>
+                <div class="name">Mountain Lake at Sunset (2160p).mp4</div>
+                <div class="meta"><span>812 MB / 2.0 GB</span><span>16.2 MB/s</span><i>Video stream</i></div>
+                <div class="bar"><i></i></div>
+              </div>
+              <div class="right">1 min left</div>
+            </div>
+            <div class="dl">
+              <div class="tile t-doc"><svg><use href="#doc"/></svg></div>
+              <div>
+                <div class="name">Annual-Report-2026.pdf</div>
+                <div class="meta"><span>4.6 MB</span><span>just now</span></div>
+              </div>
+              <div class="right"><span class="done"><svg><use href="#check"/></svg>Verified</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="features">
+  <div class="wrap">
+    <div class="head center">
+      <div class="eyebrow">Why Velo</div>
+      <h2>Built for the downloads browsers get wrong</h2>
+      <p class="sub">Big files, slow servers, flaky Wi-Fi and links that expire.</p>
+    </div>
+    <div class="features">
+      <div class="feat"><div class="ic"><svg class="i"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z"/></svg></div><h3>Up to 32 connections</h3><p>Every file downloads in parts at the same time. Servers that slow down each connection automatically get more.</p></div>
+      <div class="feat"><div class="ic"><svg class="i"><path d="M9 5v14M15 5v14"/></svg></div><h3>Pause and resume</h3><p>Stop anytime and carry on later, even after closing Velo or restarting your PC.</p></div>
+      <div class="feat"><div class="ic"><svg class="i"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19" r="1"/></svg></div><h3>Survives network drops</h3><p>Velo waits for the connection to come back and resumes by itself. Your PC stays awake until it's done.</p></div>
+      <div class="feat"><div class="ic"><svg class="i"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/></svg></div><h3>Video grabber</h3><p>Finds HLS and DASH streams while a video plays and saves the best quality, with audio and video together.</p></div>
+      <div class="feat"><div class="ic"><svg class="i"><path d="M4 4v6h6M20 20v-6h-6"/><path d="M5 15a7 7 0 0 0 12 2M19 9A7 7 0 0 0 7 7"/></svg></div><h3>Refresh expired links</h3><p>Link stopped working halfway? Paste a fresh one and the same file continues where it stopped.</p></div>
+      <div class="feat"><div class="ic"><svg class="i"><path d="M4 6h16M4 12h10M4 18h7"/></svg></div><h3>Queue and scheduler</h3><p>Set how many run at once, reorder the queue, pick download hours, and sleep or shut down when finished.</p></div>
+    </div>
+    <div class="also"><span>Checksum check</span><span>Tidy folders by type</span><span>Speed limit</span><span>Proxy support</span><span>Password-protected downloads</span><span>Portable version</span><span>Light and dark</span></div>
+  </div>
+</section>
+
+<section id="browser" class="alt">
+  <div class="wrap">
+    <div class="split">
+      <div class="text">
+        <div class="eyebrow">Browser integration</div>
+        <h2>Click a download. Velo takes it from there.</h2>
+        <p class="sub">Downloads you start in the browser open in Velo, so you choose the folder and they get the full speed.</p>
+        <ul class="ticks">
+          <li><svg class="i"><use href="#check"/></svg>A "Download with Velo" button on videos, with a quality picker</li>
+          <li><svg class="i"><use href="#check"/></svg>Right-click any link, image or video to send it to Velo</li>
+          <li><svg class="i"><use href="#check"/></svg>Logged-in downloads keep working; a site's cookies only go to that site</li>
+        </ul>
+        <div class="browsers"><span>Chrome</span><span>Edge</span><span>Brave</span><span>Firefox</span></div>
+      </div>
+      <div class="vid" aria-hidden="true">
+        <div class="sun"></div><div class="m1"></div><div class="m2"></div>
+        <div class="pillbtn"><span><svg><use href="#bolt-w"/></svg>Download with Velo</span><span>▾</span></div>
+        <div class="menu">
+          <div class="h">Download as</div>
+          <div class="r on"><b>2160p</b><span>HLS · 16.8 Mbps</span></div>
+          <div class="r"><b>1440p</b><span>HLS · 9.1 Mbps</span></div>
+          <div class="r"><b>1080p</b><span>HLS · 5.2 Mbps</span></div>
+          <div class="r"><b>720p</b><span>HLS · 2.8 Mbps</span></div>
+        </div>
+        <div class="ctrl"><svg viewBox="0 0 24 24"><path d="m7 4 13 8-13 8z"/></svg><div class="prog"><i></i></div><small>48:12</small></div>
+      </div>
+    </div>
+
+    <div class="split rev">
+      <div class="text">
+        <div class="eyebrow">Batch downloads</div>
+        <h2>Grab a whole page of files at once</h2>
+        <p class="sub">Right-click a page and choose "Download all links with Velo". Files are picked for you and grouped by type, and you can filter with patterns like *.pdf or *.zip.</p>
+      </div>
+      <div class="panel" aria-hidden="true">
+        <div class="top">Download links <span>3 selected of 24</span></div>
+        <div class="chips"><span class="on">Files<em>6</em></span><span>All links<em>24</em></span><span>Docs<em>3</em></span><span>Archives<em>2</em></span><span>Video<em>1</em></span></div>
+        <div class="row"><span class="cb on"></span><span class="tile t-doc"><svg><use href="#doc"/></svg></span><span>course-notes-week-1.pdf<small>files.example.edu/notes/</small></span></div>
+        <div class="row"><span class="cb on"></span><span class="tile t-doc"><svg><use href="#doc"/></svg></span><span>course-notes-week-2.pdf<small>files.example.edu/notes/</small></span></div>
+        <div class="row"><span class="cb on"></span><span class="tile t-arch"><svg><use href="#zip"/></svg></span><span>lab-materials.zip<small>files.example.edu/labs/</small></span></div>
+        <div class="row"><span class="cb"></span><span class="tile t-vid"><svg><use href="#play"/></svg></span><span>lecture-01.mp4<small>media.example.edu/</small></span></div>
+        <div class="go"><span>Download 3</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="head center">
+      <div class="eyebrow">Get started</div>
+      <h2>Up and running in a minute</h2>
+      <p class="sub">No account, no sign-up, no administrator rights.</p>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="num">1</div><h3>Install Velo</h3><p>Run the installer. It sets Velo up for your Windows account and adds it to the Start menu. Or use the portable zip.</p></div>
+      <div class="step"><div class="num">2</div><h3>Add the extension</h3><p>Add Velo to Chrome, Edge, Brave or Firefox. The installer already connects your browsers to Velo.</p></div>
+      <div class="step"><div class="num">3</div><h3>Download as usual</h3><p>Click download links like always. Velo shows the file and folder, then gets it done faster.</p></div>
+    </div>
+    <div class="note">
+      <svg class="i"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.5"/></svg>
+      <div><h3>What Velo doesn't do</h3><p>Velo downloads what websites openly serve. It doesn't get around DRM, encryption or other protections, so protected streaming services and sites like YouTube aren't supported.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="faq" class="alt">
+  <div class="wrap">
+    <div class="head center"><div class="eyebrow">FAQ</div><h2>Questions</h2></div>
+    <div class="faq">
+      <details><summary>Is Velo really free?</summary><p>Yes. Velo is open source under the MIT license, with no ads, no paid tier and no tracking.</p></details>
+      <details><summary>Does Velo collect any data?</summary><p>No. The extension only talks to the Velo app on your own PC, and Velo only contacts GitHub to check for updates. Read the <a href="https://gist.github.com/Adoxcol/ea9009ab50bad69a5067c20ae35edd49">privacy policy</a>.</p></details>
+      <details><summary>Why does Windows warn about an unknown publisher?</summary><p>The installer isn't code-signed yet, so SmartScreen doesn't recognise it. Choose "More info" and then "Run anyway". The source is public, and every release lists its SHA-256 so you can check the file.</p></details>
+      <details><summary>How does Velo update?</summary><p>Velo checks GitHub for new versions, verifies the download's SHA-256 and installs it when nothing is downloading. You can turn this off in Settings.</p></details>
+      <details><summary>Does it work with Firefox?</summary><p>Yes, and with Chrome, Edge and Brave. In Firefox, allow Velo on all sites when the add-on asks, so it can find videos and catch downloads.</p></details>
+      <details><summary>Can I use it without installing?</summary><p>Yes. Unzip the portable version anywhere, even a USB stick, and run velo.exe. Settings stay in a folder next to it.</p></details>
+    </div>
+  </div>
+</section>
+
+<section id="download">
+  <div class="wrap">
+    <div class="band">
+      <h2>Download Velo</h2>
+      <p>Free for Windows 10 and 11. Installs for your account only, no administrator rights needed.</p>
+      <div class="ctas">
+        <a class="btn primary" href="https://github.com/Adoxcol/velo/releases/latest"><svg class="i"><use href="#win"/></svg>Download for Windows</a>
+        <a class="btn glass" href="https://github.com/Adoxcol/velo/releases/latest">Portable zip</a>
+      </div>
+      <p class="fine" style="margin-bottom:0">Installer and portable zip are on the GitHub releases page, each with its SHA-256.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="#" style="font-size:17px"><svg style="width:18px;height:18px"><use href="#bolt"/></svg>velo.</a>
+    <span>Open source · MIT license · Made by <a href="https://adoxcol.com">Adoxcol</a></span>
+    <div class="links">
+      <a href="https://github.com/Adoxcol/velo">GitHub</a>
+      <a href="https://github.com/Adoxcol/velo/issues">Report a problem</a>
+      <a href="https://gist.github.com/Adoxcol/ea9009ab50bad69a5067c20ae35edd49">Privacy</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
