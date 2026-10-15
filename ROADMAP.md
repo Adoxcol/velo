@@ -49,4 +49,4 @@ Ticked items are done. Work goes roughly top to bottom.
 - [x] Landing page (site/), ready for velo.adoxcol.com
 - [x] Landing page live at https://velo.adoxcol.com (with changelog)
 - [x] Repo public; v0.3.1 published on GitHub Releases
-- [ ] Test a real auto-update end to end (publish 0.3.2 and watch an installed 0.3.1 update itself)
+- [x] Real auto-update tested: an installed 0.3.1 found 0.3.2 on GitHub, verified it and updated itself in under 3 minutes
