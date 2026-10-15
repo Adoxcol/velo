@@ -5,7 +5,18 @@
 #   velo-firefox-<version>.zip     add-on package for Firefox Add-ons (AMO)
 #
 # Usage (from the repository root):  .\tools\release.ps1 -Version 0.1.0
-param([Parameter(Mandatory)][string]$Version)
+#
+# For signed releases (.github/workflows/release.yml) the build runs in two
+# stages so the installer embeds signed programs:
+#   -AppOnly       build velo.exe, velo-host.exe and veloctl.exe into the
+#                  installer payload folder and stop (they get signed next)
+#   -UseBuiltApp   use the programs already in the payload folder (signed)
+#                  instead of building them, then build everything else
+param(
+    [Parameter(Mandatory)][string]$Version,
+    [switch]$AppOnly,
+    [switch]$UseBuiltApp
+)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $root
@@ -15,15 +26,24 @@ $ld = "-X velo/internal/version.Version=$Version"
 $payload = Join-Path $root 'cmd\velo-setup\payload'
 $dist = Join-Path $root 'dist'
 
-# Fresh payload (keep the README that explains the folder).
-Get-ChildItem -LiteralPath $payload | Where-Object Name -ne 'README.md' | Remove-Item -Recurse -Force
 New-Item -ItemType Directory -Force $dist | Out-Null
+$programs = 'velo.exe', 'velo-host.exe', 'veloctl.exe'
 
-Write-Host "Building Velo $Version..."
-go build -trimpath -ldflags "$ld -H windowsgui -s -w" -o (Join-Path $payload 'velo.exe') ./cmd/velo
-go build -trimpath -ldflags "$ld -H windowsgui -s -w" -o (Join-Path $payload 'velo-host.exe') ./cmd/velo-host
-go build -trimpath -ldflags "$ld -s -w" -o (Join-Path $payload 'veloctl.exe') ./cmd/veloctl
-if ($LASTEXITCODE) { throw 'build failed' }
+if ($UseBuiltApp) {
+    # Keep the (signed) programs; clear anything else left from a previous run.
+    foreach ($p in $programs) { if (-not (Test-Path (Join-Path $payload $p))) { throw "$p is missing from $payload" } }
+    Get-ChildItem -LiteralPath $payload | Where-Object { $_.Name -ne 'README.md' -and $programs -notcontains $_.Name } | Remove-Item -Recurse -Force
+    Write-Host "Packaging Velo $Version with the programs in the payload folder..."
+} else {
+    # Fresh payload (keep the README that explains the folder).
+    Get-ChildItem -LiteralPath $payload | Where-Object Name -ne 'README.md' | Remove-Item -Recurse -Force
+    Write-Host "Building Velo $Version..."
+    go build -trimpath -ldflags "$ld -H windowsgui -s -w" -o (Join-Path $payload 'velo.exe') ./cmd/velo
+    go build -trimpath -ldflags "$ld -H windowsgui -s -w" -o (Join-Path $payload 'velo-host.exe') ./cmd/velo-host
+    go build -trimpath -ldflags "$ld -s -w" -o (Join-Path $payload 'veloctl.exe') ./cmd/veloctl
+    if ($LASTEXITCODE) { throw 'build failed' }
+    if ($AppOnly) { Write-Host "Programs are in $payload"; return }
+}
 
 # The installed copy keeps the development key, so loading it unpacked gives
 # the same extension ID that the native host allows.

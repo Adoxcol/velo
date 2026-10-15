@@ -8,7 +8,8 @@ Ticked items are done. Work goes roughly top to bottom.
   - [x] Login cookies kept out of the `.part.json` files in the download folder, and dropped from history once a download finishes
   - [x] Local API: constant-time token check, request timeouts, at most 50 downloads waiting for the dialog
   - [x] Checked: only Velo's extension can talk to Velo; cookies don't follow redirects to other sites; updates must match their SHA-256
-- [ ] Code signing (SignPath for open source, or a certificate)
+- [x] Automated releases on GitHub Actions: push a vX.Y.Z tag (.github/workflows/release.yml)
+- [ ] Code signing: apply to SignPath Foundation, then add the secrets in docs/signing.md (the workflow is ready)
 - [ ] Updater checks the installer's signature too (needs code signing first)
 - [ ] Release builds stop allowing the dev extension ID once the store ID is in
 - [x] "Copy debug info" button for bug reports (links and your user folder are hidden)

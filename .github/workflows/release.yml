@@ -1,0 +1,161 @@
+# Builds and publishes a Velo release when a version tag is pushed:
+#
+#   git tag v0.4.1 && git push origin v0.4.1
+#
+# With SignPath set up (see docs/signing.md) the programs and the installer
+# are code-signed: velo.exe, velo-host.exe and veloctl.exe are signed first,
+# then the installer is built around the signed programs and signed itself.
+# Without the SIGNPATH_API_TOKEN secret the release is built unsigned.
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build (like 0.4.1); builds without publishing"
+        required: true
+
+permissions:
+  contents: write # create the GitHub release
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  SIGN: ${{ secrets.SIGNPATH_API_TOKEN != '' }}
+
+jobs:
+  release:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Version
+        id: v
+        run: |
+          $v = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ inputs.version }}" } else { "${{ github.ref_name }}".TrimStart("v") }
+          if ($v -notmatch '^\d+\.\d+\.\d+$') { throw "Bad version '$v'" }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          Write-Host "Building Velo $v (signing: $env:SIGN)"
+
+      - name: Test
+        run: go test ./...
+
+      - name: Release notes
+        run: node tools/release-notes.js ${{ steps.v.outputs.version }} > release-notes.md
+
+      # ---------- stage 1: the programs ----------
+      - name: Build programs
+        run: ./tools/release.ps1 -Version ${{ steps.v.outputs.version }} -AppOnly
+
+      - name: Upload programs for signing
+        if: env.SIGN == 'true'
+        id: programs
+        uses: actions/upload-artifact@v4
+        with:
+          name: programs-unsigned
+          path: |
+            cmd/velo-setup/payload/velo.exe
+            cmd/velo-setup/payload/velo-host.exe
+            cmd/velo-setup/payload/veloctl.exe
+          if-no-files-found: error
+
+      - name: Sign programs
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG || 'velo' }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG || 'release-signing' }}
+          artifact-configuration-slug: programs
+          github-artifact-id: ${{ steps.programs.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600 # SignPath may ask a person to approve each release
+          output-artifact-directory: cmd/velo-setup/payload
+
+      - name: Check program signatures
+        if: env.SIGN == 'true'
+        run: |
+          foreach ($f in Get-ChildItem cmd/velo-setup/payload/*.exe) {
+            $s = Get-AuthenticodeSignature $f.FullName
+            Write-Host "$($f.Name): $($s.Status) $($s.SignerCertificate.Subject)"
+            if ($s.Status -ne 'Valid') { throw "$($f.Name) is not validly signed" }
+          }
+
+      # ---------- stage 2: installer, portable zip, extensions ----------
+      - name: Build installer and packages
+        run: ./tools/release.ps1 -Version ${{ steps.v.outputs.version }} -UseBuiltApp
+
+      - name: Upload installer for signing
+        if: env.SIGN == 'true'
+        id: installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-unsigned
+          path: dist/Velo-Setup-${{ steps.v.outputs.version }}.exe
+          if-no-files-found: error
+
+      - name: Sign installer
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG || 'velo' }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG || 'release-signing' }}
+          artifact-configuration-slug: installer
+          github-artifact-id: ${{ steps.installer.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600 # SignPath may ask a person to approve each release
+          output-artifact-directory: dist
+
+      - name: Check installer signature
+        if: env.SIGN == 'true'
+        run: |
+          $s = Get-AuthenticodeSignature "dist/Velo-Setup-${{ steps.v.outputs.version }}.exe"
+          Write-Host "installer: $($s.Status) $($s.SignerCertificate.Subject)"
+          if ($s.Status -ne 'Valid') { throw "the installer is not validly signed" }
+
+      - name: Checksums
+        run: |
+          $v = "${{ steps.v.outputs.version }}"
+          $files = "Velo-Setup-$v.exe", "Velo-Portable-$v.zip", "velo-extension-$v.zip", "velo-firefox-$v.zip"
+          Push-Location dist
+          $lines = foreach ($f in $files) { "{0} *{1}" -f (Get-FileHash -Algorithm SHA256 $f).Hash.ToLower(), $f }
+          Set-Content "SHA256SUMS-$v.txt" $lines
+          Set-Content "Velo-Setup-$v.exe.sha256" $lines[0]
+          Pop-Location
+          Get-Content "dist/SHA256SUMS-$v.txt"
+
+      - name: Keep the build
+        uses: actions/upload-artifact@v4
+        with:
+          name: velo-${{ steps.v.outputs.version }}
+          path: |
+            dist/*${{ steps.v.outputs.version }}*
+            release-notes.md
+
+      - name: Publish the release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = "${{ steps.v.outputs.version }}"
+          gh release create "v$v" --title "Velo $v" --notes-file release-notes.md --verify-tag `
+            "dist/Velo-Setup-$v.exe" "dist/Velo-Setup-$v.exe.sha256" "dist/Velo-Portable-$v.zip" `
+            "dist/velo-extension-$v.zip" "dist/velo-firefox-$v.zip" "dist/SHA256SUMS-$v.txt"
