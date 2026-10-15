@@ -69,10 +69,7 @@ func runTray(a *app, openWindow bool) {
 	go a.watchClipboard()
 	go a.runMini()
 	go a.upd.run(a)
-	a.showPending = func() {
-		a.show()
-		evalMain("openPending()")
-	}
+	a.showPending = func() { showCapture(a) } // its own small window, like IDM
 	a.showBatch = func() {
 		a.show()
 		evalMain("openBatch()")

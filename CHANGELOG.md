@@ -2,6 +2,15 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.3.3 — 2026-10-16
+
+### New
+- **A small download dialog, like IDM's.** Clicking a download in the browser now opens a compact "Download file" window on its own, instead of the whole Velo window. It shows the file, its size and type, the link and the folder it goes to, with **Start download**, **Download later** and **Cancel**. Rename the file in place, choose another folder, press Enter to start or Esc to cancel. Several downloads at once are shown one after another.
+
+### Improved
+- The extension's "Velo isn't connected" message now shows the browser's exact error, and Velo keeps a small connection log to help track down problems.
+- The Firefox add-on now requires Firefox 142 or newer.
+
 ## 0.3.2 — 2026-10-16
 
 ### New

@@ -242,6 +242,13 @@ type pendingView struct {
 	Kind     string `json:"kind"`
 }
 
+// clearPending drops every browser download waiting for the dialog.
+func (a *app) clearPending() {
+	a.mu.Lock()
+	a.pending = nil
+	a.mu.Unlock()
+}
+
 // nextPendingDL returns the oldest pending browser download, or nil.
 func (a *app) nextPendingDL() *pendingView {
 	a.mu.Lock()

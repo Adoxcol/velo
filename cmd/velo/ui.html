@@ -1129,7 +1129,7 @@ async function maybeOnboard() {
 }
 
 // ---------- start ----------
-loadSettings().then(() => { go("home"); maybeOnboard(); openBatch(); openPending(); });
+loadSettings().then(() => { go("home"); maybeOnboard(); openBatch(); });
 appVersion().then((v) => ($("#verText").textContent = v));
 async function showUpdate() {
   const u = await updateInfo();

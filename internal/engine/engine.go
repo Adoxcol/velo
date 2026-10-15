@@ -325,6 +325,9 @@ var reservedNames = regexp.MustCompile(`(?i)^(con|prn|aux|nul|com[0-9¹²³]|lpt
 // safeName makes name (from a web server, so untrusted) a plain file name
 // inside the download folder: no path separators or "..", no Windows device
 // names, no trailing dots or spaces, and short enough for Windows.
+// SafeName cleans a file name the way downloads are saved (see safeName).
+func SafeName(name string) string { return safeName(name, "download") }
+
 func safeName(name, fallback string) string {
 	name = unsafeChars.ReplaceAllString(name, "_")
 	name = strings.TrimRight(strings.TrimSpace(name), ". ")

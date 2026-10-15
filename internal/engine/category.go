@@ -68,5 +68,8 @@ func (e *Engine) targetDir(r Request, name string) string {
 	return dir
 }
 
+// FolderFor is the folder a new download named name goes to by default.
+func (e *Engine) FolderFor(name string) string { return e.targetDir(Request{}, name) }
+
 // SetSortByType turns category subfolders on or off for new downloads.
 func (e *Engine) SetSortByType(on bool) { e.sortByType.Store(on) }
