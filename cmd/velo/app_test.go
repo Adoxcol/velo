@@ -451,3 +451,19 @@ func TestSettingsWithBOM(t *testing.T) {
 		t.Fatalf("settings with a BOM were not read: %+v", got)
 	}
 }
+
+func TestClipboardRoundTrip(t *testing.T) {
+	old, hadText := clipboardText()
+	defer func() {
+		if hadText {
+			setClipboardText(old) // leave the user's clipboard as it was
+		}
+	}()
+	want := "Velo clipboard test — ünïcode ✓ 下载"
+	if err := setClipboardText(want); err != nil {
+		t.Skipf("clipboard unavailable here: %v", err)
+	}
+	if got, ok := clipboardText(); !ok || got != want {
+		t.Fatalf("read back %q (ok=%v), want %q", got, ok, want)
+	}
+}

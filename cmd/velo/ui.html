@@ -530,7 +530,7 @@ function openRelink(r) {
   $("#rlName").textContent = r.file;
   $("#rlUrl").value = "";
   $("#relinkDlg").showModal();
-  navigator.clipboard.readText().then((t) => { t = t.trim(); if (/^https?:\/\//i.test(t) && t !== r.url && !$("#rlUrl").value) $("#rlUrl").value = t; }).catch(() => {});
+  pasteText().then((t) => { t = t.trim(); if (/^https?:\/\//i.test(t) && t !== r.url && !$("#rlUrl").value) $("#rlUrl").value = t; }).catch(() => {});
 }
 async function relinkGo() {
   const b = $("#rlGo"); b.disabled = true; b.textContent = "Checking…";
@@ -719,7 +719,7 @@ function openMenu(anchor, r) {
     m.style.display = "none";
     if (k === "open") act(openFile, r.id);
     if (k === "folder") act(showInFolder, r.id);
-    if (k === "copy") { navigator.clipboard.writeText(r.url).then(() => toast("Link copied"), () => toast("Couldn't copy", true)); }
+    if (k === "copy") { copyText(r.url).then(() => toast("Link copied"), () => toast("Couldn't copy", true)); }
     if (k === "pause") act(pause, r.id);
     if (k === "resume") act(resume, r.id);
     if (k === "remove") act(remove, r.id);
@@ -760,7 +760,7 @@ document.addEventListener("keydown", (e) => {
   // List shortcuts, when not typing and no dialog is open.
   if (e.target.closest("input, textarea, select") || document.querySelector("dialog[open]") || e.altKey) return;
   if (e.ctrlKey && e.key.toLowerCase() === "v") { // paste a link to download it
-    navigator.clipboard.readText().then((t) => { t = t.trim(); if (/^https?:\/\/\S+$/i.test(t)) openAdd(t); }).catch(() => {});
+    pasteText().then((t) => { t = t.trim(); if (/^https?:\/\/\S+$/i.test(t)) openAdd(t); }).catch(() => {});
     return;
   }
   if (e.ctrlKey || e.metaKey) return;
@@ -1155,7 +1155,7 @@ async function showUpdate() {
   $("#updCheck").disabled = u.checking;
 }
 $("#dbgCopy").onclick = async () => {
-  try { await navigator.clipboard.writeText(await debugInfo()); toast("Debug info copied"); }
+  try { await copyText(await debugInfo()); toast("Debug info copied"); }
   catch (e) { toast("Couldn't copy: " + e, true); }
 };
 $("#updCheck").onclick = async () => { await checkUpdate(); setTimeout(showUpdate, 300); };

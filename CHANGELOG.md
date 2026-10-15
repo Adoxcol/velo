@@ -2,6 +2,11 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.4.2 — 2026-10-16
+
+### Fixed
+- **Copy debug info**, **Copy link** and pasting a link with Ctrl+V failed with "Cannot read properties of undefined". Velo now uses the Windows clipboard directly.
+
 ## 0.4.1 — 2026-10-16
 
 ### Improved

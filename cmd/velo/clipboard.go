@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"log"
 	"path"
 	"strings"
@@ -118,4 +119,51 @@ func (a *app) hasURL(u string) bool {
 		}
 	}
 	return false
+}
+
+var (
+	pEmptyClipboard   = user32n.NewProc("EmptyClipboard")
+	pSetClipboardData = user32n.NewProc("SetClipboardData")
+	pGlobalAlloc      = kernel32n.NewProc("GlobalAlloc")
+	pGlobalFree       = kernel32n.NewProc("GlobalFree")
+)
+
+// setClipboardText puts text on the clipboard. Velo's windows can't use the
+// browser clipboard API (their pages aren't a secure context), so they call
+// this instead.
+func setClipboardText(text string) error {
+	u, err := syscall.UTF16FromString(text)
+	if err != nil {
+		return err
+	}
+	var opened uintptr
+	for i := 0; i < 10 && opened == 0; i++ { // another program may be holding it for a moment
+		if opened, _, _ = pOpenClipboard.Call(0); opened == 0 {
+			time.Sleep(20 * time.Millisecond)
+		}
+	}
+	if opened == 0 {
+		return errors.New("the clipboard is busy")
+	}
+	defer pCloseClipboard.Call()
+	pEmptyClipboard.Call()
+	const gmemMoveable = 0x0002
+	size := uintptr(len(u) * 2)
+	h, _, _ := pGlobalAlloc.Call(gmemMoveable, size)
+	if h == 0 {
+		return errors.New("out of memory")
+	}
+	p, _, _ := pGlobalLock.Call(h)
+	if p == 0 {
+		pGlobalFree.Call(h)
+		return errors.New("couldn't lock clipboard memory")
+	}
+	ptr := *(*unsafe.Pointer)(unsafe.Pointer(&p))
+	copy(unsafe.Slice((*uint16)(ptr), len(u)), u)
+	pGlobalUnlock.Call(h)
+	if r, _, _ := pSetClipboardData.Call(cfUnicodeText, h); r == 0 {
+		pGlobalFree.Call(h) // still ours if the clipboard didn't take it
+		return errors.New("couldn't set the clipboard")
+	}
+	return nil
 }

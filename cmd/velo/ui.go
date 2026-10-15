@@ -303,6 +303,7 @@ func bind(w webview2.WebView, a *app) {
 	w.Bind("refreshLink", func(id int, u string) error { return a.refreshLink(id, u) })
 	w.Bind("checkUpdate", func() { go a.upd.check(a) })
 	w.Bind("installUpdate", func() error { return a.upd.install(a) })
+	w.Bind("copyText", func(t string) error { return setClipboardText(t) })
 	w.Bind("pasteText", func() string {
 		t, _ := clipboardText()
 		return strings.TrimSpace(t)
