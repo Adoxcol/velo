@@ -16,6 +16,9 @@ const (
 	HostName = "com.velo.host"
 	// The development extension ID (fixed by the "key" in extension/manifest.json).
 	DevExtensionID = "dmdcijgljocjdmafenflenjhdjhenokc"
+	// FirefoxID is the Firefox add-on ID (set by tools/packext).
+	FirefoxID  = "velo@adoxcol.github.io"
+	firefoxKey = `Software\Mozilla\NativeMessagingHosts\` + HostName
 )
 
 // Store extension IDs: fill in once Velo is published.
@@ -49,6 +52,21 @@ func Register(dir string) error {
 	if err := os.WriteFile(manifest, b, 0o644); err != nil {
 		return err
 	}
+	// Firefox wants its own manifest: add-on IDs instead of origins.
+	ffManifest := filepath.Join(dir, HostName+".firefox.json")
+	fb, _ := json.MarshalIndent(map[string]any{
+		"name":               HostName,
+		"description":        "Velo native messaging host",
+		"path":               filepath.Join(dir, "velo-host.exe"),
+		"type":               "stdio",
+		"allowed_extensions": []string{FirefoxID},
+	}, "", "  ")
+	if err := os.WriteFile(ffManifest, fb, 0o644); err != nil {
+		return err
+	}
+	if err := setDefault(firefoxKey, ffManifest); err != nil {
+		return err
+	}
 	for _, br := range Browsers {
 		k, _, err := registry.CreateKey(registry.CURRENT_USER, `Software\`+br+`\NativeMessagingHosts\`+HostName, registry.SET_VALUE)
 		if err != nil {
@@ -61,6 +79,15 @@ func Register(dir string) error {
 		}
 	}
 	return nil
+}
+
+func setDefault(key, value string) error {
+	k, _, err := registry.CreateKey(registry.CURRENT_USER, key, registry.SET_VALUE)
+	if err != nil {
+		return err
+	}
+	defer k.Close()
+	return k.SetStringValue("", value)
 }
 
 // RegisteredTo reports whether browsers currently use the host in dir.
@@ -76,6 +103,7 @@ func RegisteredTo(dir string) bool {
 
 // Unregister removes the host from every browser.
 func Unregister() {
+	registry.DeleteKey(registry.CURRENT_USER, firefoxKey)
 	for _, br := range Browsers {
 		registry.DeleteKey(registry.CURRENT_USER, `Software\`+br+`\NativeMessagingHosts\`+HostName)
 	}

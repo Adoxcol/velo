@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Velo",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "One-click downloads with Velo: grab files and videos, and download all links on a page.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAibNqv0RgI4beFMIT4VgbMqJK3SYRuAnkUWA3MObC8sBXRNOuFOfUdroYxMpEWyQZVP8NmY8DY2gRMmNf5TOhdBYdRs16O1fgD1yke8hG6eid4ijiJik3IbZTq96zf4luwu4qAF4ojzKBA3Z8q2dWYvsqO0YYqS6w6Qr0T89zF5J2DbgkdcpWeuELkCDSnwRPY8tuIjI7CdiPoQ5Fa6qfFre8WjDcYbUVsWItRdeJOd3JOfTtaAONCCygn+aMcDwQ+qqZa28SF7862zfmDqe0fUJ5T71kBM0R0NEfS3WRW4doW9D4jcPx0xyCU2BCuQdq7VtvqZuSn4NBDxJg8cuaBQIDAQAB",
   "background": {

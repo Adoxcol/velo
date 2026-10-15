@@ -1,4 +1,7 @@
-// Velo browser integration (MV3 service worker).
+// Velo browser integration (MV3 service worker; an event page in Firefox).
+// Firefox: use its promise-based browser.* API under the chrome name.
+try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = browser; } catch {}
+
 // Flow: pause the browser's download, hand it to the app,
 // then cancel (app accepted) or resume (app unavailable / declined).
 
@@ -23,14 +26,14 @@ async function settings() {
   };
 }
 
-function send(msg) {
-  return new Promise((resolve) => {
-    chrome.runtime.sendNativeMessage(HOST, msg, (reply) => {
-      if (chrome.runtime.lastError) return resolve({ ok: false, error: chrome.runtime.lastError.message });
-      if (reply?.ext) maybeReload(reply.ext);
-      resolve(reply || { ok: false, error: "empty reply" });
-    });
-  });
+async function send(msg) {
+  try {
+    const reply = await chrome.runtime.sendNativeMessage(HOST, msg);
+    if (reply?.ext) maybeReload(reply.ext);
+    return reply || { ok: false, error: "empty reply" };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
 }
 
 // Keeping an unpacked extension up to date: Velo's updater replaces the
@@ -121,28 +124,34 @@ if (chrome.downloads.onDeterminingFilename) {
     return true; // suggest() is called asynchronously
   });
 } else {
+  // Firefox and others: pause the download as soon as it's created, decide,
+  // then cancel it (Velo took it) or let it continue. Firefox already knows
+  // the file name here; other browsers report it in onChanged.
   const pending = new Set();
+  const decide = async (item) => {
+    if (await takeOver(item, item.filename.split(/[\\/]/).pop())) {
+      await chrome.downloads.cancel(item.id).catch(() => {});
+      chrome.downloads.erase({ id: item.id }).catch(() => {});
+    } else {
+      chrome.downloads.resume(item.id).catch(() => {});
+    }
+  };
   chrome.downloads.onCreated.addListener((item) => {
-    if (!/^https?:/i.test(item.finalUrl || item.url)) return;
+    if (!/^https?:/i.test(item.finalUrl || item.url) || item.state !== "in_progress") return;
+    chrome.downloads.pause(item.id).catch(() => {});
+    if (item.filename) return decide(item);
     pending.add(item.id);
-    chrome.downloads.pause(item.id, () => void chrome.runtime.lastError);
   });
   chrome.downloads.onChanged.addListener(async (delta) => {
     if (!pending.has(delta.id) || !delta.filename) return;
     pending.delete(delta.id);
     const [item] = await chrome.downloads.search({ id: delta.id });
-    if (!item) return;
-    if (await takeOver(item, item.filename.split(/[\\/]/).pop())) {
-      chrome.downloads.cancel(item.id);
-      chrome.downloads.erase({ id: item.id });
-    } else {
-      chrome.downloads.resume(item.id);
-    }
+    if (item) decide(item);
   });
 }
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.removeAll(() => {
+  chrome.contextMenus.removeAll().then(() => {
     chrome.contextMenus.create({ id: "velo-link", title: "Download with Velo", contexts: ["link", "video", "audio", "image"] });
     chrome.contextMenus.create({ id: "velo-all", title: "Download all links with Velo", contexts: ["page"] });
     chrome.contextMenus.create({ id: "velo-selection", title: "Download selected links with Velo", contexts: ["selection"] });

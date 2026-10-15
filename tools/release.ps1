@@ -2,6 +2,7 @@
 #   Velo-Setup-<version>.exe       installer (embeds the app and the extension)
 #   velo-extension-<version>.zip   extension package for the Chrome Web Store / Edge Add-ons
 #   Velo-Portable-<version>.zip    no install: unzip and run velo.exe
+#   velo-firefox-<version>.zip     add-on package for Firefox Add-ons (AMO)
 #
 # Usage (from the repository root):  .\tools\release.ps1 -Version 0.1.0
 param([Parameter(Mandatory)][string]$Version)
@@ -59,6 +60,8 @@ Remove-Item -LiteralPath $portable -Recurse -Force
 
 go run ./tools/packext -version $Version -out (Join-Path $dist "velo-extension-$Version.zip")
 if ($LASTEXITCODE) { throw 'extension package failed' }
+go run ./tools/packext -browser firefox -version $Version -out (Join-Path $dist "velo-firefox-$Version.zip")
+if ($LASTEXITCODE) { throw 'Firefox package failed' }
 
 Get-ChildItem -LiteralPath $payload | Where-Object Name -ne 'README.md' | Remove-Item -Recurse -Force
 Get-ChildItem -LiteralPath $dist | ForEach-Object {

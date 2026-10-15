@@ -37,7 +37,8 @@ Ticked items are done. Work goes roughly top to bottom.
 - [x] Login-protected downloads: username and password in the Add dialog, shown when a site asks; never sent to other hosts
 
 ## Reach
-- [ ] Firefox
+- [x] Firefox: add-on package (velo-firefox zip), native host registered for Firefox, tested end to end
+- [ ] Publish the Firefox add-on on addons.mozilla.org (needs your Mozilla account)
 - [ ] Translations
 - [x] Portable zip (settings in its own data folder, connects the browser when run)
 

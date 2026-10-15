@@ -61,3 +61,19 @@ user's computer.
 Put the store IDs in `cmd/velo-setup/main.go` (`chromeStoreID`, `edgeStoreID`) and rebuild the
 installer. It will then register the store extension, and the browser shows "New extension added" on
 its next start.
+
+## Firefox Add-ons (AMO)
+
+Upload `dist\velo-firefox-<version>.zip` at https://addons.mozilla.org/developers/ (listed, or
+"On your own" for a self-distributed signed .xpi).
+
+- **Add-on ID**: `velo@adoxcol.github.io` (fixed; Velo's installer allows only this ID to talk to
+  the app, so don't change it).
+- **Source code**: the add-on isn't minified or bundled, so no separate source upload is needed.
+- **Data collection**: none (`data_collection_permissions: none` in the manifest). Use the same
+  privacy policy link as the Chrome listing.
+- **Notes for reviewers**: "Velo hands downloads to the Velo desktop app (open source,
+  https://github.com/Adoxcol/velo) over native messaging. Host access is used to find video
+  streams on pages, read cookies so logged-in downloads keep working, and show the download button
+  on videos. No remote code, no analytics."
+- On Firefox, site access can be turned off by the user; the popup then offers "Allow on all sites".

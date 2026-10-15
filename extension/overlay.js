@@ -1,3 +1,6 @@
+// Firefox: use its promise-based browser.* API under the chrome name.
+try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = browser; } catch {}
+
 // "Download with Velo" button on videos (top-right of the video while the
 // pointer is over it), with a menu of every quality/file found on the page.
 (() => {

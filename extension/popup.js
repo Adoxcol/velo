@@ -1,3 +1,6 @@
+// Firefox: use its promise-based browser.* API under the chrome name.
+try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = browser; } catch {}
+
 // Velo popup: the videos found on the current tab, quality choice, and
 // "download all links on this page".
 const $ = (id) => document.getElementById(id);
@@ -55,13 +58,22 @@ function choicesFor(items) {
   $("detect").onchange = (e) => chrome.storage.local.set({ detectCard: e.target.checked });
   $("openApp").onclick = () => chrome.runtime.sendMessage({ type: "show" });
 
+  // Firefox doesn't grant host access at install: ask for it here.
+  const ALL = { origins: ["<all_urls>"] };
+  if (!(await chrome.permissions.contains(ALL))) {
+    $("access").hidden = false;
+    $("grant").onclick = async () => {
+      if (await chrome.permissions.request(ALL)) { $("access").hidden = true; chrome.tabs.reload(tab.id); }
+    };
+  }
+
   // Is Velo reachable? (The host starts Velo if it isn't running.)
   chrome.runtime.sendMessage({ type: "ping" }).then((r) => {
     if (r?.ok) return;
     const missing = /not found|forbidden|host/i.test(r?.error || "");
     $("banner").hidden = false;
     $("banner").innerHTML = svg(ICON.warn) + `<div><b>Velo isn't connected.</b> ${missing
-      ? "Run <b>install.ps1</b> from the Velo folder, then reopen this popup."
+      ? "Install or reinstall Velo (or run the portable velo.exe), then reopen this popup."
       : esc(r?.error || "No reply from Velo.")}</div>`;
   });
 
