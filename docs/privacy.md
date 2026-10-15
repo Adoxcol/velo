@@ -1,9 +1,9 @@
 # Velo privacy policy
 
-_Last updated: 15 October 2026_
+_Last updated: 16 October 2026_
 
-Velo is an open-source download manager for Windows and a companion browser extension for Chrome and
-Edge. This policy covers both.
+Velo is an open-source download manager for Windows and a companion browser extension for Chrome,
+Edge, Brave and Firefox. This policy covers both.
 
 ## The short version
 
@@ -29,6 +29,10 @@ All of this is sent only to the Velo app on the same computer, through the brows
 (a local channel between the browser and an installed program). Velo then downloads the files you
 asked for directly from the websites that host them. Nothing is sent to the Velo developers or any
 third party.
+
+The only other connection Velo makes is to GitHub (api.github.com and github.com), to check for and
+download new versions of Velo. It sends nothing about you or your downloads. You can turn automatic
+updates off in Settings.
 
 ## What the app stores
 
