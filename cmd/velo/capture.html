@@ -11,9 +11,9 @@
   body { background: var(--bg); color: var(--ink); font: 13.5px/1.4 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; display: flex; flex-direction: column; user-select: none; }
   svg.i { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 
-  .top { display: flex; gap: 14px; align-items: center; padding: 18px 20px 16px; background: var(--bg2); border-bottom: 1px solid var(--line); }
-  .tile { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; color: #fff; flex: none; background: linear-gradient(135deg, #94a3b8, #64748b); }
-  .tile svg { width: 24px; height: 24px; }
+  .top { display: flex; gap: 12px; align-items: center; padding: 12px 18px; background: var(--bg2); border-bottom: 1px solid var(--line); }
+  .tile { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; color: #fff; flex: none; background: linear-gradient(135deg, #94a3b8, #64748b); }
+  .tile svg { width: 20px; height: 20px; }
   .t-Video { background: linear-gradient(135deg, #3b82f6, #1d4ed8); } .t-Music { background: linear-gradient(135deg, #a855f7, #7c3aed); }
   .t-Images { background: linear-gradient(135deg, #14b8a6, #0d9488); } .t-Documents { background: linear-gradient(135deg, #fb923c, #ea580c); }
   .t-Compressed { background: linear-gradient(135deg, #facc15, #eab308); } .t-Programs { background: linear-gradient(135deg, #64748b, #475569); }
@@ -25,23 +25,24 @@
   .sub b { color: var(--ink); font-weight: 600; }
   .count { margin-left: auto; align-self: flex-start; color: var(--muted); font-size: 12px; white-space: nowrap; }
 
-  .form { padding: 16px 20px 6px; display: grid; grid-template-columns: 76px 1fr; gap: 12px 12px; align-items: center; flex: 1; }
+  .form { padding: 12px 18px 0; display: grid; grid-template-columns: 52px 1fr; gap: 8px 10px; align-items: center; }
   .form label { color: var(--muted); font-size: 12.5px; }
-  .field { display: flex; align-items: center; gap: 8px; min-width: 0; height: 36px; padding: 0 6px 0 11px; border: 1px solid var(--line); border-radius: 9px; background: var(--field); }
+  .field { display: flex; align-items: center; gap: 8px; min-width: 0; height: 32px; padding: 0 4px 0 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--field); }
   .field span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: text; }
   .field svg { color: var(--muted); }
-  .link { border: 0; background: none; color: var(--primary); font: 600 12.5px inherit; cursor: pointer; padding: 6px 8px; border-radius: 7px; }
+  .link { border: 0; background: none; color: var(--primary); font: 600 12.5px inherit; cursor: pointer; padding: 4px 8px; border-radius: 7px; }
   .link:hover { background: rgba(22, 119, 255, .1); }
   .url span { color: var(--muted); }
 
-  .foot { display: flex; align-items: center; gap: 8px; padding: 14px 20px 18px; }
+  .foot { display: flex; align-items: center; gap: 8px; padding: 12px 18px 14px; }
   .foot .open { margin-right: auto; color: var(--muted); font-weight: 500; }
-  .btn { height: 36px; padding: 0 16px; border-radius: 9px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: 600 13.5px inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
+  .btn { height: 32px; padding: 0 14px; border-radius: 9px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: 600 13.5px inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
   .btn:hover { background: var(--bg2); }
   .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
   .btn.primary:hover { background: var(--primary-h); }
   .btn:disabled { opacity: .55; cursor: default; }
-  .err { color: #dc2626; font-size: 12.5px; padding: 0 20px; min-height: 0; }
+  .err { color: #dc2626; font-size: 12.5px; padding: 6px 18px 0; }
+  .err:empty { display: none; }
 </style>
 </head>
 <body>
@@ -85,7 +86,7 @@ let cur = null, customDir = "", busy = false, total = 0, done = 0;
 async function showFolder() {
   const full = customDir || await folderFor($("name").value || "download");
   // Long paths are shortened in the middle so the end (the category folder) shows.
-  $("dir").textContent = full.length > 36 ? full.slice(0, 3) + "…" + full.slice(-32) : full;
+  $("dir").textContent = full.length > 64 ? full.slice(0, 3) + "…" + full.slice(-60) : full;
   $("dir").parentElement.title = full;
   $("dir").dataset.full = full;
 }
