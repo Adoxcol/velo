@@ -43,5 +43,6 @@ Ticked items are done. Work goes roughly top to bottom.
 
 ## Polish
 - [ ] Taskbar progress bar
-- [ ] Keyboard shortcuts and search
+- [x] Search downloads (Ctrl+K)
+- [ ] More keyboard shortcuts (Delete, Space to pause, Ctrl+N to add)
 - [ ] Landing page for launch
