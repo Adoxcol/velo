@@ -281,6 +281,7 @@ type addOptions struct {
 	Segments  int    `json:"segments"` // 0 = default
 	Start     bool   `json:"start"`    // false = add paused
 	Checksum  string `json:"checksum"` // optional, verified when done
+	Queue     string `json:"queue"`    // named queue ID, "" = main
 	User      string `json:"user"`     // optional HTTP login
 	Pass      string `json:"pass"`
 }
@@ -302,7 +303,7 @@ func (a *app) addWith(o addOptions) (int, error) {
 		if name := strings.TrimSpace(o.Filename); name != "" {
 			base.Filename = name // otherwise keep the browser's suggested name
 		}
-		base.Dir, base.Segments, base.Checksum = o.Dir, o.Segments, sum
+		base.Dir, base.Segments, base.Checksum, base.Queue = o.Dir, o.Segments, sum, o.Queue
 		if o.User != "" {
 			base.User, base.Pass = o.User, o.Pass
 		}
@@ -324,7 +325,7 @@ func (a *app) addWith(o addOptions) (int, error) {
 	if o.Dir != "" && !filepath.IsAbs(o.Dir) {
 		return 0, errors.New("choose a full folder path")
 	}
-	r := engine.Request{URL: o.URL, Filename: strings.TrimSpace(o.Filename), Dir: o.Dir, Segments: o.Segments, Kind: kind, Checksum: sum, User: o.User, Pass: o.Pass}
+	r := engine.Request{URL: o.URL, Filename: strings.TrimSpace(o.Filename), Dir: o.Dir, Segments: o.Segments, Kind: kind, Checksum: sum, User: o.User, Pass: o.Pass, Queue: o.Queue}
 	if !o.Start {
 		it := a.register(&engine.Download{Req: r, Status: "paused"})
 		a.kick()
@@ -370,19 +371,41 @@ func (a *app) dispatcher() {
 	}
 }
 
+// queueOf returns the schedule and own limit (0 = none) of a download's
+// queue. Downloads in a queue that no longer exists use the main queue.
+func (a *app) queueOf(it *item) (Schedule, int, string) {
+	if id := it.d.QueueID(); id != "" {
+		for _, q := range a.settings.Queues {
+			if q.ID == id {
+				return q.Schedule, q.MaxConcurrent, id
+			}
+		}
+	}
+	return a.settings.Schedule, 0, ""
+}
+
 func (a *app) dispatch(now time.Time) {
 	a.mu.Lock()
-	allowed := a.settings.Schedule.allowed(now)
+	perQueue := map[string]int{} // running downloads in each queue
+	for _, it := range a.items {
+		if it.running {
+			_, _, q := a.queueOf(it)
+			perQueue[q]++
+		}
+	}
 	queued := 0
 	for _, it := range a.items {
+		sched, limit, q := a.queueOf(it)
+		allowed := sched.allowed(now)
 		if it.running && !allowed && !it.requeue {
 			it.requeue = true
 			it.cancel()
 			log.Printf("#%d stopped by schedule", it.d.ID)
 		}
 		if s, _ := it.d.State(); s == "queued" && !it.running && !now.Before(it.retryAt) {
-			if allowed && a.running < a.settings.MaxConcurrent {
+			if allowed && a.running < a.settings.MaxConcurrent && (limit == 0 || perQueue[q] < limit) {
 				a.launch(it)
+				perQueue[q]++
 			} else {
 				queued++
 			}
@@ -493,6 +516,26 @@ func (a *app) pause(id int) error {
 		return errors.New("download is " + s)
 	}
 	it.d.SetStatus("paused")
+	a.kick()
+	return nil
+}
+
+// setQueue moves a download to a named queue ("" = the main queue).
+func (a *app) setQueue(id int, queue string) error {
+	it := a.get(id)
+	if it == nil {
+		return errors.New("no such download")
+	}
+	if queue != "" {
+		found := false
+		for _, q := range a.getSettings().Queues {
+			found = found || q.ID == queue
+		}
+		if !found {
+			return errors.New("no such queue")
+		}
+	}
+	it.d.SetQueue(queue)
 	a.kick()
 	return nil
 }
@@ -805,6 +848,7 @@ type row struct {
 	Added       int64   `json:"added"`    // unix ms
 	Finished    int64   `json:"finished"` // unix ms, 0 until done
 	Error       string  `json:"error,omitempty"`
+	Queue       string  `json:"queue,omitempty"`    // named queue ID
 	Verified    bool    `json:"verified,omitempty"` // matched the checksum given when added
 	Retrying    bool    `json:"retrying,omitempty"` // waiting after a network drop
 	RetryIn     int     `json:"retryIn,omitempty"`  // seconds until the next try
@@ -844,6 +888,7 @@ func (a *app) rows() []row {
 			r.Error = err.Error()
 		}
 		r.Verified = d.Verified
+		r.Queue = d.QueueID()
 		if status == "queued" && !it.retryAt.IsZero() {
 			r.RetryIn = max(int(time.Until(it.retryAt).Seconds()+0.99), 0)
 			r.Retrying = true

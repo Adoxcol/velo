@@ -23,6 +23,13 @@
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
+.qhead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;max-width:640px;margin:32px 0 12px}
+.qhead h2{margin:0 0 4px;font-size:16px;color:var(--ink)}.qhead .hint{margin:0}
+.qpanel{max-width:640px;margin-bottom:12px}
+.qtop{display:flex;gap:10px;align-items:center;padding-bottom:10px}
+.qtop input{flex:1;font:inherit;font-weight:600;font-size:15px;color:var(--ink);background:transparent;border:1px solid transparent;border-radius:8px;padding:6px 8px}
+.qtop input:hover,.qtop input:focus{border-color:var(--line);outline:none}
+.qbadge{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border-radius:99px;background:rgba(22,119,255,.12);color:var(--primary);font-size:11.5px;font-weight:600;vertical-align:1px}
   html, body { margin: 0; height: 100%; }
   body {
     background: var(--bg); color: var(--text); display: flex; overflow: hidden;
@@ -309,6 +316,9 @@
         <div class="opt"><div><div class="t">When all downloads finish</div><div class="d">Shut down gives a 1-minute warning (<code>shutdown /a</code> cancels).</div></div>
           <select class="sel" data-s="onFinish"><option value="none">Do nothing</option><option value="exit">Exit Velo</option><option value="sleep">Sleep</option><option value="shutdown">Shut down</option></select></div>
       </div>
+      <div class="qhead"><div><h2>Other queues</h2><p class="hint">Give some downloads their own hours and limit, like big files only at night. Everything else uses the main queue above.</p></div>
+        <button class="btn" id="qAdd" style="white-space:nowrap;flex:none">+ Add queue</button></div>
+      <div id="qList"></div>
     </section>
 
     <!-- Browser extension -->
@@ -396,6 +406,7 @@
       <div class="inp" style="flex:1"><input id="aUser" spellcheck="false" autocomplete="off" placeholder="Username"></div>
       <div class="inp" style="flex:1"><input id="aPass" type="password" autocomplete="off" placeholder="Password"></div></div></div>
     <div class="formrow"><span>Checksum</span><div class="inp"><input id="aSum" spellcheck="false" placeholder="Optional: SHA-256, SHA-1 or MD5 to check the file"></div></div>
+    <div class="formrow" id="aQueueRow" hidden><span>Queue</span><div class="inp"><select id="aQueue"></select></div></div>
     <div class="formrow"><span>Split into</span><div class="inp"><select id="aParts"></select></div></div>
     <div style="display:grid;gap:10px;margin:14px 0 4px">
       <label class="check"><input type="radio" name="aStart" value="now" checked> Start download immediately</label>
@@ -544,7 +555,8 @@ window.go = go;
 $("#nav").onclick = (e) => { const b = e.target.closest("[data-go]"); if (b) go(b.dataset.go); };
 
 // ---------- list ----------
-let data = [], filter = "all", query = "", selected = null;
+let data = [], filter = "all", query = "", selected = null, qFilter = "*";
+const queueName = (id) => (S?.queues || []).find((q) => q.id === id)?.name || "";
 const seenIds = new Set(); // cards already shown (only new ones animate in)
 const FILTERS = [["all", "All"], ["downloading", "Downloading"], ["completed", "Completed"], ["paused", "Paused"], ["scheduled", "Scheduled"]];
 const statusOf = (r) => r.status === "done" ? "completed" : r.status === "queued" ? "scheduled" : r.status === "error" ? "paused" : r.status;
@@ -552,7 +564,7 @@ function rowsFor(view) {
   let rows = data.slice().reverse();
   if (query) rows = rows.filter((r) => (r.file + " " + r.url).toLowerCase().includes(query));
   switch (view) {
-    case "queue": return rows.reverse().filter((r) => ["queued", "paused", "error"].includes(r.status)); // in the order they will run
+    case "queue": return rows.reverse().filter((r) => ["queued", "paused", "error"].includes(r.status) && (qFilter === "*" || (r.queue || "") === qFilter)); // in the order they will run
     case "completed": return rows.filter((r) => r.status === "done").sort((a, b) => b.finished - a.finished);
     case "media": return rows.filter((r) => r.category === "Video" || r.category === "Music");
   }
@@ -593,7 +605,7 @@ function card(r) {
   seenIds.add(r.id);
   return `<div class="card ${r.status}${r.id === selected ? " selected" : ""}${fresh ? " new" : ""}" data-id="${r.id}">
     <div class="tile t-${cat}">${icon(I[cat] || I.Other)}</div>
-    <div class="info"><div class="name" title="${escapeHtml(r.url)}">${escapeHtml(r.file || "Starting…")}</div>
+    <div class="info"><div class="name" title="${escapeHtml(r.url)}">${escapeHtml(r.file || "Starting…")}${r.queue && r.status !== "done" && queueName(r.queue) ? ` <span class="qbadge">${escapeHtml(queueName(r.queue))}</span>` : ""}</div>
       <div class="meta">${meta}${right}</div>
       ${r.status === "done" ? "" : `<div class="bar"><i style="width:${pct}%"></i></div>`}</div>
     <div class="actions">${acts}</div></div>`;
@@ -618,13 +630,15 @@ function render() {
   if (host) {
     const rows = rowsFor(page);
     const showChips = page === "home" || page === "downloads";
+    const qChips = page === "queue" && S?.queues?.length
+      ? `<div class="chips">${[["*", "All queues"], ["", "Main"], ...S.queues.map((q) => [q.id, q.name])].map(([id, n]) => `<button class="chip${qFilter === id ? " on" : ""}" data-qfilter="${escapeHtml(id)}">${escapeHtml(n)}</button>`).join("")}</div>` : "";
     const counts = Object.fromEntries(FILTERS.map(([f]) => [f, f === "all" ? data.length : data.filter((r) => statusOf(r) === f).length]));
     host.innerHTML = (page === "home" ? `<div class="listhead"><h3>Downloads (${data.length})</h3><div class="acts">
         <button class="btn" data-bulk="add">${icon(I.plus)}Add</button>
         <button class="iconbtn" data-bulk="resumeAll" title="Resume all">${icon(I.play)}</button>
         <button class="iconbtn" data-bulk="pauseAll" title="Pause all">${icon(I.pause)}</button>
         <button class="iconbtn" data-bulk="clear" title="Clear completed">${icon(I.trash)}</button></div></div>` : "") +
-      (showChips ? `<div class="chips">${FILTERS.map(([f, l]) => `<button class="chip${filter === f ? " on" : ""}" data-filter="${f}">${l} (${counts[f]})</button>`).join("")}</div>` : "") +
+      qChips + (showChips ? `<div class="chips">${FILTERS.map(([f, l]) => `<button class="chip${filter === f ? " on" : ""}" data-filter="${f}">${l} (${counts[f]})</button>`).join("")}</div>` : "") +
       (rows.length ? `<div class="list">${rows.map(card).join("")}</div>` : emptyFor(page));
   }
   const active = data.filter((r) => r.status === "downloading").length;
@@ -635,6 +649,7 @@ function render() {
 
 document.addEventListener("click", (e) => {
   const f = e.target.closest("[data-filter]"); if (f) { filter = f.dataset.filter; render(); return; }
+  const qf = e.target.closest("[data-qfilter]"); if (qf) { qFilter = qf.dataset.qfilter; render(); return; }
   const b = e.target.closest("[data-bulk]");
   if (b) {
     const k = b.dataset.bulk;
@@ -675,6 +690,9 @@ function openMenu(anchor, r) {
   if ((r.status === "paused" || r.status === "error") && !r.kind) items.push(["relink", I.retry, "Refresh link…"]);
   if (["queued", "paused", "error"].includes(r.status)) {
     items.push(["hr"], ["now", I.play, "Start now"], ["next", I.next, "Download next"]);
+    if (S?.queues?.length) for (const q of [{ id: "", name: "Main queue" }, ...S.queues]) {
+      if (q.id !== (r.queue || "")) items.push(["q:" + q.id, I.queue, "Move to " + q.name]);
+    }
     const q = rowsFor("queue"), i = q.findIndex((x) => x.id === r.id);
     if (i > 0) items.push(["up", I.up, "Move up"]);
     if (i >= 0 && i < q.length - 1) items.push(["down", I.down, "Move down"]);
@@ -695,6 +713,7 @@ function openMenu(anchor, r) {
     if (k === "resume") act(resume, r.id);
     if (k === "remove") act(remove, r.id);
     if (k === "relink") openRelink(r);
+    if (k.startsWith("q:")) act(setQueue, r.id, k.slice(2));
     if (["now", "next", "up", "down"].includes(k)) act(reorder, r.id, k);
   };
 }
@@ -774,7 +793,7 @@ async function openAdd(url = "") {
   addDir = "";
   defConn = await connections();
   partsOptions(defConn);
-  $("#aUrl").value = url; $("#aName").value = ""; $("#aSum").value = ""; $("#aUser").value = ""; $("#aPass").value = ""; $("#aLoginRow").hidden = true; $("#aProbe").textContent = ""; $("#aProbe").className = "probe";
+  $("#aUrl").value = url; $("#aName").value = ""; $("#aSum").value = ""; fillQueuePicker(); $("#aUser").value = ""; $("#aPass").value = ""; $("#aLoginRow").hidden = true; $("#aProbe").textContent = ""; $("#aProbe").className = "probe";
   $$('input[name="aStart"]')[0].checked = true;
   await showAddDir();
   $("#addDlg").showModal();
@@ -837,7 +856,7 @@ $("#aGo").onclick = async () => {
   const start = $('input[name="aStart"]:checked').value === "now";
   const parts = +$("#aParts").value;
   try {
-    await addDownload({ pendingId, url: $("#aUrl").value.trim(), filename: $("#aName").value.trim(), dir: addDir, segments: parts === defConn ? 0 : parts, start, checksum: $("#aSum").value.trim(), user: $("#aUser").value, pass: $("#aPass").value });
+    await addDownload({ pendingId, url: $("#aUrl").value.trim(), filename: $("#aName").value.trim(), dir: addDir, segments: parts === defConn ? 0 : parts, start, queue: $("#aQueue").value, checksum: $("#aSum").value.trim(), user: $("#aUser").value, pass: $("#aPass").value });
     pendingId = 0;
     $("#addDlg").close();
     toast(start ? "Download started" : "Added to the queue");
@@ -879,6 +898,54 @@ $("#sDays").innerHTML = DAYS.map((d, i) => `<label><input type="checkbox" data-d
 let S = null, defaultFolder = "";
 const getPath = (o, p) => p.split(".").reduce((x, k) => x?.[k], o);
 const setPath = (o, p, v) => { const k = p.split("."); const last = k.pop(); k.reduce((x, kk) => x[kk], o)[last] = v; };
+function fillQueuePicker() {
+  const qs = S?.queues || [];
+  $("#aQueueRow").hidden = !qs.length;
+  $("#aQueue").innerHTML = `<option value="">Main queue</option>` + qs.map((q) => `<option value="${escapeHtml(q.id)}">${escapeHtml(q.name)}</option>`).join("");
+}
+function renderQueues() {
+  const qs = S.queues || [];
+  if ($("#qList").contains(document.activeElement) && document.activeElement.dataset.qf === "name") return; // don't redraw while renaming
+  $("#qList").innerHTML = qs.length ? qs.map((q, i) => `<div class="panel qpanel" data-qi="${i}">
+    <div class="qtop"><input data-qf="name" value="${escapeHtml(q.name)}" maxlength="40" title="Rename">
+      <button class="iconbtn" data-qdel="${i}" title="Delete queue">${icon(I.trash)}</button></div>
+    <div class="opt"><div><div class="t">Only download during set hours</div></div>
+      <span class="switch"><input type="checkbox" data-qf="enabled"${q.schedule.enabled ? " checked" : ""}><i></i></span></div>
+    <div style="padding-top:12px" class="${q.schedule.enabled ? "" : "off"}">
+      <div class="field"><span class="lbl">Between</span><div class="row2"><input type="time" class="time" data-qf="start" value="${q.schedule.start}"> <span class="hint">and</span> <input type="time" class="time" data-qf="stop" value="${q.schedule.stop}"></div></div>
+      <div class="field"><span class="lbl">On these days</span><div class="days">${DAYS.map((d, k) => `<label><input type="checkbox" data-qday="${k}"${q.schedule.days[k] ? " checked" : ""}>${d}</label>`).join("")}</div></div>
+    </div>
+    <div class="opt"><div><div class="t">Downloads at once in this queue</div><div class="d">Never more than the overall limit above.</div></div>
+      <select class="sel" data-qf="max"><option value="0"${q.maxConcurrent ? "" : " selected"}>No own limit</option>${[1, 2, 3, 4, 5].map((n) => `<option${q.maxConcurrent === n ? " selected" : ""}>${n}</option>`).join("")}</select></div>
+  </div>`).join("") : `<p class="hint" style="max-width:640px">No other queues yet.</p>`;
+}
+function editQueue(i, f) { save((s) => { s.queues = s.queues || []; f(s.queues[i]); }); }
+$("#qAdd").onclick = () => save((s) => {
+  s.queues = s.queues || [];
+  s.queues.push({ id: "q" + Date.now().toString(36), name: "Queue " + (s.queues.length + 1), maxConcurrent: 0,
+    schedule: { enabled: true, start: "01:00", stop: "07:00", days: [true, true, true, true, true, true, true] } });
+});
+$("#qList").addEventListener("change", (e) => {
+  const el = e.target, p = el.closest("[data-qi]"); if (!p) return;
+  e.stopPropagation(); // not a regular data-s setting
+  const i = +p.dataset.qi, f = el.dataset.qf;
+  if (el.dataset.qday !== undefined) {
+    const days = [...p.querySelectorAll("[data-qday]")].sort((a, b) => a.dataset.qday - b.dataset.qday).map((c) => c.checked);
+    if (!days.some(Boolean)) { toast("Pick at least one day", true); el.checked = true; return; }
+    return editQueue(i, (q) => (q.schedule.days = days));
+  }
+  if (f === "name") { const v = el.value.trim(); el.blur(); if (!v) { toast("Give the queue a name", true); return renderQueues(); } return editQueue(i, (q) => (q.name = v)); }
+  if (f === "enabled") return editQueue(i, (q) => (q.schedule.enabled = el.checked));
+  if (f === "start" || f === "stop") return editQueue(i, (q) => (q.schedule[f] = el.value));
+  if (f === "max") return editQueue(i, (q) => (q.maxConcurrent = +el.value));
+}, true);
+$("#qList").addEventListener("click", (e) => {
+  const d = e.target.closest("[data-qdel]"); if (!d) return;
+  const i = +d.dataset.qdel, q = S.queues[i];
+  if (!confirm(`Delete the queue “${q.name}”? Its downloads move to the main queue.`)) return;
+  save((s) => s.queues.splice(i, 1));
+});
+
 async function loadSettings() {
   S = await getSettings();
   defaultFolder = await defaultDir();
@@ -898,6 +965,7 @@ async function loadSettings() {
   $("#proxyMode").value = pm;
   $("#proxyBox").hidden = pm !== "manual";
   if (pm === "manual" && document.activeElement !== $("#proxyUrl")) $("#proxyUrl").value = S.proxy;
+  renderQueues();
   $("#dirShow").value = S.downloadDir || defaultFolder;
   $("#dirReset").disabled = !S.downloadDir;
 }

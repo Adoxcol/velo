@@ -30,11 +30,21 @@ type Settings struct {
 	Onboarded      bool     `json:"onboarded"`         // first-run setup done
 	AutoUpdate     bool     `json:"autoUpdate"`        // install verified updates when idle
 	AskOnCapture   bool     `json:"askOnCapture"`      // show the download dialog for browser downloads
+	Queues         []Queue  `json:"queues"`            // named queues besides the main one
 	Proxy          string   `json:"proxy"`             // "" = Windows setting, "none", or a proxy URL
 	MiniPos        *[2]int  `json:"miniPos,omitempty"` // where Velo Mini was dragged to (nil = bottom right)
 }
 
 // Schedule restricts downloading to a daily time window.
+// Queue is a named queue with its own schedule and limit. Downloads not in
+// a named queue use the main queue (Settings.Schedule, Settings.MaxConcurrent).
+type Queue struct {
+	ID            string   `json:"id"`
+	Name          string   `json:"name"`
+	Schedule      Schedule `json:"schedule"`
+	MaxConcurrent int      `json:"maxConcurrent"` // 0 = only the overall limit
+}
+
 type Schedule struct {
 	Enabled bool    `json:"enabled"`
 	Start   string  `json:"start"` // "HH:MM"
@@ -101,6 +111,30 @@ func (s *Settings) validate() error {
 	}
 	if s.Connections < 0 || s.Connections > 32 {
 		return fmt.Errorf("connections must be 1-32")
+	}
+	seen := map[string]bool{}
+	for i := range s.Queues {
+		q := &s.Queues[i]
+		q.Name = strings.TrimSpace(q.Name)
+		if q.Name == "" || len(q.Name) > 40 {
+			return fmt.Errorf("queue names must be 1-40 characters")
+		}
+		if q.ID == "" || seen[q.ID] {
+			return fmt.Errorf("queue %q has a missing or duplicate ID", q.Name)
+		}
+		seen[q.ID] = true
+		if q.MaxConcurrent < 0 || q.MaxConcurrent > 10 {
+			return fmt.Errorf("queue %q: downloads at once must be 0-10", q.Name)
+		}
+		if _, err := minutes(q.Schedule.Start); err != nil {
+			return fmt.Errorf("queue %q start time: %w", q.Name, err)
+		}
+		if _, err := minutes(q.Schedule.Stop); err != nil {
+			return fmt.Errorf("queue %q stop time: %w", q.Name, err)
+		}
+	}
+	if len(s.Queues) > 20 {
+		return fmt.Errorf("at most 20 queues")
 	}
 	p, err := engine.ParseProxy(s.Proxy)
 	if err != nil {

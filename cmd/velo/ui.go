@@ -274,6 +274,7 @@ func bind(w webview2.WebView, a *app) {
 	w.Bind("appVersion", func() string { return version.Version })
 	w.Bind("updateInfo", func() updateInfo { return a.upd.info() })
 	w.Bind("debugInfo", func() string { return a.debugInfo() })
+	w.Bind("setQueue", func(id int, q string) error { return a.setQueue(id, q) })
 	w.Bind("reorder", func(id int, how string) error { return a.reorder(id, how) })
 	w.Bind("refreshLink", func(id int, u string) error { return a.refreshLink(id, u) })
 	w.Bind("checkUpdate", func() { go a.upd.check(a) })

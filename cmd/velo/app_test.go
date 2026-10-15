@@ -388,3 +388,52 @@ func TestQueueOrder(t *testing.T) {
 	}
 	waitFor(t, "all stopped", func() bool { a.mu.Lock(); defer a.mu.Unlock(); return a.running == 0 })
 }
+
+func TestNamedQueues(t *testing.T) {
+	url := slowServer(t, 2<<20)
+	s := defaultSettings()
+	s.MaxConcurrent = 5
+	s.SpeedLimitKB = 256
+	now := time.Now()
+	s.Queues = []Queue{
+		{ID: "night", Name: "Night", Schedule: Schedule{Enabled: true, Start: now.Add(2 * time.Hour).Format("15:04"),
+			Stop: now.Add(3 * time.Hour).Format("15:04"), Days: [7]bool{true, true, true, true, true, true, true}}},
+		{ID: "one", Name: "One at a time", MaxConcurrent: 1, Schedule: Schedule{Start: "00:00", Stop: "00:00"}},
+	}
+	if err := s.validate(); err != nil {
+		t.Fatal(err)
+	}
+	a := testApp(t, s)
+	main := a.add(engine.Request{URL: url})
+	night := a.add(engine.Request{URL: url, Queue: "night"})
+	one1 := a.add(engine.Request{URL: url, Queue: "one"})
+	one2 := a.add(engine.Request{URL: url, Queue: "one"})
+	waitFor(t, "main and the first of 'one' to run", func() bool {
+		return statusOf(a, main) == "downloading" && statusOf(a, one1) == "downloading"
+	})
+	time.Sleep(200 * time.Millisecond)
+	if st := statusOf(a, night); st != "queued" {
+		t.Fatalf("night queue is outside its hours: want queued, got %s", st)
+	}
+	if st := statusOf(a, one2); st != "queued" {
+		t.Fatalf("queue 'one' allows one at a time: want queued, got %s", st)
+	}
+	// Moving it to the main queue lets it start.
+	if err := a.setQueue(night, ""); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "moved download to start", func() bool { return statusOf(a, night) == "downloading" })
+	if err := a.setQueue(main, "missing"); err == nil {
+		t.Fatal("accepted an unknown queue")
+	}
+	for _, id := range []int{main, night, one1, one2} {
+		a.pause(id)
+	}
+	waitFor(t, "all stopped", func() bool { a.mu.Lock(); defer a.mu.Unlock(); return a.running == 0 })
+
+	bad := defaultSettings()
+	bad.Queues = []Queue{{ID: "x", Name: "A"}, {ID: "x", Name: "B"}}
+	if bad.validate() == nil {
+		t.Fatal("accepted duplicate queue IDs")
+	}
+}

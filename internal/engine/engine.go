@@ -44,7 +44,8 @@ type Request struct {
 	Dir                                         string `json:",omitempty"` // save here instead of the default/category folder
 	Segments                                    int    `json:",omitempty"` // connections for this download (0 = engine default)
 	User, Pass                                  string `json:",omitempty"` // HTTP login for sites that ask for one
-	Checksum                                    string `json:",omitempty"` // expected MD5/SHA-1/SHA-256/SHA-512 (hex), checked when done
+	Checksum                                    string `json:",omitempty"`
+	Queue                                       string `json:",omitempty"` // named queue ID; "" = the main queue // expected MD5/SHA-1/SHA-256/SHA-512 (hex), checked when done
 }
 
 // Segment is the byte range [Pos, End] still to fetch. Guarded by Download.mu.
@@ -175,6 +176,20 @@ func (d *Download) SetRequest(r Request) {
 	d.Req = r
 	d.mu.Unlock()
 	d.direct.Store(nil)
+}
+
+// SetQueue moves the download to a named queue ("" = the main queue).
+func (d *Download) SetQueue(q string) {
+	d.mu.Lock()
+	d.Req.Queue = q
+	d.mu.Unlock()
+}
+
+// QueueID is the download's named queue ("" = the main queue).
+func (d *Download) QueueID() string {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.Req.Queue
 }
 
 // Connections reports how many connections are currently downloading.

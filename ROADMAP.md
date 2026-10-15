@@ -33,7 +33,7 @@ Ticked items are done. Work goes roughly top to bottom.
 - [x] Download all links on a page, filtered by type (counts on each type, `*.pdf *.zip` patterns)
 - [x] Refresh an expired link and continue the same file (checks it is the same size)
 - [x] Queue control: start now, download next, move up and down
-- [ ] Several named queues (each with its own schedule)
+- [x] Named queues, each with its own hours, days and limit (0.3.2)
 - [x] Login-protected downloads: username and password in the Add dialog, shown when a site asks; never sent to other hosts
 
 ## Reach

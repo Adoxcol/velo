@@ -2,6 +2,11 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.3.2 — 2026-10-16
+
+### New
+- **Named queues.** Make extra queues on the Scheduler page, each with its own download hours, days and limit, like a "Night" queue for big files. Pick a queue in the download dialog or use **Move to queue** in a download's menu, and filter the Queue page by queue.
+
 ## 0.3.1 — 2026-10-15
 
 ### New
