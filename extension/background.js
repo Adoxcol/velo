@@ -13,8 +13,8 @@ const DEFAULT_EXTS = [
   "exe msi msix msu appx apk dmg pkg deb rpm appimage",
   "mp4 m4v mkv avi mov webm wmv flv mpg mpeg 3gp ogv ts",
   "mp3 m4a aac flac wav ogg opus wma aif aiff",
-  "pdf doc docx xls xlsx ppt pptx odt ods odp epub mobi rtf csv",
-  "psd ai tif tiff torrent",
+  "pdf doc docx xls xlsx ppt pptx odt ods odp epub mobi azw3 fb2 djvu cbz cbr rtf csv",
+  "psd ai tif tiff torrent vhd vhdx ttf otf",
 ].join(" ");
 
 async function settings() {

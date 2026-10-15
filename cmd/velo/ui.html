@@ -115,15 +115,20 @@
   }
   .card.new { animation: rise .25s ease; }
   @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-  .tile { width: 54px; height: 54px; border-radius: 12px; display: grid; place-items: center; color: #fff; }
-  .tile svg.i { width: 26px; height: 26px; stroke-width: 1.7; }
-  .t-Video { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
-  .t-Music { background: linear-gradient(135deg, #a855f7, #7c3aed); }
-  .t-Images { background: linear-gradient(135deg, #14b8a6, #0d9488); }
-  .t-Documents { background: linear-gradient(135deg, #f97316, #ea580c); }
-  .t-Compressed { background: linear-gradient(135deg, #facc15, #eab308); }
-  .t-Programs { background: linear-gradient(135deg, #64748b, #475569); }
-  .t-Other { background: linear-gradient(135deg, #94a3b8, #64748b); }
+  .tile { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; flex: none; }
+  .tile svg.i { width: 23px; height: 23px; stroke-width: 1.8; }
+  .tile { background: color-mix(in srgb, var(--c, #94a3b8) 15%, transparent); color: var(--c, #94a3b8); }
+  .t-Video { --c: #3b82f6; }
+  .t-Music { --c: #a855f7; }
+  .t-Images { --c: #14b8a6; }
+  .t-Documents { --c: #f97316; }
+  .t-Ebooks { --c: #ec4899; }
+  .t-Compressed { --c: #d97706; }
+  .t-Diskimages { --c: #6366f1; }
+  .t-Programs { --c: #64748b; }
+  .t-Torrents { --c: #22c55e; }
+  .t-Fonts { --c: #0ea5e9; }
+  .t-Other { --c: #94a3b8; }
   .info { min-width: 0; }
   .name { font-weight: 600; font-size: 14.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .meta { display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: 12.5px; margin-top: 3px; white-space: nowrap; overflow: hidden; }
@@ -351,7 +356,7 @@
           <div class="sec" data-sec="downloads"><h2>Downloads</h2>
             <div class="field"><span class="lbl">Default download location</span>
               <div class="inp ro"><input id="dirShow" readonly><button class="link" id="dirChange">Change</button><button class="link" id="dirReset">Reset</button></div></div>
-            <div class="opt"><div><div class="t">Auto-categorize downloads</div><div class="d">Video, Music, Images, Documents, Compressed and Programs subfolders.</div></div><span class="switch"><input type="checkbox" data-s="sortByType"><i></i></span></div>
+            <div class="opt"><div><div class="t">Auto-categorize downloads</div><div class="d">Video, Music, Images, Documents, E-books, Compressed, Disk images, Programs, Torrents and Fonts subfolders.</div></div><span class="switch"><input type="checkbox" data-s="sortByType"><i></i></span></div>
           </div>
           <div class="sec" data-sec="connection"><h2>Connection</h2>
             <div class="opt"><div><div class="t">Connections per download</div><div class="d">Velo splits files into parts and downloads them in parallel. Busy servers automatically get fewer.</div></div>
@@ -454,6 +459,17 @@ const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const icon = (d, cls = "i") => `<svg class="${cls}" viewBox="0 0 24 24">${d}</svg>`;
 const I = {
+  "Video": '<rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="m10 9.5 4.5 2.5-4.5 2.5z"/>',
+  "Music": '<path d="M9 18V6l11-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>',
+  "Images": '<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="m21 15-4.5-4.5L7 20"/>',
+  "Documents": '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
+  "E-books": '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>',
+  "Compressed": '<rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"/>',
+  "Disk images": '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/>',
+  "Programs": '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M7.5 13.5l2.5 2-2.5 2M12.5 17.5h4"/>',
+  "Torrents": '<path d="M6 15 2 11l6.8-6.8a7.8 7.8 0 0 1 11 11L13 22l-4-4 6.4-6.4a2.1 2.1 0 0 0-3-3L6 15"/><path d="m5 8 4 4M12 15l4 4"/>',
+  "Fonts": '<path d="M4 7V5h16v2M9 19h6M12 5v14"/>',
+  "Other": '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
   up: '<path d="M12 19V5M6 11l6-6 6 6"/>',
   down: '<path d="M12 5v14M6 13l6 6 6-6"/>',
   next: '<path d="M5 5l7 7-7 7M13 5l7 7-7 7"/>',
@@ -475,13 +491,6 @@ const I = {
   retry: '<path d="M4 4v6h6"/><path d="M5 10a8 8 0 1 1 2 6"/>',
   copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
   open: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>',
-  Video: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/>',
-  Music: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
-  Images: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/>',
-  Documents: '<path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/>',
-  Compressed: '<path d="M6 3h12v18H6z"/><path d="M12 3v2M12 7v2M12 11v2M11 15h2v3h-2z"/>',
-  Programs: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 13l3 2-3 2"/>',
-  Other: '<path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5"/>',
   sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
   wifi: '<path d="M5 12a10 10 0 0 1 14 0M8.5 15.5a5 5 0 0 1 7 0"/><circle cx="12" cy="19" r="1"/>',
   gauge: '<path d="M12 14l4-4"/><path d="M4 18a9 9 0 1 1 16 0"/>',
@@ -604,7 +613,7 @@ function card(r) {
   const fresh = !seenIds.has(r.id);
   seenIds.add(r.id);
   return `<div class="card ${r.status}${r.id === selected ? " selected" : ""}${fresh ? " new" : ""}" data-id="${r.id}">
-    <div class="tile t-${cat}">${icon(I[cat] || I.Other)}</div>
+    <div class="tile t-${cat.replace(/\W/g, "")}">${icon(I[cat] || I.Other)}</div>
     <div class="info"><div class="name" title="${escapeHtml(r.url)}">${escapeHtml(r.file || "Starting…")}${r.queue && r.status !== "done" && queueName(r.queue) ? ` <span class="qbadge">${escapeHtml(queueName(r.queue))}</span>` : ""}</div>
       <div class="meta">${meta}${right}</div>
       ${r.status === "done" ? "" : `<div class="bar"><i style="width:${pct}%"></i></div>`}</div>
@@ -1008,7 +1017,7 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => S &&
 
 // ---------- batch download ("Download all with Velo") ----------
 let batch = null, bSel = new Set(), bCat = "files";
-const BCHIPS = [["files", "Files"], ["all", "All links"], ["Video", "Video"], ["Music", "Music"], ["Images", "Images"], ["Documents", "Docs"], ["Compressed", "Archives"], ["Programs", "Programs"]];
+const BCHIPS = [["files", "Files"], ["all", "All links"], ["Video", "Video"], ["Music", "Music"], ["Images", "Images"], ["Documents", "Docs"], ["E-books", "E-books"], ["Compressed", "Archives"], ["Disk images", "Disk images"], ["Programs", "Programs"], ["Torrents", "Torrents"], ["Fonts", "Fonts"]];
 // The filter box takes words to search for, or extension patterns like
 // "*.pdf *.zip" (also ".pdf, .zip"): a link matches any pattern.
 function bMatcher() {
@@ -1035,7 +1044,7 @@ function bRender() {
   $("#bList").innerHTML = rows.length ? rows.map((l) => {
     const cat = l.category || "Other";
     return `<label class="brow" title="${escapeHtml(l.url)}"><input type="checkbox" data-u="${escapeHtml(l.url)}"${bSel.has(l.url) ? " checked" : ""}>
-      <div class="tile t-${cat}">${icon(I[cat] || I.Other)}</div>
+      <div class="tile t-${cat.replace(/\W/g, "")}">${icon(I[cat] || I.Other)}</div>
       <div><div class="n">${escapeHtml(l.file ? l.name : (l.text || l.name))}</div><div class="u">${escapeHtml(l.url)}</div></div></label>`;
   }).join("") : `<div class="empty" style="border:0">No links match.</div>`;
   $("#bCount").textContent = `${bSel.size} selected of ${batch.links.length}`;
@@ -1087,7 +1096,7 @@ const OB = [
     <li>${icon(I.clock)}<span><b>Queues and schedules</b> downloads, with a speed limit when you need it.</span></li></ul></div>`,
   () => `<div class="ob"><h2>Where should downloads go?</h2><p>You can change this any time in Settings.</p>
     <div class="field"><span class="lbl">Download folder</span><div class="inp ro"><input id="obDir" readonly value="${escapeHtml(S.downloadDir || defaultFolder)}"><button class="link" id="obDirChange">Change</button></div></div>
-    <div class="opt"><div><div class="t">Sort into folders by type</div><div class="d">Video, Music, Images, Documents, Compressed, Programs.</div></div><span class="switch"><input type="checkbox" id="obSort"${S.sortByType ? " checked" : ""}><i></i></span></div>
+    <div class="opt"><div><div class="t">Sort into folders by type</div><div class="d">Video, Music, Images, Documents, E-books, Compressed, Disk images, Programs, Torrents and Fonts.</div></div><span class="switch"><input type="checkbox" id="obSort"${S.sortByType ? " checked" : ""}><i></i></span></div>
     <div class="opt"><div><div class="t">Start Velo with Windows</div><div class="d">So browser downloads and schedules always work.</div></div><span class="switch"><input type="checkbox" id="obAuto"${S.autostart ? " checked" : ""}><i></i></span></div></div>`,
   async () => `<div class="ob"><h2>Connect your browser</h2><p>The Velo extension sends downloads and videos from Chrome or Edge to Velo.</p>
     <ol class="steps"><li>Open <code>chrome://extensions</code> or <code>edge://extensions</code> and turn on <b>Developer mode</b>.</li>

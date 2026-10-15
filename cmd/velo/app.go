@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -874,6 +875,13 @@ func (a *app) rows() []row {
 			name = d.Req.Filename
 			if name == "" {
 				name = d.Req.Title
+			}
+			if name == "" && d.Req.Kind == "" { // not started yet: the name in the link
+				if u, err := url.Parse(d.Req.URL); err == nil {
+					if b, err := url.PathUnescape(path.Base(u.Path)); err == nil && b != "/" && b != "." {
+						name = b
+					}
+				}
 			}
 		}
 		r := row{ID: d.ID, Status: status, Percent: pct(d), Done: d.Done.Load(), Total: total,

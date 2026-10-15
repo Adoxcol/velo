@@ -10,18 +10,22 @@ import (
 // Categories sort new downloads into subfolders by file type.
 // Files of other types stay in the download folder itself.
 
-var Categories = []string{"Video", "Music", "Images", "Documents", "Compressed", "Programs"}
+var Categories = []string{"Video", "Music", "Images", "Documents", "E-books", "Compressed", "Disk images", "Programs", "Torrents", "Fonts"}
 
 var categoryExt = map[string]string{}
 
 func init() {
 	for cat, exts := range map[string]string{
-		"Video":      "mp4 m4v mkv avi mov webm flv wmv mpg mpeg ts 3gp",
-		"Music":      "mp3 flac m4a aac wav ogg opus wma alac aiff",
-		"Images":     "jpg jpeg png gif webp bmp tif tiff svg heic heif avif ico psd raw",
-		"Documents":  "pdf doc docx xls xlsx ppt pptx odt ods odp txt rtf csv epub mobi md",
-		"Compressed": "zip rar 7z gz tgz tar bz2 xz zst iso img cab",
-		"Programs":   "exe msi msix appx apk dmg pkg deb rpm appimage",
+		"Video":       "mp4 m4v mkv avi mov webm flv wmv mpg mpeg ts m2ts 3gp ogv",
+		"Music":       "mp3 flac m4a aac wav ogg opus wma alac aiff aif ape mka",
+		"Images":      "jpg jpeg png gif webp bmp tif tiff svg heic heif avif ico psd raw cr2 nef dng",
+		"Documents":   "pdf doc docx xls xlsx ppt pptx odt ods odp txt rtf csv md pages key numbers",
+		"E-books":     "epub mobi azw azw3 fb2 djvu cbz cbr",
+		"Compressed":  "zip rar 7z gz tgz tar bz2 tbz2 xz txz zst lz lzma cab arj lzh",
+		"Disk images": "iso img vhd vhdx vmdk qcow2",
+		"Programs":    "exe msi msix msixbundle appx appxbundle msu apk xapk aab dmg pkg deb rpm appimage flatpak snap jar",
+		"Torrents":    "torrent",
+		"Fonts":       "ttf otf woff woff2 ttc",
 	} {
 		for _, e := range strings.Fields(exts) {
 			categoryExt[e] = cat

@@ -2,6 +2,16 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.3.4 — 2026-10-16
+
+### New
+- **More categories:** Torrents, Disk images (`.iso`, `.img`, `.vhd`), E-books (`.epub`, `.mobi`, `.azw3`, comics) and Fonts each get their own folder. Velo also recognises more types in the existing categories, like `.m2ts`, `.ape`, camera RAW photos and `.msixbundle`.
+- **Cleaner file icons.** Soft tinted tiles with a crisp icon in each category's colour, the same in the main window, the download dialog, Velo Mini and the link picker.
+- The download dialog is wider and shorter, with tighter spacing.
+
+### Fixed
+- Downloads that fail before starting now show their file name instead of "Starting…".
+
 ## 0.3.3 — 2026-10-16
 
 ### New

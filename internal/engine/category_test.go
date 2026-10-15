@@ -10,6 +10,7 @@ func TestCategoryOf(t *testing.T) {
 	for name, want := range map[string]string{
 		"movie.MKV": "Video", "song.mp3": "Music", "report.pdf": "Documents",
 		"backup.tar.gz": "Compressed", "setup.exe": "Programs", "notes": "", "photo.JPG": "Images", "page.html": "",
+		"ubuntu.iso": "Disk images", "linux.torrent": "Torrents", "novel.epub": "E-books", "Inter.woff2": "Fonts",
 	} {
 		if got := CategoryOf(name); got != want {
 			t.Errorf("%s: got %q, want %q", name, got, want)
