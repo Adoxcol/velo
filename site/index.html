@@ -62,6 +62,8 @@
       background-image: linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
       background-size: 48px 48px; mask-image: radial-gradient(70% 60% at 50% 20%, #000, transparent 75%); }
   .hero .wrap { position: relative; z-index: 1; }
+  a.pill { text-decoration: none; transition: background .15s; }
+  a.pill:hover { background: rgba(255, 255, 255, .12); }
   .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 99px; background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .12); color: #c9d6ea; font-size: 13.5px; }
   .pill b { color: #fff; font-weight: 600; }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px rgba(34, 197, 94, .18); }
@@ -262,6 +264,7 @@
       <a href="#features">Features</a>
       <a href="#browser">Browser</a>
       <a href="#faq">FAQ</a>
+      <a href="/changelog">Changelog</a>
       <a href="https://github.com/Adoxcol/velo">GitHub</a>
       <a class="btn primary" href="#download">Download</a>
     </div>
@@ -270,14 +273,14 @@
 
 <header class="hero">
   <div class="wrap">
-    <span class="pill"><span class="dot"></span><b>Free &amp; open source</b> · No ads · No tracking</span>
+    <a class="pill" href="/changelog"><span class="dot"></span><b>New in 0.3.1:</b> Firefox support <span aria-hidden="true">→</span></a>
     <h1>Fast downloads.<br><span class="grad">A smoother internet.</span></h1>
     <p class="lead">Velo is a download manager for Windows. It splits every file into parts that download at once, picks up where it left off, and takes over downloads from your browser.</p>
     <div class="ctas">
       <a class="btn primary" href="#download"><svg class="i"><use href="#win"/></svg>Download for Windows</a>
       <a class="btn glass" href="https://github.com/Adoxcol/velo"><svg class="i"><use href="#gh"/></svg>Star on GitHub</a>
     </div>
-    <p class="fine">Windows 10 and 11 · Chrome, Edge, Brave and Firefox</p>
+    <p class="fine">Free and open source · Windows 10 and 11 · Chrome, Edge, Brave and Firefox</p>
 
     <div class="stage" aria-hidden="true">
       <div class="window">
@@ -451,6 +454,7 @@
     <a class="brand" href="#" style="font-size:17px"><svg style="width:18px;height:18px"><use href="#bolt"/></svg>velo.</a>
     <span>Open source · MIT license · Made by <a href="https://adoxcol.com">Adoxcol</a></span>
     <div class="links">
+      <a href="/changelog">Changelog</a>
       <a href="https://github.com/Adoxcol/velo">GitHub</a>
       <a href="https://github.com/Adoxcol/velo/issues">Report a problem</a>
       <a href="https://gist.github.com/Adoxcol/ea9009ab50bad69a5067c20ae35edd49">Privacy</a>

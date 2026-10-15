@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Velo changelog</title>
+<meta name="description" content="What's new in each version of Velo, the free and open-source download manager for Windows.">
+<meta name="theme-color" content="#0d1728">
+<link rel="icon" href="favicon.ico" sizes="any">
+
+<style>
+  :root { --primary: #1677ff; --navy: #0d1728; --bg: #ffffff; --surface: #ffffff; --ink: #0d1728; --muted: #64748b; --line: #e6ebf2; --soft: #eef5ff; --ok: #22c55e; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0a1120; --surface: #111b2e; --ink: #edf2f9; --muted: #97a6ba; --line: #1d2a41; --soft: #12233f; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.65 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+  header { background: var(--navy); color: #fff; position: relative; overflow: hidden; }
+  header::before { content: ""; position: absolute; inset: 0; background: radial-gradient(60% 90% at 50% 0%, rgba(22, 119, 255, .4), transparent 70%); }
+  header .wrap { position: relative; }
+  nav { display: flex; align-items: center; gap: 26px; height: 72px; }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 21px; text-decoration: none; color: #fff; }
+  .brand svg { width: 22px; height: 22px; }
+  nav .links { display: flex; gap: 26px; margin-left: auto; font-size: 15px; align-items: center; }
+  nav .links a { text-decoration: none; color: #b8c4d6; }
+  nav .links a:hover { color: #fff; }
+  .btn { display: inline-flex; padding: 9px 16px; border-radius: 11px; background: var(--primary); color: #fff !important; font-weight: 600; font-size: 14.5px; text-decoration: none; }
+  .intro { padding: 56px 0 64px; }
+  h1 { font-size: clamp(36px, 6vw, 56px); line-height: 1.05; letter-spacing: -.03em; margin: 0 0 12px; }
+  .intro p { color: #aebbd0; font-size: 18px; margin: 0; max-width: 560px; }
+  main { padding: 64px 0 40px; }
+  .rel { display: grid; grid-template-columns: 220px 1fr; gap: 40px; padding: 0 0 56px; }
+  .rel + .rel { border-top: 1px solid var(--line); padding-top: 56px; }
+  .ver { position: sticky; top: 24px; align-self: start; }
+  .ver b { display: block; font-size: 26px; letter-spacing: -.02em; }
+  .ver span { color: var(--muted); font-size: 14.5px; }
+  .ver .latest { display: inline-block; margin-top: 10px; padding: 3px 10px; border-radius: 99px; background: var(--soft); color: var(--primary); font-size: 12.5px; font-weight: 600; }
+  .body > p { margin: 0 0 16px; color: var(--muted); font-size: 16.5px; }
+  h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--primary); margin: 0 0 12px; }
+  h3 ~ h3, ul + h3 { margin-top: 28px; }
+  ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+  li { position: relative; padding-left: 20px; color: var(--muted); }
+  li::before { content: ""; position: absolute; left: 2px; top: .7em; width: 6px; height: 6px; border-radius: 50%; background: var(--primary); opacity: .7; }
+  li b { color: var(--ink); font-weight: 600; }
+  code { font: 13.5px ui-monospace, "Cascadia Code", Consolas, monospace; background: var(--soft); padding: 1px 6px; border-radius: 5px; color: var(--ink); }
+  footer { border-top: 1px solid var(--line); padding: 36px 0 56px; color: var(--muted); font-size: 14px; }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 16px 28px; }
+  footer .links { display: flex; gap: 22px; margin-left: auto; flex-wrap: wrap; }
+  footer a { text-decoration: none; }
+  footer a:hover { color: var(--ink); }
+  @media (max-width: 760px) {
+    .wrap { padding: 0 16px; }
+    nav .links a:not(.btn) { display: none; }
+    .rel { grid-template-columns: 1fr; gap: 16px; }
+    .ver { position: static; }
+    footer .links { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <nav>
+      <a class="brand" href="/"><svg viewBox="0 0 24 24"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z" fill="#1677ff"/></svg>velo.</a>
+      <div class="links">
+        <a href="/#features">Features</a>
+        <a href="/changelog">Changelog</a>
+        <a href="https://github.com/Adoxcol/velo">GitHub</a>
+        <a class="btn" href="/#download">Download</a>
+      </div>
+    </nav>
+    <div class="intro">
+      <h1>Changelog</h1>
+      <p>What's new in each version of Velo.</p>
+    </div>
+  </div>
+</header>
+<main>
+  <div class="wrap">
+    <article class="rel" id="v0.3.1">
+      <div class="ver"><b>0.3.1</b><span>2026-10-15</span><br><span class="latest">Latest</span></div>
+      <div class="body">
+        <h3>New</h3>
+        <ul>
+          <li><b>Firefox support.</b> The Velo add-on now works in Firefox as well as Chrome, Edge and Brave. Clicked downloads open in Velo, and the installer connects Firefox automatically.</li>
+          <li>In Firefox, the popup offers <b>Allow on all sites</b> if Velo&#39;s site access has been turned off.</li>
+        </ul>
+        <h3>Fixed</h3>
+        <ul>
+          <li>The &#34;Velo isn&#39;t connected&#34; message no longer points to an old setup script.</li>
+        </ul>
+      </div>
+    </article>
+    <article class="rel" id="v0.3.0">
+      <div class="ver"><b>0.3.0</b><span>2026-10-15</span></div>
+      <div class="body">
+        <h3>New</h3>
+        <ul>
+          <li><b>Portable version.</b> Unzip and run <code>velo.exe</code> from any folder, even a USB stick. Settings and history stay in a <code>data</code> folder next to it.</li>
+          <li><b>Taskbar progress.</b> Velo&#39;s taskbar button fills with the progress of everything downloading.</li>
+          <li><b>Keyboard shortcuts.</b> Arrows to select, Space to pause or resume, Enter to open, Delete to remove, Ctrl+V to download a copied link, and ? to list them all.</li>
+          <li><b>Queue control.</b> Waiting downloads can Start now, Download next, Move up or Move down, and the Queue page lists them in the order they will run.</li>
+          <li><b>Refresh link.</b> Give a paused or failed download a fresh link and it continues the same file, after Velo checks it is the same size.</li>
+          <li><b>Checksum check.</b> Paste a SHA-256, SHA-1 or MD5 when adding a download and Velo verifies the finished file.</li>
+          <li><b>Proxy settings.</b> Velo follows the Windows proxy, like your browser, or you can turn it off or set your own.</li>
+          <li><b>Password-protected downloads.</b> Username and password fields appear when a site asks for a login.</li>
+          <li><b>Copy debug info</b> in Settings → Advanced, for bug reports. Link details and your user folder are left out.</li>
+          <li><b>Download all links</b>: each type shows a count, and the filter accepts patterns like <code>*.pdf *.zip</code>.</li>
+          <li><b>Velo Mini</b> can be hidden until downloads finish or turned off for good, has a tray menu switch, and can be dragged anywhere.</li>
+        </ul>
+      </div>
+    </article>
+    <article class="rel" id="v0.2.0">
+      <div class="ver"><b>0.2.0</b><span>2026-10-15</span></div>
+      <div class="body">
+        <h3>Faster</h3>
+        <ul>
+          <li><b>Much faster downloads from GitHub and many CDNs.</b> Each part now uses its own connection; before, they shared one and were capped together. A GitHub test went from 0.3 MB/s to 5.1 MB/s.</li>
+          <li>16 connections per download by default, with more added automatically (up to 32) when a server slows each connection down.</li>
+          <li>Parts go straight to where a link redirects, and the last part of a file no longer crawls.</li>
+        </ul>
+        <h3>New</h3>
+        <ul>
+          <li><b>Survives network drops.</b> A lost connection waits and resumes by itself instead of failing.</li>
+          <li><b>Keeps Windows awake</b> while anything is downloading.</li>
+          <li><b>Checks free disk space</b> before starting.</li>
+          <li><b>Right-click → Download with Velo</b> opens Velo&#39;s download dialog, works on streamed videos, and says when Velo isn&#39;t running.</li>
+        </ul>
+        <h3>Security</h3>
+        <ul>
+          <li>File names from websites can no longer escape the download folder or use reserved Windows names.</li>
+          <li>Login cookies are no longer saved next to unfinished downloads, and are removed from history once a download finishes.</li>
+          <li>Hardened the local connection between the extension and the app.</li>
+        </ul>
+      </div>
+    </article>
+    <article class="rel" id="v0.1.0">
+      <div class="ver"><b>0.1.0</b><span>2026-10-15</span></div>
+      <div class="body"><p>The first version of Velo.</p>
+        
+        <ul>
+          <li>Segmented downloads with pause and resume, even after a restart.</li>
+          <li>Browser extension for Chrome, Edge and Brave: clicked downloads open in Velo&#39;s download dialog.</li>
+          <li>Video grabber for HLS and DASH streams, with a &#34;Download with Velo&#34; button and quality menu on videos.</li>
+          <li>Download all links on a page, queue and scheduler, speed limit, Velo Mini, notifications, clipboard link detection, and folders sorted by type.</li>
+          <li>Installer for your account only (no administrator rights) and automatic, verified updates.</li>
+        </ul>
+      </div>
+    </article>
+  </div>
+</main>
+<footer>
+  <div class="wrap">
+    <span>Velo · Open source · MIT license · Made by <a href="https://adoxcol.com">Adoxcol</a></span>
+    <div class="links">
+      <a href="https://github.com/Adoxcol/velo">GitHub</a>
+      <a href="https://github.com/Adoxcol/velo/issues">Report a problem</a>
+      <a href="https://gist.github.com/Adoxcol/ea9009ab50bad69a5067c20ae35edd49">Privacy</a>
+    </div>
+  </div>
+</footer>
+</body>
+</html>
