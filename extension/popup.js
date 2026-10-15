@@ -70,11 +70,14 @@ function choicesFor(items) {
   // Is Velo reachable? (The host starts Velo if it isn't running.)
   chrome.runtime.sendMessage({ type: "ping" }).then((r) => {
     if (r?.ok) return;
-    const missing = /not found|forbidden|host/i.test(r?.error || "");
+    const err = r?.error || "No reply from Velo.";
+    const advice = /not found/i.test(err) ? "Install or reinstall Velo (or run the portable velo.exe), then restart the browser."
+      : /forbidden/i.test(err) ? `This copy of the extension (ID ${chrome.runtime.id}) isn't the one Velo allows. Load it from Velo's install folder, or reinstall Velo.`
+      : /exited|communicating/i.test(err) ? "Velo's connector stopped unexpectedly. Restart Velo, then reopen this popup."
+      : "";
     $("banner").hidden = false;
-    $("banner").innerHTML = svg(ICON.warn) + `<div><b>Velo isn't connected.</b> ${missing
-      ? "Install or reinstall Velo (or run the portable velo.exe), then reopen this popup."
-      : esc(r?.error || "No reply from Velo.")}</div>`;
+    $("banner").innerHTML = svg(ICON.warn) + `<div><b>Velo isn't connected.</b> ${esc(advice)}
+      <div style="opacity:.8;margin-top:4px;font-size:11.5px">Browser said: ${esc(err)}</div></div>`;
   });
 
   const media = await chrome.runtime.sendMessage({ type: "media", tabId: tab.id });

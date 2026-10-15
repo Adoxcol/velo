@@ -75,9 +75,27 @@ func startApp() (ipc.Endpoint, error) {
 	return ipc.Endpoint{}, errors.New("app did not start")
 }
 
+// logf appends a line to host.log in Velo's data folder, so a browser
+// that can't connect can be told apart from one that never starts the host.
+// The log is cut back when it grows past 256 KB.
+func logf(format string, args ...any) {
+	p := filepath.Join(ipc.Dir(), "host.log")
+	if st, err := os.Stat(p); err == nil && st.Size() > 256<<10 {
+		os.Remove(p)
+	}
+	f, err := os.OpenFile(p, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	fmt.Fprintf(f, "%s pid %d: %s\n", time.Now().Format("2006-01-02 15:04:05"), os.Getpid(), fmt.Sprintf(format, args...))
+}
+
 func main() {
+	logf("started by %q", os.Args[1:])
 	msg, err := readMsg(os.Stdin)
 	if err != nil {
+		logf("reading the message: %v", err)
 		writeMsg(os.Stdout, ipc.Reply{Error: err.Error()})
 		return
 	}
@@ -105,6 +123,7 @@ func main() {
 	if err != nil {
 		r = ipc.Reply{Error: err.Error()}
 	}
+	logf("%s -> ok=%v %s", head.Type, r.OK, r.Error)
 	writeMsg(os.Stdout, r)
 }
 
