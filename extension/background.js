@@ -175,7 +175,10 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 async function menuDownload(info, tab) {
   let url = info.mediaType === "video" || info.mediaType === "audio" ? info.srcUrl || info.linkUrl : info.linkUrl || info.srcUrl;
   let reply;
-  if (url && /^https?:/i.test(url)) {
+  const page = videoPage(info.linkUrl) || ((info.mediaType === "video") && videoPage(info.frameUrl || tab?.url));
+  if (page) {
+    reply = await handOff({ url: page, kind: "page", title: tab?.title, referrer: tab?.url });
+  } else if (url && /^https?:/i.test(url)) {
     reply = await handOff({ url, referrer: info.frameUrl || tab?.url, filename: "", source: "capture" });
   } else if (info.mediaType === "video" || info.mediaType === "audio") {
     // Streamed players use blob: URLs; download the stream Velo detected instead.
@@ -377,7 +380,7 @@ async function recordMedia(details, kind) {
 // Tell the page's video button that the list of videos changed.
 async function announce(tabId, entry) {
   if (entry.note) return;
-  chrome.tabs.sendMessage(tabId, { type: "detected" }, { frameId: 0 }).catch(() => {});
+  chrome.tabs.sendMessage(tabId, { type: "detected" }).catch(() => {});
 }
 
 // New page in the tab: forget what the old page played.
@@ -391,7 +394,7 @@ chrome.tabs.onRemoved.addListener((tabId) => chrome.storage.session.remove(key(t
 
 // Sites that stream through their own protected players instead of
 // standard HLS or files. Velo deliberately doesn't support them.
-const UNSUPPORTED = /(^|\.)(youtube\.com|youtu\.be|youtube-nocookie\.com|netflix\.com|disneyplus\.com|primevideo\.com|hulu\.com|max\.com|spotify\.com)$/i;
+const UNSUPPORTED = /(^|\.)(netflix\.com|disneyplus\.com|primevideo\.com|hulu\.com|max\.com|spotify\.com)$/i;
 
 function unsupportedSite(url) {
   try {
@@ -412,7 +415,7 @@ async function grab(tabId, entry) {
   if (entry.note === "encrypted") return { ok: false, error: "This video is DRM-protected and can't be downloaded." };
   if (entry.note === "live") return { ok: false, error: "Live streams aren't supported." };
   if (entry.note === "unsupported") return { ok: false, error: "This video's format (multi-part DASH) isn't supported yet." };
-  const stream = entry.kind === "hls" || entry.kind === "dash";
+  const stream = entry.kind !== "file";
   return handOff({
     url: entry.url,
     referrer: tab.url,
@@ -427,12 +430,22 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     const tabId = msg.tabId ?? sender.tab?.id;
     const tab = tabId != null ? await chrome.tabs.get(tabId).catch(() => null) : null;
     const unsupported = tab && unsupportedSite(tab.url);
-    if (msg.type === "media") return reply({ ...(await getMedia(tabId)), unsupported });
+    const media = tab ? await getMedia(tabId) : { items: [] };
+    // Resolve the page on demand: SPA navigation must never reuse the previous video.
+    let page = videoPage(tab?.url);
+    // Content scripts can identify the hovered post on a feed. Keep the URL
+    // on the sender's origin; a web page cannot ask us to extract arbitrary sites.
+    const candidate = videoPage(msg.pageUrl || msg.url);
+    if (sender.tab && candidate) {
+      try { if (new URL(candidate).origin === new URL(sender.url).origin) page = candidate; } catch {}
+    }
+    if (page) media.items = [{ url: page, kind: "page", quality: "Best quality", note: "" }];
+    if (msg.type === "media") return reply({ ...media, unsupported });
     if (msg.type === "grab") {
       if (unsupported) {
         return reply({ ok: false, error: "This site uses a protected streaming format that Velo doesn't support." });
       }
-      const m = await getMedia(tabId);
+      const m = media;
       const entry = msg.url ? m.items.find((x) => x.url === msg.url) : best(m.items);
       if (!entry) return reply({ ok: false, error: "No downloadable video found on this page yet. Start playing it first." });
       // A chosen quality must be one the page offered.
@@ -445,6 +458,24 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
       return reply({ ok: true });
     }
     reply({ ok: false, error: "unknown message" });
-  })();
+  })().catch((error) => reply({ ok: false, error: error.message || String(error) }));
   return true; // async reply
 });
+
+// Only individual video/post URLs, never a home feed or playlist.
+function videoPage(raw) {
+  try {
+    const u = new URL(raw);
+    if (!/^https?:$/.test(u.protocol)) return null;
+    const on = (domain) => u.hostname === domain || u.hostname.endsWith("." + domain);
+    const p = u.pathname.split("/").filter(Boolean);
+    if (on("youtu.be") && p.length === 1) return u.href;
+    if ((on("youtube.com") || on("youtube-nocookie.com")) &&
+        ((u.pathname === "/watch" && u.searchParams.get("v")) ||
+         (p.length === 2 && ["shorts", "embed", "live"].includes(p[0])))) return u.href;
+    if ((on("x.com") || on("twitter.com")) && p.length >= 3 && p[1] === "status") return u.href;
+    if (on("facebook.com") && ((["/watch", "/watch/", "/video.php"].includes(u.pathname) && u.searchParams.get("v")) ||
+        (p.length === 2 && p[0] === "reel") || (p.length >= 3 && p[1] === "videos"))) return u.href;
+  } catch {}
+  return null;
+}

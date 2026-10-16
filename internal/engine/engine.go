@@ -39,7 +39,7 @@ const MinSplit = 128 << 10
 
 type Request struct {
 	URL, Referrer, Cookies, UserAgent, Filename string
-	Kind                                        string // "" = file, "hls" = .m3u8 stream, "dash" = .mpd stream
+	Kind                                        string // "" = file, "hls"/.m3u8, "dash"/.mpd, "page"/yt-dlp
 	Title                                       string // page/video title, used to name videos
 	Dir                                         string `json:",omitempty"` // save here instead of the default/category folder
 	Segments                                    int    `json:",omitempty"` // connections for this download (0 = engine default)
@@ -122,7 +122,9 @@ type Download struct {
 	partBytes        atomic.Int64 // HLS: bytes in the segments on disk
 }
 
-func (d *Download) isStream() bool { return d.Req.Kind == "hls" || d.Req.Kind == "dash" }
+func (d *Download) isStream() bool {
+	return d.Req.Kind == "hls" || d.Req.Kind == "dash" || d.Req.Kind == "page"
+}
 
 // Progress returns percent complete (0 if unknown, 100 once done).
 func (d *Download) Progress() float64 {
@@ -237,7 +239,7 @@ func Load(stateFile string) (*Download, error) {
 	}
 	d := &Download{Req: st.Req, Total: st.Total, Ranged: true, Status: "paused",
 		Path: strings.TrimSuffix(stateFile, ".part.json"), segs: st.Segments}
-	if st.Req.Kind == "hls" || st.Req.Kind == "dash" { // progress is recounted from <file>.parts when resumed
+	if d.isStream() { // progress is recounted from <file>.parts when resumed
 		d.Ranged, d.segs = false, nil
 		return d, nil
 	}
@@ -371,6 +373,8 @@ func (e *Engine) Run(ctx context.Context, d *Download) error {
 	d.mu.Unlock()
 	var err error
 	switch d.Req.Kind {
+	case "page":
+		err = e.runPage(ctx, d)
 	case "hls":
 		err = e.runHLS(ctx, d)
 	case "dash":

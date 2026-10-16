@@ -6,7 +6,7 @@ try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = br
 (() => {
   if (window.__veloOverlay) return;
   // No button on sites Velo doesn't support (their own protected players).
-  if (/(^|\.)(youtube\.com|youtube-nocookie\.com|netflix\.com|disneyplus\.com|primevideo\.com|hulu\.com|max\.com|spotify\.com)$/i.test(location.hostname)) return;
+  if (/(^|\.)(netflix\.com|disneyplus\.com|primevideo\.com|hulu\.com|max\.com|spotify\.com)$/i.test(location.hostname)) return;
   window.__veloOverlay = true;
 
   const BOLT = '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z" fill="currentColor"/></svg>';
@@ -63,14 +63,28 @@ try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = br
       } else {
         let name = it.quality || "Video";
         if (it.kind === "file") { try { name = decodeURIComponent(new URL(it.url).pathname.split("/").pop()) || "Video file"; } catch {} }
-        out.push({ url: it.url, label: name, meta: it.note ? NOTE[it.note] : [{ hls: "HLS", dash: "DASH", file: "File" }[it.kind], size(it.size)].filter(Boolean).join(" · "), bad: !!it.note });
+        out.push({ url: it.url, label: name, meta: it.note ? NOTE[it.note] : [{ hls: "HLS", dash: "DASH", file: "File", page: "Best audio + video" }[it.kind], size(it.size)].filter(Boolean).join(" · "), bad: !!it.note });
       }
     }
     return out;
   }
 
+  function currentPage() {
+    if (!current) return location.href;
+    const post = current.closest('article, [role="article"]');
+    if (post) {
+      for (const a of post.querySelectorAll('a[href]')) {
+        try {
+          const u = new URL(a.href);
+          if (u.origin === location.origin && (/\/status\/\d+/.test(u.pathname) || /\/(videos|reel)\/[^/]+/.test(u.pathname) || (u.pathname.startsWith("/watch") && u.searchParams.has("v")))) return u.href;
+        } catch {}
+      }
+    }
+    return location.href;
+  }
+
   async function loadItems() {
-    try { items = (await chrome.runtime.sendMessage({ type: "media" }))?.items || []; } catch { items = []; }
+    try { items = (await chrome.runtime.sendMessage({ type: "media", pageUrl: currentPage() }))?.items || []; } catch { items = []; }
     const ok = choices().filter((c) => !c.bad);
     $("pill").classList.toggle("idle", !ok.length);
     veloSetHTML($("go"), BOLT + (ok.length ? "Download with Velo" : "Play to enable download"));
@@ -131,7 +145,7 @@ try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = br
   // position, searching open shadow roots too (the list is cached briefly).
   let videoCache = [], videoCacheAt = 0;
   function allVideos() {
-    if (performance.now() - videoCacheAt < 1500) return videoCache;
+    if (videoCacheAt && performance.now() - videoCacheAt < 1500) return videoCache;
     const out = [];
     const walk = (root) => {
       for (const v of root.querySelectorAll("video")) out.push(v);
@@ -185,12 +199,14 @@ try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = br
     e.preventDefault(); e.stopPropagation();
     const ok = choices().filter((c) => !c.bad);
     if (!ok.length) return say("Start playing the video first, then try again.", 3500);
-    grab(null);
+    grab(ok[0]);
   });
   $("more").addEventListener("click", (e) => {
     e.preventDefault(); e.stopPropagation();
     $("menu").classList.contains("on") ? $("menu").classList.remove("on") : openMenu();
   });
+  // Refresh while visible, including same-document video navigation.
+  setInterval(() => { if (current) loadItems(); }, 1500);
   // Refresh the button when the page plays something new.
   chrome.runtime.onMessage.addListener((m) => { if (m.type === "detected" && current) loadItems(); });
 

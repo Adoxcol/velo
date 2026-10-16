@@ -2,6 +2,23 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.7.0 — 2026-10-17
+
+### New
+- Video page downloads for individual YouTube videos and Shorts, Facebook videos and reels, and X/Twitter posts through optional yt-dlp integration.
+- The video hover button and extension popup can send supported page URLs to Velo, which selects the best available audio and video and merges them into an MKV file.
+- Page downloads retain partial files for resuming and respect the selected download folder and file name.
+
+### Fixed
+- The video button is no longer disabled on YouTube. Page navigation refreshes the selected video, and supported feed layouts use the hovered post's permalink.
+- Video detection updates now reach embedded players as well as the main page.
+
+### Setup and limitations
+- Install yt-dlp and ffmpeg on PATH or beside Velo; YouTube also needs a supported JavaScript runtime such as Deno. These tools are not bundled with this release.
+- Page downloads use automatic best-quality selection. DRM and live streams are excluded; availability depends on the site and extractor. Cross-domain login flows may require additional support.
+- The speed limit for page downloads applies per download and is captured when it starts.
+- Automated tests cover URL routing, cookie scoping, progress, resume state and a local yt-dlp/ffmpeg download. Live YouTube, Facebook and X browser downloads have not yet been verified.
+
 ## 0.4.4 — 2026-10-17
 
 ### Fixed

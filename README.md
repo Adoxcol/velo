@@ -34,7 +34,8 @@ browser extension for Chrome, Edge, Brave and Firefox.
   **history**, **notifications**, **clipboard link detection**, light and dark themes.
 
 Velo downloads what websites serve openly. It does not bypass DRM, encryption or other protections,
-so protected streaming services and sites like YouTube are not supported.
+so DRM-protected streaming services are not supported. Individual YouTube videos/Shorts,
+Facebook video/reel pages and X/Twitter posts use the optional yt-dlp integration.
 
 ## Install
 
@@ -80,6 +81,29 @@ To change the icon, edit `tools/mkicon` and run `go run ./tools/mkicon` then `go
 Then load the extension: open `chrome://extensions` or `edge://extensions`, turn on **Developer mode**,
 click **Load unpacked** and choose the `extension` folder. Its ID is
 `dmdcijgljocjdmafenflenjhdjhenokc`.
+
+## Video page downloads
+
+Install [yt-dlp](https://github.com/yt-dlp/yt-dlp#installation),
+[ffmpeg](https://ffmpeg.org/download.html) and
+[Deno](https://github.com/yt-dlp/yt-dlp/wiki/EJS) for YouTube's JavaScript challenges.
+Put their executables on `PATH` or beside `velo.exe`, then restart Velo.
+These optional tools are not bundled in the installer. Keep yt-dlp current as sites change.
+
+Open an individual YouTube, Facebook video/reel, or X/Twitter post and hover over
+its video, then click **Download with Velo**. You can also use the extension popup
+or paste the video page URL into Velo. On feeds, the hover button uses the enclosing
+post's permalink when available; otherwise open the individual video/post first.
+Other sites retain the existing HLS, DASH and direct media detection.
+
+Page downloads select the best available audio and video and save a merged MKV.
+They support cancellation and resuming partial files. Browser cookies for the
+page host are passed through a temporary cookie file and removed after extraction;
+logins requiring cookies from other domains may still fail. DRM and live streams
+are excluded. Availability depends on the site and yt-dlp; not every video works.
+The speed limit is captured when each page download starts and applies per download,
+not as Velo's shared live bandwidth budget. Quality selection is currently automatic
+for page downloads; the existing HLS quality picker is unchanged.
 
 ## Translations
 
