@@ -22,6 +22,8 @@ concurrency:
 jobs:
   release:
     runs-on: windows-latest
+    env:
+      WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
     defaults:
       run:
         shell: pwsh
@@ -81,3 +83,16 @@ jobs:
           gh release create "v$v" --title "Velo $v" --notes-file release-notes.md --verify-tag `
             "dist/Velo-Setup-$v.exe" "dist/Velo-Setup-$v.exe.sha256" "dist/Velo-Portable-$v.zip" `
             "dist/velo-extension-$v.zip" "dist/velo-firefox-$v.zip" "dist/SHA256SUMS-$v.txt"
+
+      # Sends the new version to winget (microsoft/winget-pkgs) as a pull
+      # request. Needs a WINGET_TOKEN secret: a classic GitHub token with the
+      # public_repo scope. Skipped without it.
+      - name: Update winget
+        if: github.event_name == 'push' && env.WINGET_TOKEN != ''
+        run: |
+          $v = "${{ steps.v.outputs.version }}"
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          ./wingetcreate.exe update Adoxcol.Velo --version $v `
+            --urls "https://github.com/Adoxcol/velo/releases/download/v$v/Velo-Setup-$v.exe" `
+            --release-notes-url https://velo.adoxcol.com/changelog `
+            --token $env:WINGET_TOKEN --submit

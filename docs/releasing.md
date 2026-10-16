@@ -19,3 +19,10 @@ tag is pushed.
 
 To try a build without publishing: Actions → Release → Run workflow, and enter a version. The files
 are kept as a workflow artifact.
+
+## winget
+
+After the release is published, the workflow sends the new version to winget as a pull request to
+`microsoft/winget-pkgs`. It needs a repository secret **`WINGET_TOKEN`**: a classic GitHub token
+(Settings → Developer settings → Tokens (classic)) with the `public_repo` scope. Without it the step
+is skipped. The first version, 0.4.2, was submitted by hand from `packaging/winget`.
