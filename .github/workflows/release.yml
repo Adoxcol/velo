@@ -83,6 +83,11 @@ jobs:
           gh release create "v$v" --title "Velo $v" --notes-file release-notes.md --verify-tag `
             "dist/Velo-Setup-$v.exe" "dist/Velo-Setup-$v.exe.sha256" "dist/Velo-Portable-$v.zip" `
             "dist/velo-extension-$v.zip" "dist/velo-firefox-$v.zip" "dist/SHA256SUMS-$v.txt"
+          # Same files without the version, so the website can link to
+          # releases/latest/download/Velo-Setup.exe.
+          Copy-Item "dist/Velo-Setup-$v.exe" dist/Velo-Setup.exe
+          Copy-Item "dist/Velo-Portable-$v.zip" dist/Velo-Portable.zip
+          gh release upload "v$v" dist/Velo-Setup.exe dist/Velo-Portable.zip
 
       # Sends the new version to winget (microsoft/winget-pkgs) as a pull
       # request. Needs a WINGET_TOKEN secret: a classic GitHub token with the
