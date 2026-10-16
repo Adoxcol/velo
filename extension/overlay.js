@@ -126,24 +126,56 @@ try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = br
     };
   }
 
-  document.addEventListener("mouseover", (e) => {
-    if (e.composedPath().includes(host)) { clearTimeout(hideTimer); return; }
-    const v = e.target.closest?.("video");
-    if (v && !hidden) {
-      clearTimeout(hideTimer);
-      if (current !== v) { current = v; loadItems().then(() => current && place(current)); }
-      place(v);
+  // Players often cover the <video> with their own controls or keep it inside
+  // a web component's shadow root, so find the video under the pointer by
+  // position, searching open shadow roots too (the list is cached briefly).
+  let videoCache = [], videoCacheAt = 0;
+  function allVideos() {
+    if (performance.now() - videoCacheAt < 1500) return videoCache;
+    const out = [];
+    const walk = (root) => {
+      for (const v of root.querySelectorAll("video")) out.push(v);
+      for (const el of root.querySelectorAll("*")) if (el.shadowRoot) walk(el.shadowRoot);
+    };
+    walk(document);
+    videoCacheAt = performance.now();
+    return (videoCache = out);
+  }
+  function videoAt(x, y, path) {
+    const direct = path.find((n) => n.tagName === "VIDEO");
+    if (direct) return direct;
+    let best = null;
+    for (const v of allVideos()) {
+      const r = v.getBoundingClientRect();
+      if (r.width < 200 || r.height < 120 || x < r.left || x > r.right || y < r.top || y > r.bottom) continue;
+      if (!best || r.width * r.height < best.r.width * best.r.height) best = { v, r };
     }
-  }, true);
-  document.addEventListener("mouseout", (e) => {
-    if (!current || e.composedPath().includes(host)) return;
-    const to = e.relatedTarget;
-    if (to && (current.contains(to) || to === host)) return;
-    clearTimeout(hideTimer);
-    hideTimer = setTimeout(() => { if (!$("menu").classList.contains("on")) hide(); }, 900);
-  }, true);
-  host.addEventListener("mouseenter", () => clearTimeout(hideTimer));
-  host.addEventListener("mouseleave", () => { hideTimer = setTimeout(hide, 900); });
+    return best?.v || null;
+  }
+
+  let moveQueued = false, lastMove = null, lastPath = [];
+  document.addEventListener("mousemove", (e) => {
+    lastMove = e;
+    lastPath = e.composedPath(); // only available while the event is dispatched
+    if (moveQueued) return;
+    moveQueued = true;
+    requestAnimationFrame(() => {
+      moveQueued = false;
+      const ev = lastMove;
+      const path = lastPath;
+      if (path.includes(host)) { clearTimeout(hideTimer); hideTimer = null; return; }
+      const v = hidden ? null : videoAt(ev.clientX, ev.clientY, path);
+      if (v) {
+        clearTimeout(hideTimer); hideTimer = null;
+        if (current !== v) { current = v; loadItems().then(() => current && place(current)); }
+        place(v);
+      } else if (current && !hideTimer) {
+        hideTimer = setTimeout(() => { hideTimer = null; if (!$("menu").classList.contains("on")) hide(); }, 900);
+      }
+    });
+  }, { capture: true, passive: true });
+  host.addEventListener("mouseenter", () => { clearTimeout(hideTimer); hideTimer = null; });
+  host.addEventListener("mouseleave", () => { hideTimer = setTimeout(() => { hideTimer = null; hide(); }, 900); });
   window.addEventListener("scroll", () => current && place(current), { passive: true });
   window.addEventListener("resize", () => current && place(current));
   document.addEventListener("fullscreenchange", () => current && place(current));

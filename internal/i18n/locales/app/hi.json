@@ -310,5 +310,7 @@
  "Right-click a page and choose <b>Download all links with Velo</b> to grab many files at once.": "एक साथ कई फ़ाइलें पाने के लिए पेज पर राइट-क्लिक करें और <b>Velo से सभी लिंक डाउनलोड करें</b> चुनें।",
  "{0} connections": "{0} कनेक्शन",
  "{0} parts (Recommended)": "{0} भाग (सुझाया गया)",
- "{0} ({1})": "{0} ({1})"
+ "{0} ({1})": "{0} ({1})",
+ "Keep it": "रहने दें",
+ "Cancel download": "डाउनलोड रद्द करें"
 }

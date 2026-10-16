@@ -310,5 +310,7 @@
  "Right-click a page and choose <b>Download all links with Velo</b> to grab many files at once.": "在网页上右键并选择<b>用 Velo 下载所有链接</b>，一次抓取多个文件。",
  "{0} connections": "{0} 个连接",
  "{0} parts (Recommended)": "{0} 段（推荐）",
- "{0} ({1})": "{0}（{1}）"
+ "{0} ({1})": "{0}（{1}）",
+ "Keep it": "保留",
+ "Cancel download": "取消下载"
 }

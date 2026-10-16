@@ -310,5 +310,7 @@
 "Clique com o botão direito em uma página e escolha <b>Baixar todos os links com o Velo</b> para pegar vários arquivos de uma vez.",
 "{0} conexões",
 "{0} partes (Recomendado)",
-"{0} ({1})"
+"{0} ({1})",
+"Manter",
+"Cancelar download"
 ]

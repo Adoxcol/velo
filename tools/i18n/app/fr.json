@@ -310,5 +310,7 @@
 "Faites un clic droit sur une page et choisissez <b>Télécharger tous les liens avec Velo</b> pour récupérer de nombreux fichiers d’un coup.",
 "{0} connexions",
 "{0} parties (Recommandé)",
-"{0} ({1})"
+"{0} ({1})",
+"Conserver",
+"Annuler le téléchargement"
 ]

@@ -219,6 +219,16 @@
   .formrow { display: grid; grid-template-columns: 92px 1fr; gap: 10px; align-items: center; margin-bottom: 12px; }
   .formrow > span { color: var(--muted); font-weight: 500; }
 
+  /* confirm dialog */
+  #askDlg { width: 380px; padding: 26px 24px 20px; text-align: center; align-items: center; }
+  .askic { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: var(--err-soft); color: var(--err); margin-bottom: 14px; }
+  .askic svg { width: 24px; height: 24px; }
+  #askMsg { margin: 0 0 20px; color: var(--ink); font-size: 14.5px; line-height: 1.5; overflow-wrap: anywhere; }
+  .askbtns { display: flex; gap: 10px; width: 100%; }
+  .askbtns .btn { flex: 1; justify-content: center; }
+  .btn.danger { background: var(--err); border-color: var(--err); color: #fff; }
+  .btn.danger:hover { filter: brightness(.94); }
+
   /* batch dialog */
   #batchDlg { width: 640px; }
   .btools { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
@@ -423,6 +433,12 @@
   <div class="df"><button class="btn" data-close>Cancel</button><button class="btn primary" id="aGo"><svg class="i" viewBox="0 0 24 24"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z"/></svg>Download</button></div>
 </dialog>
 
+<dialog id="askDlg">
+  <div class="askic"><svg class="i" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></div>
+  <p id="askMsg"></p>
+  <div class="askbtns"><button class="btn" id="askNo">Keep it</button><button class="btn danger" id="askYes">Cancel download</button></div>
+</dialog>
+
 <dialog id="relinkDlg">
   <div class="dh"><span>Refresh link</span><button class="iconbtn" data-close title="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="db">
@@ -519,6 +535,24 @@ function ago(ms) {
   if (s < 86400) return Math.floor(s / 3600) + " h ago";
   return new Date(ms).toLocaleDateString();
 }
+// ask(message, yesLabel) shows Velo's own confirm dialog, centred over the
+// window, and resolves true when the user agrees.
+function ask(msg, yes, no) {
+  const d = $("#askDlg");
+  $("#askMsg").textContent = msg;
+  $("#askYes").textContent = yes;
+  $("#askNo").textContent = no || "Keep it";
+  return new Promise((resolve) => {
+    const done = (v) => { d.onclose = null; d.close(); resolve(v); };
+    $("#askYes").onclick = () => done(true);
+    $("#askNo").onclick = () => done(false);
+    d.onclose = () => resolve(false);
+    d.onclick = (e) => { if (e.target === d) done(false); };
+    d.showModal();
+    $("#askNo").focus();
+  });
+}
+
 let toastTimer;
 function toast(msg, err) {
   const t = $("#toast"); t.textContent = msg; t.className = "show" + (err ? " err" : "");
@@ -676,7 +710,7 @@ document.addEventListener("click", (e) => {
     case "resume": return act(resume, id);
     case "folder": return act(showInFolder, id);
     case "cancel":
-      if (confirm(`Cancel “${r.file || r.url}” and delete the partial file?`)) act(remove, id);
+      ask(`Cancel “${r.file || r.url}” and delete the partial file?`, "Cancel download").then((ok) => ok && act(remove, id));
       return;
     case "more": return openMenu(a, r);
   }
@@ -781,7 +815,8 @@ document.addEventListener("keydown", (e) => {
       return;
     case "Delete":
       if (!r) return;
-      if (r.status === "done" || confirm(`Cancel “${r.file || r.url}” and delete the partial file?`)) act(remove, r.id);
+      if (r.status === "done") act(remove, r.id);
+      else ask(`Cancel “${r.file || r.url}” and delete the partial file?`, "Cancel download").then((ok) => ok && act(remove, r.id));
       return;
     case "?":
       return toast("Shortcuts: Ctrl+N add · Ctrl+V paste a link · Ctrl+K search · ↑↓ select · Space pause/resume · Enter open · Delete remove");
@@ -953,8 +988,7 @@ $("#qList").addEventListener("change", (e) => {
 $("#qList").addEventListener("click", (e) => {
   const d = e.target.closest("[data-qdel]"); if (!d) return;
   const i = +d.dataset.qdel, q = S.queues[i];
-  if (!confirm(`Delete the queue “${q.name}”? Its downloads move to the main queue.`)) return;
-  save((s) => s.queues.splice(i, 1));
+  ask(`Delete the queue “${q.name}”? Its downloads move to the main queue.`, "Delete queue", "Cancel").then((ok) => ok && save((s) => s.queues.splice(i, 1)));
 });
 
 async function loadSettings() {

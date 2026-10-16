@@ -310,5 +310,7 @@
  "Right-click a page and choose <b>Download all links with Velo</b> to grab many files at once.": "Haz clic derecho en una página y elige <b>Descargar todos los enlaces con Velo</b> para guardar muchos archivos a la vez.",
  "{0} connections": "{0} conexiones",
  "{0} parts (Recommended)": "{0} partes (Recomendado)",
- "{0} ({1})": "{0} ({1})"
+ "{0} ({1})": "{0} ({1})",
+ "Keep it": "Conservar",
+ "Cancel download": "Cancelar descarga"
 }

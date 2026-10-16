@@ -310,5 +310,7 @@
 "Haz clic derecho en una página y elige <b>Descargar todos los enlaces con Velo</b> para guardar muchos archivos a la vez.",
 "{0} conexiones",
 "{0} partes (Recomendado)",
-"{0} ({1})"
+"{0} ({1})",
+"Conservar",
+"Cancelar descarga"
 ]

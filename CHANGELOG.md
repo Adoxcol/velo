@@ -2,6 +2,14 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.4.4 — 2026-10-17
+
+### Fixed
+- The **Download with Velo** button now appears on video players that cover the video with their own controls or keep it inside a web component, like the Internet Archive's.
+
+### Improved
+- Cancelling a download or deleting a queue now asks in Velo's own dialog, centred in the window, instead of a plain Windows box.
+
 ## 0.4.3 — 2026-10-17
 
 ### Changed

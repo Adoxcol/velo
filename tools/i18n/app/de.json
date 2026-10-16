@@ -310,5 +310,7 @@
 "Klicke mit rechts auf eine Seite und wähle <b>Alle Links mit Velo herunterladen</b>, um viele Dateien auf einmal zu holen.",
 "{0} Verbindungen",
 "{0} Teile (Empfohlen)",
-"{0} ({1})"
+"{0} ({1})",
+"Behalten",
+"Download abbrechen"
 ]
