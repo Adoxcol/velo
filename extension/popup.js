@@ -54,9 +54,6 @@ function choicesFor(items) {
 
 (async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const { detectCard } = await chrome.storage.local.get({ detectCard: true });
-  $("detect").checked = detectCard;
-  $("detect").onchange = (e) => chrome.storage.local.set({ detectCard: e.target.checked });
   $("openApp").onclick = () => chrome.runtime.sendMessage({ type: "show" });
 
   // Firefox doesn't grant host access at install: ask for it here.

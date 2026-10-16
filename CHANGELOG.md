@@ -2,6 +2,12 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.4.3 — 2026-10-17
+
+### Changed
+- The browser extension no longer pops up a "Video detected" card on pages that play video. The **Download with Velo** button on the video itself and the extension's popup still list every video Velo finds.
+- The website's download buttons now download Velo directly.
+
 ## 0.4.2 — 2026-10-16
 
 ### Fixed

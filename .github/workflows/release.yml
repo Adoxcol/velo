@@ -94,6 +94,7 @@ jobs:
       # public_repo scope. Skipped without it.
       - name: Update winget
         if: github.event_name == 'push' && env.WINGET_TOKEN != ''
+        continue-on-error: true # the release is already out; winget can be retried by hand
         run: |
           $v = "${{ steps.v.outputs.version }}"
           Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe

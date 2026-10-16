@@ -162,7 +162,7 @@ try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = br
   // Refresh the button when the page plays something new.
   chrome.runtime.onMessage.addListener((m) => { if (m.type === "detected" && current) loadItems(); });
 
-  // ---- "Link detected" card and notices (only in the top frame) ----
+  // ---- notices (only in the top frame) ----
   if (window !== window.top) return;
   const cardHost = document.createElement("div");
   cardHost.style.cssText = "position:fixed;z-index:2147483647;right:20px;bottom:20px;";
@@ -195,8 +195,6 @@ try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = br
     <div class="card" id="card"></div>`);
   const cardEl = cs.getElementById("card");
   let cardTimer;
-  const bolt = '<svg viewBox="0 0 24 24"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z" fill="#fff"/></svg>';
-  const play = '<svg viewBox="0 0 24 24"><path d="m8 5 11 7-11 7z" fill="#fff"/></svg>';
   function hideCard() {
     cardEl.classList.remove("on");
     clearTimeout(cardTimer);
@@ -217,25 +215,5 @@ try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = br
       cardEl.style.background = "none";
       return;
     }
-    if (msg.type !== "detected") return;
-    cardEl.style.background = "";
-    const it = msg.item;
-    const kind = { hls: "Video stream", dash: "Video stream", file: "File" }[it.kind] || "File";
-    const sizeText = it.size > 0 ? (it.size / 1048576).toFixed(1) + " MB" : "";
-    const meta = [kind, it.quality, sizeText].filter(Boolean).join(" • ");
-    showCard(`
-      <div class="top"><div class="logo">${bolt}</div>
-        <div><div class="h">Video detected</div><div class="sub">Velo found a downloadable video on this page.</div></div>
-        <button class="x" id="x" title="Close">×</button></div>
-      <div class="file"><div class="thumb">${play}</div><div><div class="name">${esc(msg.title || document.title)}</div><div class="sub">${esc(meta)}</div></div></div>
-      <button class="go" id="go">Download</button>`, 12000);
-    cs.getElementById("x").onclick = hideCard;
-    cs.getElementById("go").onclick = async () => {
-      let r;
-      try { r = await chrome.runtime.sendMessage({ type: "grab", url: it.url }); }
-      catch { r = { ok: false, error: "Velo extension was reloaded. Refresh this page." }; }
-      showCard(`<div class="note">${esc(r.ok ? "Sent to Velo ✓" : r.error)}</div>`, r.ok ? 2000 : 4500);
-      cardEl.style.background = "none";
-    };
   });
 })();

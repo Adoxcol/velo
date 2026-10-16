@@ -374,19 +374,10 @@ async function recordMedia(details, kind) {
   await announce(tabId, entry);
 }
 
-// "Link detected": tell the page's overlay about the first playable video
-// found on it, so it can show the card. Once per page; can be turned off.
+// Tell the page's video button that the list of videos changed.
 async function announce(tabId, entry) {
   if (entry.note) return;
-  const { detectCard } = await chrome.storage.local.get({ detectCard: true });
-  if (!detectCard) return;
-  const m = await getMedia(tabId);
-  if (m.announced) return;
-  m.announced = true;
-  await chrome.storage.session.set({ [key(tabId)]: m });
-  const tab = await chrome.tabs.get(tabId).catch(() => null);
-  if (!tab || unsupportedSite(tab.url)) return;
-  chrome.tabs.sendMessage(tabId, { type: "detected", item: entry, title: tab.title }, { frameId: 0 }).catch(() => {});
+  chrome.tabs.sendMessage(tabId, { type: "detected" }, { frameId: 0 }).catch(() => {});
 }
 
 // New page in the tab: forget what the old page played.
