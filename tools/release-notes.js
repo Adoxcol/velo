@@ -18,7 +18,7 @@ if (start < 0) {
 const rest = changelog.slice(start);
 const next = rest.slice(3).search(/^## /m);
 const section = (next < 0 ? rest : rest.slice(0, next + 3))
-  .replace(/^## .*\n/, "") // the heading is the release title
+  .replace(/^## .*\r?\n/, "") // the heading is the release title
   .replace(/^### /gm, "#### ")
   .trim();
 

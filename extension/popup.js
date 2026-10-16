@@ -31,7 +31,7 @@ function fileName(url) {
 }
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const NOTE = { encrypted: "DRM-protected", live: "Live stream", unsupported: "Not supported yet" };
-const KIND = { hls: "Stream (HLS)", dash: "Stream (DASH)", file: "File" };
+const KIND = { hls: "Stream (HLS)", dash: "Stream (DASH)", file: "File", page: "Best audio + video" };
 
 function say(text, cls) { $("msg").textContent = text; $("msg").className = cls || ""; }
 

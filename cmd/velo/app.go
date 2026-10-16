@@ -976,7 +976,7 @@ func (a *app) handle(w http.ResponseWriter, r *http.Request) {
 			reply(0, fmt.Errorf("bad job"))
 			return
 		}
-		if j.Kind != "" && j.Kind != "hls" && j.Kind != "dash" {
+		if j.Kind != "" && j.Kind != "hls" && j.Kind != "dash" && j.Kind != "page" {
 			reply(0, fmt.Errorf("unknown kind %q", j.Kind))
 			return
 		}

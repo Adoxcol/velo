@@ -46,6 +46,9 @@ func Downloadable(rawURL string) (ok bool, kind string) {
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		return false, ""
 	}
+	if VideoPage(rawURL) {
+		return true, "page"
+	}
 	switch ext := strings.ToLower(path.Ext(u.Path)); ext {
 	case ".m3u8":
 		return true, "hls"
