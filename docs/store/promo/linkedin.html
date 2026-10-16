@@ -1,0 +1,80 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<!-- LinkedIn carousel images, 1200x1200. Open with ?1, ?2 or ?3 and screenshot. -->
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1200px; height: 1200px; overflow: hidden; }
+  body { font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; color: #fff; background: #0d1728; position: relative; -webkit-font-smoothing: antialiased; }
+  .glow { position: absolute; inset: 0; background: radial-gradient(60% 50% at 25% 0%, rgba(22,119,255,.55), transparent 70%), radial-gradient(50% 45% at 100% 100%, rgba(76,155,255,.22), transparent 70%); }
+  .grid { position: absolute; inset: 0; opacity: .5; background-image: linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px); background-size: 60px 60px; mask-image: radial-gradient(80% 70% at 30% 20%, #000, transparent 80%); }
+  .slide { position: absolute; inset: 0; padding: 96px; display: none; flex-direction: column; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 44px; letter-spacing: -.03em; }
+  .brand svg { width: 42px; height: 42px; }
+  h1 { font-weight: 700; letter-spacing: -.035em; line-height: 1.04; font-size: 104px; margin-top: auto; }
+  h2 { font-weight: 700; letter-spacing: -.03em; line-height: 1.08; font-size: 72px; }
+  .g { background: linear-gradient(90deg, #8fc0ff, #1677ff 70%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .sub { color: #aebbd0; font-size: 34px; line-height: 1.4; margin-top: 28px; }
+  .file { background: #fff; color: #0d1728; border-radius: 28px; padding: 36px 40px; margin-top: 64px; box-shadow: 0 40px 90px -20px rgba(22,119,255,.6), 0 20px 50px rgba(0,0,0,.35); }
+  .row { display: flex; align-items: center; gap: 24px; }
+  .tile { width: 76px; height: 76px; border-radius: 20px; display: grid; place-items: center; background: #f3e8ff; color: #9333ea; flex: none; }
+  .tile svg { width: 40px; height: 40px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .name { font-weight: 600; font-size: 32px; }
+  .meta { color: #64748b; font-size: 25px; margin-top: 4px; }
+  .meta b { color: #1677ff; }
+  .segs { display: grid; grid-template-columns: repeat(16, 1fr); gap: 7px; margin-top: 30px; }
+  .segs i { height: 14px; border-radius: 99px; background: #e8eef6; overflow: hidden; }
+  .segs i::after { content: ""; display: block; height: 100%; width: var(--p); background: linear-gradient(90deg, #1677ff, #4c9bff); border-radius: 99px; }
+  .foot { margin-top: auto; display: flex; justify-content: space-between; align-items: center; color: #aebbd0; font-size: 28px; }
+  .shot { margin-top: 56px; border-radius: 22px; overflow: hidden; border: 1px solid rgba(255,255,255,.14); box-shadow: 0 40px 90px -20px rgba(22,119,255,.5); }
+  .shot img { display: block; width: 100%; }
+  .feats { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 56px; }
+  .feat { border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.05); border-radius: 22px; padding: 28px 30px; }
+  .feat b { display: block; font-size: 32px; margin-bottom: 6px; }
+  .feat span { color: #aebbd0; font-size: 24px; line-height: 1.35; }
+  .pill { display: inline-block; padding: 8px 20px; border-radius: 99px; background: rgba(22,119,255,.22); color: #8fc0ff; font-size: 26px; font-weight: 600; }
+</style></head>
+<body>
+<div class="glow"></div><div class="grid"></div>
+
+<section class="slide" id="s1">
+  <div class="brand"><svg viewBox="0 0 24 24"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z" fill="#1677ff"/></svg>velo.</div>
+  <h1>Fast downloads.<br><span class="g">Free and open source.</span></h1>
+  <p class="sub">A download manager for Windows that splits every file<br>into parts that download at once.</p>
+  <div class="file">
+    <div class="row">
+      <div class="tile"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/></svg></div>
+      <div><div class="name">Nature_Documentary_4K.mp4</div><div class="meta"><b>48.6 MB/s</b> · 3.1 of 5.7 GB · 16 connections</div></div>
+    </div>
+    <div class="segs" id="segs"></div>
+  </div>
+  <div class="foot"><span>velo.adoxcol.com</span><span class="pill">MIT license</span></div>
+</section>
+
+<section class="slide" id="s2">
+  <div class="brand"><svg viewBox="0 0 24 24"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z" fill="#1677ff"/></svg>velo.</div>
+  <h2 style="margin-top:56px">Clean, simple and<br><span class="g">built for Windows.</span></h2>
+  <div class="shot"><img src="../../../site/img/app.png" alt=""></div>
+  <div class="foot"><span>Light and dark · 8 languages</span><span>velo.adoxcol.com</span></div>
+</section>
+
+<section class="slide" id="s3">
+  <div class="brand"><svg viewBox="0 0 24 24"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z" fill="#1677ff"/></svg>velo.</div>
+  <h2 style="margin-top:56px">Everything you'd<br><span class="g">expect, for free.</span></h2>
+  <div class="feats">
+    <div class="feat"><b>Up to 32 connections</b><span>More added automatically when a server slows down</span></div>
+    <div class="feat"><b>Resume anytime</b><span>Survives Wi-Fi drops and restarts</span></div>
+    <div class="feat"><b>Browser integration</b><span>Chrome, Edge, Brave and Firefox</span></div>
+    <div class="feat"><b>Video grabber</b><span>Download HLS and DASH streams</span></div>
+    <div class="feat"><b>Queue and scheduler</b><span>Download overnight, then shut down</span></div>
+    <div class="feat"><b>No ads, no tracking</b><span>No account, installs without admin</span></div>
+  </div>
+  <div class="foot"><span>github.com/Adoxcol/velo</span><span class="pill">Download free</span></div>
+</section>
+
+<script>
+  const n = location.search.slice(1) || "1";
+  document.getElementById("s" + n).style.display = "flex";
+  const p = [100,100,92,100,74,100,88,61,100,96,70,100,83,57,100,79];
+  document.getElementById("segs").innerHTML = p.map(v => `<i style="--p:${v}%"></i>`).join("");
+</script>
+</body></html>
