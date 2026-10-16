@@ -10,7 +10,7 @@
 # stages so the installer embeds signed programs:
 #   -AppOnly       build velo.exe, velo-host.exe and veloctl.exe into the
 #                  installer payload folder and stop (they get signed next)
-#   -UseBuiltApp   use the programs already in the payload folder (signed)
+#   -UseBuiltApp   use the programs already in the payload folder
 #                  instead of building them, then build everything else
 param(
     [Parameter(Mandatory)][string]$Version,
@@ -30,7 +30,7 @@ New-Item -ItemType Directory -Force $dist | Out-Null
 $programs = 'velo.exe', 'velo-host.exe', 'veloctl.exe'
 
 if ($UseBuiltApp) {
-    # Keep the (signed) programs; clear anything else left from a previous run.
+    # Keep the programs; clear anything else left from a previous run.
     foreach ($p in $programs) { if (-not (Test-Path (Join-Path $payload $p))) { throw "$p is missing from $payload" } }
     Get-ChildItem -LiteralPath $payload | Where-Object { $_.Name -ne 'README.md' -and $programs -notcontains $_.Name } | Remove-Item -Recurse -Force
     Write-Host "Packaging Velo $Version with the programs in the payload folder..."

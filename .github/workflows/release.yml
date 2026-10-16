@@ -1,11 +1,6 @@
 # Builds and publishes a Velo release when a version tag is pushed:
 #
 #   git tag v0.4.1 && git push origin v0.4.1
-#
-# With SignPath set up (see docs/signing.md) the programs and the installer
-# are code-signed: velo.exe, velo-host.exe and veloctl.exe are signed first,
-# then the installer is built around the signed programs and signed itself.
-# Without the SIGNPATH_API_TOKEN secret the release is built unsigned.
 name: Release
 
 on:
@@ -23,9 +18,6 @@ permissions:
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
-
-env:
-  SIGN: ${{ secrets.SIGNPATH_API_TOKEN != '' }}
 
 jobs:
   release:
@@ -50,7 +42,7 @@ jobs:
           $v = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ inputs.version }}" } else { "${{ github.ref_name }}".TrimStart("v") }
           if ($v -notmatch '^\d+\.\d+\.\d+$') { throw "Bad version '$v'" }
           "version=$v" >> $env:GITHUB_OUTPUT
-          Write-Host "Building Velo $v (signing: $env:SIGN)"
+          Write-Host "Building Velo $v"
 
       - name: Test
         run: go test ./...
@@ -58,78 +50,8 @@ jobs:
       - name: Release notes
         run: node tools/release-notes.js ${{ steps.v.outputs.version }} > release-notes.md
 
-      # ---------- stage 1: the programs ----------
-      - name: Build programs
-        run: ./tools/release.ps1 -Version ${{ steps.v.outputs.version }} -AppOnly
-
-      - name: Upload programs for signing
-        if: env.SIGN == 'true'
-        id: programs
-        uses: actions/upload-artifact@v4
-        with:
-          name: programs-unsigned
-          path: |
-            cmd/velo-setup/payload/velo.exe
-            cmd/velo-setup/payload/velo-host.exe
-            cmd/velo-setup/payload/veloctl.exe
-          if-no-files-found: error
-
-      - name: Sign programs
-        if: env.SIGN == 'true'
-        uses: signpath/github-action-submit-signing-request@v3
-        with:
-          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
-          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
-          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG || 'velo' }}
-          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG || 'release-signing' }}
-          artifact-configuration-slug: programs
-          github-artifact-id: ${{ steps.programs.outputs.artifact-id }}
-          wait-for-completion: true
-          wait-for-completion-timeout-in-seconds: 3600 # SignPath may ask a person to approve each release
-          output-artifact-directory: cmd/velo-setup/payload
-
-      - name: Check program signatures
-        if: env.SIGN == 'true'
-        run: |
-          foreach ($f in Get-ChildItem cmd/velo-setup/payload/*.exe) {
-            $s = Get-AuthenticodeSignature $f.FullName
-            Write-Host "$($f.Name): $($s.Status) $($s.SignerCertificate.Subject)"
-            if ($s.Status -ne 'Valid') { throw "$($f.Name) is not validly signed" }
-          }
-
-      # ---------- stage 2: installer, portable zip, extensions ----------
-      - name: Build installer and packages
-        run: ./tools/release.ps1 -Version ${{ steps.v.outputs.version }} -UseBuiltApp
-
-      - name: Upload installer for signing
-        if: env.SIGN == 'true'
-        id: installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: installer-unsigned
-          path: dist/Velo-Setup-${{ steps.v.outputs.version }}.exe
-          if-no-files-found: error
-
-      - name: Sign installer
-        if: env.SIGN == 'true'
-        uses: signpath/github-action-submit-signing-request@v3
-        with:
-          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
-          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
-          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG || 'velo' }}
-          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG || 'release-signing' }}
-          artifact-configuration-slug: installer
-          github-artifact-id: ${{ steps.installer.outputs.artifact-id }}
-          wait-for-completion: true
-          wait-for-completion-timeout-in-seconds: 3600 # SignPath may ask a person to approve each release
-          output-artifact-directory: dist
-
-      - name: Check installer signature
-        if: env.SIGN == 'true'
-        run: |
-          $s = Get-AuthenticodeSignature "dist/Velo-Setup-${{ steps.v.outputs.version }}.exe"
-          Write-Host "installer: $($s.Status) $($s.SignerCertificate.Subject)"
-          if ($s.Status -ne 'Valid') { throw "the installer is not validly signed" }
+      - name: Build
+        run: ./tools/release.ps1 -Version ${{ steps.v.outputs.version }}
 
       - name: Checksums
         run: |

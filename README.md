@@ -49,7 +49,6 @@ Prefer no installer? `Velo-Portable-<version>.zip` runs from any folder (see its
 open `about:debugging` → This Firefox → Load Temporary Add-on and pick `manifest.json` from an unzipped
 `velo-firefox-<version>.zip` (temporary add-ons are removed when Firefox closes).
 
-Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org) (being set up; see [docs/signing.md](docs/signing.md)).
 
 The installer is not code-signed yet, so Windows SmartScreen may warn about an unknown publisher.
 
