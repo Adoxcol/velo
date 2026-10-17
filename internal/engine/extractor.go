@@ -55,7 +55,7 @@ func videoTool(name string) (string, error) {
 }
 
 func extractorArgs(raw, dir, ffmpeg string) []string {
-	return []string{"--ignore-config", "--no-playlist", "--max-downloads", "1", "--no-warnings", "--newline", "--progress", "--no-colors",
+	return []string{"--ignore-config", "--no-config-locations", "--no-exec", "--no-playlist", "--max-downloads", "1", "--no-warnings", "--newline", "--progress", "--no-colors",
 		"--no-overwrites", "--continue", "--no-mtime", "--match-filter", "!is_live & !is_upcoming & !has_drm",
 		"--format", "bv*+ba/b", "--merge-output-format", "mkv", "--remux-video", "mkv",
 		"--ffmpeg-location", ffmpeg, "--paths", dir, "--output", "video.%(ext)s",
