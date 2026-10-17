@@ -437,6 +437,8 @@ func (a *app) dispatch(now time.Time) {
 func (a *app) launch(it *item) {
 	ctx, cancel := context.WithCancel(context.Background())
 	it.cancel, it.running, it.requeue = cancel, true, false
+	it.lastDone = it.d.Done.Load()
+	it.speed = 0
 	a.running++
 	d := it.d
 	go func() {
@@ -816,26 +818,32 @@ func (a *app) openDir() error {
 // sleeping while anything downloads.
 func (a *app) measure() {
 	for range time.Tick(time.Second) {
-		a.mu.Lock()
-		total := 0.0
-		for _, it := range a.items {
-			n := it.d.Done.Load()
-			it.speed = 0.6*float64(n-it.lastDone) + 0.4*it.speed // smoothed
-			it.lastDone = n
-			if it.running {
-				total += it.speed
-			}
+		a.stepMeasure()
+	}
+}
+
+func (a *app) stepMeasure() {
+	a.mu.Lock()
+	total := 0.0
+	for _, it := range a.items {
+		if !it.running {
+			it.speed = 0
+			continue
 		}
-		a.speedHist = append(a.speedHist, total)
-		if len(a.speedHist) > 60 {
-			a.speedHist = a.speedHist[len(a.speedHist)-60:]
-		}
-		busy := a.running > 0
-		a.mu.Unlock()
-		keepAwake(busy)
-		if a.onTick != nil {
-			a.onTick()
-		}
+		n := it.d.Done.Load()
+		it.speed = 0.6*float64(n-it.lastDone) + 0.4*it.speed // smoothed
+		it.lastDone = n
+		total += it.speed
+	}
+	a.speedHist = append(a.speedHist, total)
+	if len(a.speedHist) > 60 {
+		a.speedHist = a.speedHist[len(a.speedHist)-60:]
+	}
+	busy := a.running > 0
+	a.mu.Unlock()
+	keepAwake(busy)
+	if a.onTick != nil {
+		a.onTick()
 	}
 }
 
