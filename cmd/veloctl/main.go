@@ -17,11 +17,11 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"velo/internal/engine"
 	"velo/internal/ipc"
+	"velo/internal/version"
 )
 
 type row struct {
@@ -48,6 +48,8 @@ func main() {
 		arg = os.Args[2]
 	}
 	switch cmd {
+	case "version", "--version", "-version":
+		fmt.Println("Velo " + version.Version)
 	case "list":
 		b, err := ipc.Call("list", "", nil)
 		check(err)
@@ -123,8 +125,15 @@ func get(eng *engine.Engine, url string) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 	go func() {
-		for range time.Tick(time.Second) {
-			fmt.Printf("\r%5.1f%%  %d connections ", pct(), d.Connections())
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				fmt.Printf("\r%5.1f%%  %d connections ", pct(), d.Connections())
+			}
 		}
 	}()
 	t := time.Now()
@@ -141,12 +150,6 @@ func get(eng *engine.Engine, url string) {
 
 // streamKind guesses the download kind from the URL.
 func streamKind(u string) string {
-	u = strings.ToLower(strings.SplitN(u, "?", 2)[0])
-	switch {
-	case strings.HasSuffix(u, ".m3u8"):
-		return "hls"
-	case strings.HasSuffix(u, ".mpd"):
-		return "dash"
-	}
-	return ""
+	_, kind := engine.Downloadable(u)
+	return kind
 }

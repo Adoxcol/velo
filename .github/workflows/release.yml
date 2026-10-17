@@ -102,3 +102,56 @@ jobs:
             --urls "https://github.com/Adoxcol/velo/releases/download/v$v/Velo-Setup-$v.exe" `
             --release-notes-url https://velo.adoxcol.com/changelog `
             --token $env:WINGET_TOKEN --submit
+
+  portable-cli:
+    needs: release
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            target: linux
+          - runner: macos-latest
+            target: darwin
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Test portable engine and CLI
+        run: go test -race ./internal/engine ./internal/ipc ./cmd/veloctl
+      - name: Build CLI archives
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ inputs.version || github.ref_name }}
+          TARGET_OS: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          version="${RELEASE_VERSION#v}"
+          mkdir -p dist
+          for arch in amd64 arm64; do
+            folder="dist/veloctl-${version}-${TARGET_OS}-${arch}"
+            mkdir -p "$folder"
+            GOOS="$TARGET_OS" GOARCH="$arch" CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X velo/internal/version.Version=$version" -o "$folder/veloctl" ./cmd/veloctl
+            cp LICENSE "$folder/"
+            cp docs/cli.md "$folder/README.md"
+            tar -czf "$folder.tar.gz" -C "$folder" veloctl LICENSE README.md
+          done
+          python3 - <<'PY'
+          import hashlib, pathlib, os
+          root = pathlib.Path('dist')
+          files = sorted(root.glob('*.tar.gz'))
+          output = root / ('SHA256SUMS-veloctl-' + os.environ['TARGET_OS'] + '.txt')
+          output.write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.name + '\n' for p in files))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: veloctl-${{ matrix.target }}
+          path: |
+            dist/*.tar.gz
+            dist/SHA256SUMS-*.txt
+      - name: Publish CLI archives
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.ref_name }}" dist/*.tar.gz dist/SHA256SUMS-*.txt

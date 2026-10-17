@@ -3,7 +3,9 @@
 # Velo
 
 **Fast downloads. A smoother internet.** Velo is an open-source download manager for Windows with a
-browser extension for Chrome, Edge, Brave and Firefox.
+browser extension for Chrome, Edge, Brave and Firefox. The standalone `veloctl get`
+command also supports Linux and macOS (Intel/AMD 64-bit and ARM64); see the
+[portable CLI guide](docs/cli.md).
 
 - **Segmented downloads**: files are split into parts (16 by default) downloaded in parallel over
   separate connections. When a part finishes, its connection takes over half of the part with the most

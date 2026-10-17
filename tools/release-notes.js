@@ -36,6 +36,8 @@ Already using Velo? It updates itself when nothing is downloading, or click **Ch
 | **Velo-Portable-${version}.zip** | No install: unzip anywhere and run \`velo.exe\`. |
 | velo-extension-${version}.zip | Extension package for the Chrome Web Store and Edge Add-ons. |
 | velo-firefox-${version}.zip | Add-on package for Firefox Add-ons. |
+| veloctl-${version}-linux-amd64.tar.gz / linux-arm64.tar.gz | Standalone Linux command-line downloader. |
+| veloctl-${version}-darwin-amd64.tar.gz / darwin-arm64.tar.gz | Standalone macOS command-line downloader (Intel / Apple Silicon). |
 
-Checksums are in \`SHA256SUMS-${version}.txt\`. Full history: https://velo.adoxcol.com/changelog
+Checksums are in \`SHA256SUMS-${version}.txt\` and \`SHA256SUMS-veloctl-linux.txt\` / \`SHA256SUMS-veloctl-darwin.txt\`. Full history: https://velo.adoxcol.com/changelog
 `);
