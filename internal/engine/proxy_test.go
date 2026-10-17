@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"net/http"
+	"reflect"
 	"testing"
 )
 
@@ -138,5 +140,129 @@ func TestParseProxy(t *testing.T) {
 				t.Errorf("ParseProxy(%q) = %q, want %q", tt.input, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestParseProxyServer(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  map[string]string
+	}{
+		{
+			name:  "empty",
+			input: "",
+			want:  map[string]string{},
+		},
+		{
+			name:  "single host:port",
+			input: "127.0.0.1:8080",
+			want:  map[string]string{"": "127.0.0.1:8080"},
+		},
+		{
+			name:  "multiple schemes",
+			input: "http=127.0.0.1:8080;HTTPS=127.0.0.1:8081;socks=127.0.0.1:1080",
+			want: map[string]string{
+				"http":  "127.0.0.1:8080",
+				"https": "127.0.0.1:8081",
+				"socks": "127.0.0.1:1080",
+			},
+		},
+		{
+			name:  "socks only fallback",
+			input: "socks=127.0.0.1:1080",
+			want: map[string]string{
+				"socks": "127.0.0.1:1080",
+				"":      "127.0.0.1:1080",
+			},
+		},
+		{
+			name:  "trimmed whitespace and empty parts",
+			input: " ; http=127.0.0.1:8080 ; ; ",
+			want: map[string]string{
+				"http": "127.0.0.1:8080",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseProxyServer(tt.input)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("parseProxyServer(%q) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestWildcardMatch(t *testing.T) {
+	tests := []struct {
+		pattern string
+		host    string
+		want    bool
+	}{
+		{"example.com", "example.com", true},
+		{"example.com", "other.com", false},
+		{"*.corp.com", "sub.corp.com", true},
+		{"*.corp.com", "corp.com", false},
+		{"10.*", "10.0.0.1", true},
+		{"10.*", "192.168.0.1", false},
+		{"*a*b*", "1a2b3", true},
+		{"*a*b*", "1a2", false},
+		{"foo*bar", "foobar", true},
+		{"foo*bar", "foo123bar", true},
+		{"foo*bar", "foobaz", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.pattern+"_"+tt.host, func(t *testing.T) {
+			got := wildcardMatch(tt.pattern, tt.host)
+			if got != tt.want {
+				t.Errorf("wildcardMatch(%q, %q) = %v, want %v", tt.pattern, tt.host, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestEngineProxy(t *testing.T) {
+	e := New(t.TempDir())
+
+	req, err := http.NewRequest("GET", "http://example.com/file.zip", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 1. Set mode to "none"
+	e.SetProxy("none")
+	u, err := e.proxyFor(req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if u != nil {
+		t.Errorf("expected nil proxy for 'none', got %v", u)
+	}
+
+	// 2. Set explicit proxy URL
+	proxyURL := "http://127.0.0.1:8080"
+	e.SetProxy(proxyURL)
+	u, err = e.proxyFor(req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if u == nil || u.String() != proxyURL {
+		t.Errorf("proxyFor = %v, want %s", u, proxyURL)
+	}
+
+	// 3. Set system mode / empty string
+	e.SetProxy("system")
+	_, err = e.proxyFor(req)
+	if err != nil {
+		t.Fatalf("unexpected error in system mode: %v", err)
+	}
+
+	e.SetProxy("")
+	_, err = e.proxyFor(req)
+	if err != nil {
+		t.Fatalf("unexpected error in empty mode: %v", err)
 	}
 }
