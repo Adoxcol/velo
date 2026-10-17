@@ -1,6 +1,7 @@
 package update
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -11,7 +12,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"testing"
+	"time"
 )
 
 func TestNewer(t *testing.T) {
@@ -108,5 +111,60 @@ func TestNoRelease(t *testing.T) {
 	API = srv.URL + "/latest"
 	if _, err := Latest(context.Background(), http.DefaultClient); !errors.Is(err, ErrNoRelease) {
 		t.Fatalf("got %v", err)
+	}
+}
+
+// A connection that drops halfway, then one that stalls, still ends with a
+// complete, verified installer: each attempt continues the partial file.
+func TestDownloadResumesAfterDropAndStall(t *testing.T) {
+	body := make([]byte, 300_000)
+	for i := range body {
+		body[i] = byte(i * 7)
+	}
+	sum := sha256.Sum256(body)
+	oldStall := StallTimeout
+	StallTimeout = 300 * time.Millisecond
+	defer func() { StallTimeout = oldStall }()
+
+	var calls int
+	var ranges []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		ranges = append(ranges, r.Header.Get("Range"))
+		start := 0
+		if rg := r.Header.Get("Range"); rg != "" {
+			fmt.Sscanf(rg, "bytes=%d-", &start)
+			w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, len(body)-1, len(body)))
+			w.Header().Set("Content-Length", strconv.Itoa(len(body)-start))
+			w.WriteHeader(http.StatusPartialContent)
+		} else {
+			w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+		}
+		switch calls {
+		case 1: // drop the connection after 100 KB
+			w.Write(body[start:100_000])
+			w.(http.Flusher).Flush()
+			panic(http.ErrAbortHandler)
+		case 2: // send 100 KB more, then go silent
+			w.Write(body[start:200_000])
+			w.(http.Flusher).Flush()
+			<-r.Context().Done()
+		default:
+			w.Write(body[start:])
+		}
+	}))
+	defer srv.Close()
+
+	rel := &Release{Version: "9.9.9", URL: srv.URL, SHA256: hex.EncodeToString(sum[:])}
+	path, err := Download(context.Background(), srv.Client(), rel, t.TempDir())
+	if err != nil {
+		t.Fatalf("download failed: %v (requests: %q)", err, ranges)
+	}
+	got, _ := os.ReadFile(path)
+	if !bytes.Equal(got, body) {
+		t.Fatal("downloaded installer differs from the original")
+	}
+	if calls != 3 || ranges[0] != "" || ranges[1] != "bytes=100000-" || ranges[2] != "bytes=200000-" {
+		t.Fatalf("expected 3 requests continuing at 0, 100000, 200000; got %d: %q", calls, ranges)
 	}
 }

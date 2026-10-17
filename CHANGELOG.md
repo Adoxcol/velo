@@ -2,6 +2,11 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.2 — 2026-10-17
+
+### Fixed
+- Updates no longer fail with "context deadline exceeded" on slow or unsteady connections. Velo used to give the whole update download 5 minutes; now it continues a partial download from where it stopped and only gives up if no data arrives for a minute, trying again up to six times.
+
 ## 0.8.1 — 2026-10-17
 
 ### Security

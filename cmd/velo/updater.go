@@ -73,10 +73,16 @@ func (u *updater) check(a *app) {
 		return
 	}
 	_, portable := ipc.Portable()
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	// No overall time limit: update.Download resumes after interruptions and
+	// only gives up when the connection stalls, so slow links still update.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Hour)
 	defer cancel()
-	client := &http.Client{Timeout: 5 * time.Minute}
-	rel, err := update.Latest(ctx, client)
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.ResponseHeaderTimeout = 60 * time.Second
+	client := &http.Client{Transport: tr}
+	checkCtx, cancelCheck := context.WithTimeout(ctx, 2*time.Minute)
+	rel, err := update.Latest(checkCtx, client)
+	cancelCheck()
 	switch {
 	case errors.Is(err, update.ErrNoRelease):
 		u.set("No releases published yet.")
