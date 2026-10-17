@@ -52,6 +52,7 @@ type app struct {
 	token     string
 	mu        sync.Mutex
 	items     []*item
+	byID      map[int]*item
 	nextID    int
 	settings  Settings
 	running   int
@@ -99,21 +100,23 @@ func newApp(eng *engine.Engine) *app {
 func (a *app) get(id int) *item {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	for _, it := range a.items {
-		if it.d.ID == id {
-			return it
-		}
+	if a.byID == nil {
+		return nil
 	}
-	return nil
+	return a.byID[id]
 }
 
 func (a *app) register(d *engine.Download) *item {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	if a.byID == nil {
+		a.byID = make(map[int]*item)
+	}
 	a.nextID++
 	d.ID = a.nextID
 	it := &item{d: d, lastDone: d.Done.Load(), added: time.Now()}
 	a.items = append(a.items, it)
+	a.byID[d.ID] = it
 	return it
 }
 
@@ -722,6 +725,9 @@ func (a *app) remove(id int) error {
 			a.items = append(a.items[:i], a.items[i+1:]...)
 			break
 		}
+	}
+	if a.byID != nil {
+		delete(a.byID, id)
 	}
 	a.mu.Unlock()
 	a.kick()
