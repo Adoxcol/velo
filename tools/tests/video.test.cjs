@@ -7,6 +7,7 @@ const path = require('node:path');
 function worker() {
   let listener, tab = { id: 1, url: 'https://www.youtube.com/watch?v=first', title: 'Test video' };
   const sent = [];
+  let cached = [];
   const event = { addListener() {} };
   const chrome = {
     runtime: { onInstalled: event, onMessage: { addListener(fn) { listener = fn; } },
@@ -15,12 +16,14 @@ function worker() {
     webRequest: { onHeadersReceived: event },
     tabs: { async get() { return tab; }, onUpdated: event, onRemoved: event },
     cookies: { async getAll() { return []; } },
-    storage: { session: { async get() { return {}; } } },
+    storage: { session: { async get() { return { "media:1": { items: cached } }; } } },
   };
-  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../extension/background.js'), 'utf8'),
-    { chrome, URL, navigator: { userAgent: 'test' }, console });
+  const context = vm.createContext({ chrome, URL, atob, navigator: { userAgent: 'test' }, console });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../../extension/background.js'), 'utf8'), context);
   return {
     sent,
+    cache(items) { cached = items; },
+    classify(url) { return context.classify({ url }); },
     navigate(url) { tab = { ...tab, url }; },
     message(msg, content = false) { return new Promise(resolve => listener(msg, content ? { tab, url: tab.url } : {}, resolve)); },
   };
@@ -51,4 +54,23 @@ test('feed hover selects a same-origin post and rejects unrelated extraction URL
   assert.equal((await w.message({ type: 'grab', url: 'https://youtube.com/watch?v=bad' }, true)).ok, false);
   w.navigate('https://youtube.com.evil.test/watch?v=bad');
   assert.equal((await w.message({ type: 'media', tabId: 1 })).items.length, 0);
+});
+
+test('Facebook CDN byte fragments resolve to video pages, including old cached entries', async () => {
+  const w = worker();
+  w.navigate('https://www.facebook.com/');
+  const efg = Buffer.from(JSON.stringify({ video_id: 1407376671570396 })).toString('base64');
+  const fragment = 'https://scontent.example.fbcdn.net/video.mp4?bytestart=169116&byteend=832276&efg=' + encodeURIComponent(efg);
+  assert.equal(w.classify(fragment), 'page');
+  assert.equal(w.classify('https://cdn.example/video.mp4?bytestart=100'), null);
+  assert.equal(w.classify('https://fbcdn.net.evil.test/video.mp4?bytestart=100&efg=' + efg), null);
+  assert.equal(w.classify('https://cdn.example/video.mp4'), 'file');
+  w.cache([{ url: fragment, kind: 'file' }, { url: fragment, kind: 'file' }]);
+  const media = await w.message({ type: 'media', tabId: 1 });
+  assert.equal(media.items.length, 1);
+  assert.equal(media.items[0].url, 'https://www.facebook.com/watch/?v=1407376671570396');
+  assert.equal(media.items[0].kind, 'page');
+  assert.equal((await w.message({ type: 'grab', tabId: 1 })).ok, true);
+  assert.equal(w.sent[0].kind, 'page');
+  assert.equal(w.sent[0].url, media.items[0].url);
 });

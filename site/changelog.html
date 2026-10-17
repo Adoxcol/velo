@@ -77,8 +77,24 @@
 </header>
 <main>
   <div class="wrap">
+    <article class="rel" id="v0.7.1">
+      <div class="ver"><b>0.7.1</b><span>2026-10-17</span><br><span class="latest">Latest</span></div>
+      <div class="body">
+        <h3>Fixed</h3>
+        <ul>
+          <li>Facebook CDN links that contain only a byte-range fragment are no longer offered as complete MP4 files. When the link identifies the original video, Velo sends its Facebook page to yt-dlp to resolve the audio and video.</li>
+          <li>Previously detected Facebook fragments are normalized too, so stale extension entries do not keep producing broken files. Fragments without a recoverable video page are rejected.</li>
+        </ul>
+        <h3>Setup and verification</h3>
+        <ul>
+          <li>Updated the video setup guide: yt-dlp, ffmpeg and a supported JavaScript runtime such as Deno remain separate dependencies, not bundled in this release. YouTube&#39;s &#34;page needs to be reloaded&#34; error may require a newer nightly yt-dlp build.</li>
+          <li>YouTube downloading was verified with a complete 1080p video and audio. Facebook fragment-routing regression tests pass; a complete signed-in Facebook download still needs verification. Videos requiring login must be sent through the browser extension.</li>
+          <li>Existing incomplete Facebook files are not repaired automatically; download them again after updating and refreshing the video page.</li>
+        </ul>
+      </div>
+    </article>
     <article class="rel" id="v0.7.0">
-      <div class="ver"><b>0.7.0</b><span>2026-10-17</span><br><span class="latest">Latest</span></div>
+      <div class="ver"><b>0.7.0</b><span>2026-10-17</span></div>
       <div class="body">
         <h3>New</h3>
         <ul>
