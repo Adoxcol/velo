@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -78,8 +79,10 @@ func TestCheckAndDownload(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if perm := fi.Mode().Perm(); perm != 0o700 {
-			t.Fatalf("expected directory permissions 0700, got %o", perm)
+		if runtime.GOOS != "windows" {
+			if perm := fi.Mode().Perm(); perm != 0o700 {
+				t.Fatalf("expected directory permissions 0700, got %o", perm)
+			}
 		}
 	}
 }
