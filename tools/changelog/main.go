@@ -162,6 +162,7 @@ var page = template.Must(template.New("page").Parse(`<!doctype html>
       <a class="brand" href="/"><svg viewBox="0 0 24 24"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z" fill="#1677ff"/></svg>velo.</a>
       <div class="links">
         <a href="/#features">Features</a>
+        <a href="/#cli">Linux &amp; macOS CLI</a>
         <a href="/changelog">Changelog</a>
         <a href="https://github.com/Adoxcol/velo">GitHub</a>
         <a class="btn" href="/#download">Download</a>

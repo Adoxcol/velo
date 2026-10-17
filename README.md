@@ -2,10 +2,33 @@
 
 # Velo
 
-**Fast downloads. A smoother internet.** Velo is an open-source download manager for Windows with a
-browser extension for Chrome, Edge, Brave and Firefox. The standalone `veloctl get`
-command also supports Linux and macOS (Intel/AMD 64-bit and ARM64); see the
-[portable CLI guide](docs/cli.md).
+**Fast downloads. A smoother internet.** Velo is a free, open-source download manager:
+a Windows desktop app with browser integration, and a standalone command-line
+downloader for **Windows, Linux and macOS**.
+
+[Website](https://velo.adoxcol.com/) · [Latest release](https://github.com/Adoxcol/velo/releases/latest) · [CLI installation guide](docs/cli.md)
+
+## Download
+
+| Platform | Download | Available today |
+|---|---|---|
+| Windows 10/11 | [Installer](https://github.com/Adoxcol/velo/releases/latest/download/Velo-Setup.exe) · [Portable ZIP](https://github.com/Adoxcol/velo/releases/latest/download/Velo-Portable.zip) | Desktop app, browser integration and `veloctl` |
+| Linux | [Intel/AMD x64](https://github.com/Adoxcol/velo/releases/latest/download/veloctl-linux-amd64.tar.gz) · [ARM64](https://github.com/Adoxcol/velo/releases/latest/download/veloctl-linux-arm64.tar.gz) | Standalone `veloctl get` |
+| macOS | [Apple Silicon](https://github.com/Adoxcol/velo/releases/latest/download/veloctl-darwin-arm64.tar.gz) · [Intel](https://github.com/Adoxcol/velo/releases/latest/download/veloctl-darwin-amd64.tar.gz) | Standalone `veloctl get` |
+
+After extracting a Linux/macOS archive:
+
+```sh
+./veloctl get "https://example.com/file.zip"
+./veloctl get "https://example.com/file.zip" "$HOME/Downloads"
+```
+
+Press **Ctrl+C** to pause; repeat the same command and destination to resume.
+No desktop app is needed. See [installation and checksum verification](docs/cli.md).
+Linux desktop windows, AppImage/.deb packages and browser registration are planned.
+macOS binaries are unsigned and not notarized.
+
+## Windows desktop features
 
 - **Segmented downloads**: files are split into parts (16 by default) downloaded in parallel over
   separate connections. When a part finishes, its connection takes over half of the part with the most
@@ -25,8 +48,8 @@ command also supports Linux and macOS (Intel/AMD 64-bit and ARM64); see the
 - **Velo Mini**: a small always-on-top progress window in the corner while downloads run.
 - **Download all with Velo**: right-click a page (or a selection) to send its links to Velo, then
   pick the files in a batch dialog. Cookies are only sent to links on the same site as the page.
-- **Extension popup**: the videos found on the tab, a quality picker for HLS streams, and a
-  "Link detected" card on pages that play a video (can be turned off).
+- **Extension popup**: videos found on the tab, a quality picker for HLS streams, and a
+  **Download with Velo** button over supported video players.
 - **Queue control**: start now, download next, move up and down; **refresh an expired link** and
   continue the same file; optional **checksum** (SHA-256, SHA-1, MD5) checked when done.
 - **Proxy** (follows Windows by default) and **password-protected downloads**.
@@ -39,9 +62,9 @@ Velo downloads what websites serve openly. It does not bypass DRM, encryption or
 so DRM-protected streaming services are not supported. Individual YouTube videos/Shorts,
 Facebook video/reel pages and X/Twitter posts use the optional yt-dlp integration.
 
-## Install
+## Install on Windows
 
-Download `Velo-Setup-<version>.exe` from the releases page and run it. It installs for your user account
+Download `Velo-Setup-<version>.exe` from the [releases page](https://github.com/Adoxcol/velo/releases/latest) and run it. It installs for your user account
 only (no administrator rights), adds Velo to the Start menu and to **Settings → Apps** for uninstalling,
 and connects Chrome, Edge, Brave and Firefox. Then load the browser extension from
 `%LOCALAPPDATA%\Programs\Velo\extension` (see below) until it's available in the browser stores.
@@ -57,6 +80,9 @@ The installer is not code-signed yet, so Windows SmartScreen may warn about an u
 
 ## Build a release
 
+Tagged GitHub releases build Windows packages and Linux/macOS CLI archives.
+See [the release guide](docs/releasing.md). To build the Windows packages locally:
+
 ```powershell
 .\tools\release.ps1 -Version 0.1.0
 ```
@@ -66,7 +92,20 @@ Writes `dist\Velo-Setup-0.1.0.exe` (the installer, which embeds the app and the 
 `dist\velo-extension-0.1.0.zip` (for the Chrome Web Store and Edge Add-ons; see
 [docs/store-listing.md](docs/store-listing.md) and [docs/privacy.md](docs/privacy.md)).
 
-## Install (from source, for development)
+## Build from source
+
+### Standalone CLI: Windows, Linux and macOS
+
+Requires Go 1.27+. From the repository root:
+
+```sh
+go build -o veloctl ./cmd/veloctl
+go test -race ./internal/engine ./internal/ipc ./cmd/veloctl
+```
+
+On Windows, use `-o veloctl.exe`. On Linux/macOS, run `./veloctl get "<url>"`.
+
+### Windows desktop app
 
 Requirements: Windows 10/11, [Go](https://go.dev/) 1.27+, the WebView2 runtime (included with
 Windows 11), and optionally [ffmpeg](https://ffmpeg.org/) on `PATH` for video streams.
@@ -86,24 +125,24 @@ click **Load unpacked** and choose the `extension` folder. Its ID is
 
 ## Command line (veloctl)
 
-Velo comes with `veloctl.exe`, a small command-line tool for scripts and terminals. It is installed next to Velo in `%LOCALAPPDATA%\Programs\Velo` (in the portable zip, it sits next to `velo.exe`). The installer asks whether to **add Velo to PATH**; choose Yes and `veloctl` works in any new terminal. If you chose No (or use the portable zip), run it by its full path or add the folder yourself:
+`veloctl get <url> [folder]` and `veloctl version` run independently on all three
+platforms. The other commands below control a running **Windows desktop app**;
+Linux/macOS do not yet have a desktop app or background service.
 
-```powershell
-$dir = "$env:LOCALAPPDATA\Programs\Velo"
-[Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ";$dir", "User")
-```
-
-Open a new terminal afterwards. Most commands control the running Velo app, so start Velo first (it can stay in the tray).
+On Windows, `veloctl.exe` is included in the installer and portable ZIP. The
+installer can add Velo to PATH; open a new terminal afterwards. On Linux/macOS,
+extract your archive and use `./veloctl`, or follow the [PATH setup guide](docs/cli.md).
 
 | Command | What it does |
 |---|---|
+| `veloctl version` | Print the installed version (all platforms) |
 | `veloctl list` | Show all downloads with their number (`#id`), status, progress, speed and connections |
-| `veloctl add <url>` | Add a download to Velo (HLS `.m3u8` and DASH `.mpd` links are recognised); prints `ok <id>` |
+| `veloctl add <url>` | Add a download to Velo (files, HLS, DASH and supported video pages are recognised); prints `ok <id>` |
 | `veloctl pause <id>` | Pause a download |
 | `veloctl resume <id>` | Resume a paused or failed download |
 | `veloctl remove <id>` | Remove a download from the list (unfinished partial files are deleted) |
 | `veloctl limit <KB/s>` | Set the speed limit for all downloads; `0` removes it |
-| `veloctl get <url> [folder]` | Download right in the terminal, without the app. Saves to `Downloads\Velo` unless you give a folder. Ctrl+C pauses; run the same command again to resume |
+| `veloctl get <url> [folder]` | Download right in the terminal, without the app. Saves to `~/Downloads/Velo` unless you give a folder. Ctrl+C pauses; run the same command again to resume |
 
 Examples:
 
@@ -122,13 +161,14 @@ veloctl get https://example.com/big-file.zip D:\Downloads
 Install [yt-dlp](https://github.com/yt-dlp/yt-dlp#installation),
 [ffmpeg](https://ffmpeg.org/download.html) and
 [Deno](https://github.com/yt-dlp/yt-dlp/wiki/EJS) for YouTube's JavaScript challenges.
-Put their executables on `PATH` or beside `velo.exe`, then restart Velo.
+Put the tools on `PATH` or beside `veloctl` (or `velo.exe` on Windows), then restart Velo.
+For the standalone CLI, use `veloctl get "<video-page-url>"`; regular files need no extra tools.
 These optional tools are not bundled in the installer. Keep yt-dlp current as sites change.
 The official Windows yt-dlp executable includes the EJS components; Deno and ffmpeg
 remain separate tools. If YouTube reports "The page needs to be reloaded", update
 yt-dlp; the upstream fix is available in its nightly builds (`yt-dlp --update-to nightly`).
 
-Open an individual YouTube, Facebook video/reel, or X/Twitter post and hover over
+With the Windows browser extension, open an individual YouTube, Facebook video/reel, or X/Twitter post and hover over
 its video, then click **Download with Velo**. You can also use the extension popup
 or paste the video page URL into Velo. On feeds, the hover button uses the enclosing
 post's permalink when available; otherwise open the individual video/post first.
@@ -175,12 +215,17 @@ from `%APPDATA%\Velo\endpoint.json`, so web pages can't add downloads.
 
 ## Development
 
+Windows (all packages):
+
 ```powershell
 go test -race ./...        # engine and app tests (local test servers, no internet needed)
 go vet ./...
 ```
 
-Data lives in `%APPDATA%\Velo` (settings, history, log). Set `VELO_HOME` to use another folder.
+For Linux/macOS, run the portable package test command under **Build from source**;
+Windows UI packages are not portable yet.
+
+Windows desktop data lives in `%APPDATA%\Velo` (settings, history, log). Set `VELO_HOME` to use another folder.
 
 ## License
 

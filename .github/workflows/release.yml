@@ -136,6 +136,7 @@ jobs:
             cp LICENSE "$folder/"
             cp docs/cli.md "$folder/README.md"
             tar -czf "$folder.tar.gz" -C "$folder" veloctl LICENSE README.md
+            cp "$folder.tar.gz" "dist/veloctl-${TARGET_OS}-${arch}.tar.gz"
           done
           python3 - <<'PY'
           import hashlib, pathlib, os

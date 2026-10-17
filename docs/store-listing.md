@@ -21,8 +21,10 @@ Velo desktop app.
 
 Requires the Velo app for Windows: https://github.com/Adoxcol/velo
 
-Velo does not download DRM-protected or encrypted video, and does not support sites that protect their
-videos, such as YouTube or streaming services.
+Supported YouTube, Facebook and X video pages use optional yt-dlp, ffmpeg and a supported
+JavaScript runtime such as Deno, installed separately. Site availability varies.
+DRM-protected and live streams are not supported. Linux/macOS CLI builds do not
+connect to this extension; it currently requires the Windows desktop app.
 
 ## Category
 Productivity (Chrome) / Productivity (Edge)

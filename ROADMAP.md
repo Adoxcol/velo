@@ -53,3 +53,11 @@ Ticked items are done. Work goes roughly top to bottom.
 - [x] Landing page live at https://velo.adoxcol.com (with changelog)
 - [x] Repo public; v0.3.1 published on GitHub Releases
 - [x] Real auto-update tested: an installed 0.3.1 found 0.3.2 on GitHub, verified it and updated itself in under 3 minutes
+
+## Platform support
+- [x] Portable engine and standalone `veloctl get` on Windows, Linux and macOS (0.8.0)
+- [x] Linux/macOS Intel/AMD 64-bit and ARM64 release archives with checksums
+- [x] Native Linux/macOS CI tests for the engine and CLI
+- [ ] Linux desktop app with a portable window library
+- [ ] Linux browser native-messaging registration
+- [ ] AppImage and .deb release packages

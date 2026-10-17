@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Velo — fast, free download manager for Windows</title>
-<meta name="description" content="Velo is a free, open-source download manager for Windows. Up to 32 connections per file, pause and resume, a video grabber, and browser integration for Chrome, Edge, Brave and Firefox.">
+<title>Velo — Windows download manager · Linux &amp; macOS CLI</title>
+<meta name="description" content="Free, open-source downloads: a Windows desktop app with browser integration, plus a standalone Linux and macOS CLI for Intel/AMD and ARM64. Pause, resume and download in parallel.">
 <meta name="theme-color" content="#0d1728">
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" type="image/png" href="img/icon.png">
-<meta property="og:title" content="Velo — fast, free download manager for Windows">
-<meta property="og:description" content="Open source. Up to 32 connections per file, pause and resume, a video grabber and browser integration.">
+<meta property="og:title" content="Velo — Windows download manager · Linux &amp; macOS CLI">
+<meta property="og:description" content="Windows desktop. Linux and macOS command line. Open-source parallel downloads with pause and resume.">
 <meta property="og:image" content="https://velo.adoxcol.com/img/app.png">
 <meta property="og:url" content="https://velo.adoxcol.com/">
 <meta name="twitter:card" content="summary_large_image">
@@ -256,6 +256,22 @@
     .band { padding: 52px 20px; }
     footer .links { margin-left: 0; }
   }
+
+  /* CLI downloads */
+  .cli-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+  .cli-card { min-width:0; border:1px solid var(--line); border-radius:18px; padding:28px; background:var(--surface); }
+  .cli-card h3 { font-size:25px; margin:0 0 8px; }
+  .cli-card p { color:var(--muted); margin:0 0 20px; }
+  .cli-links { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
+  .cli-links .btn { padding:10px 15px; font-size:14px; }
+  .btn.outline { border-color:var(--line); color:var(--primary); background:var(--soft); }
+  .cli-card .guide { color:var(--primary); font-size:14px; }
+  .terminal { background:var(--navy); color:#d6e5fa; padding:24px; border-radius:14px; overflow:auto; margin:28px 0 16px; font:14px/1.8 ui-monospace,Consolas,monospace; text-align:left; }
+  .terminal .comment { color:#9cadc6; }
+  .cli-note { color:var(--muted); font-size:15px; max-width:820px; margin:16px auto 0; text-align:center; }
+  .cli-note a { color:var(--primary); }
+  a:focus-visible, summary:focus-visible { outline:3px solid var(--primary-2); outline-offset:4px; }
+  @media(max-width:640px) { .cli-grid { grid-template-columns:1fr; } .cli-card { padding:22px; } }
 </style>
 </head>
 <body>
@@ -277,6 +293,7 @@
     <div class="links">
       <a href="#features">Features</a>
       <a href="#browser">Browser</a>
+      <a href="#cli">CLI</a>
       <a href="#faq">FAQ</a>
       <a href="/changelog">Changelog</a>
       <a href="https://github.com/Adoxcol/velo">GitHub</a>
@@ -287,14 +304,14 @@
 
 <header class="hero">
   <div class="wrap">
-    <a class="pill" href="/changelog"><span class="dot"></span><b>New in 0.4:</b> Velo speaks 8 languages <span aria-hidden="true">→</span></a>
+    <a class="pill" href="/changelog"><span class="dot"></span><b>New in 0.8:</b> Linux &amp; macOS CLI <span aria-hidden="true">→</span></a>
     <h1>Fast downloads.<br><span class="grad">A smoother internet.</span></h1>
-    <p class="lead">Velo is a download manager for Windows. It splits every file into parts that download at once, picks up where it left off, and takes over downloads from your browser.</p>
+    <p class="lead">Parallel downloads that pick up where they left off. Use the desktop app and browser extension on Windows, or download straight from your terminal on Linux and macOS.</p>
     <div class="ctas">
       <a class="btn primary" href="#download"><svg class="i"><use href="#win"/></svg>Download for Windows</a>
-      <a class="btn glass" href="https://github.com/Adoxcol/velo"><svg class="i"><use href="#gh"/></svg>Star on GitHub</a>
+      <a class="btn glass" href="#cli">Linux &amp; macOS CLI <span aria-hidden="true">→</span></a>
     </div>
-    <p class="fine">Free and open source · Windows 10 and 11 · Chrome, Edge, Brave and Firefox</p>
+    <p class="fine">Free and open source · Windows desktop · Linux &amp; macOS command line</p>
 
     <div class="stage" aria-hidden="true">
       <div class="window">
@@ -350,11 +367,49 @@
   </div>
 </header>
 
+<section id="cli" class="alt">
+  <div class="wrap">
+    <div class="head center">
+      <div class="eyebrow">Velo in your terminal</div>
+      <h2>Linux. macOS.<br>One download command.</h2>
+      <p class="sub">The same parallel download engine, without a desktop app. Download, pause with Ctrl+C, and run the same command to resume.</p>
+    </div>
+    <div class="cli-grid">
+      <article class="cli-card">
+        <h3>Linux CLI</h3>
+        <p>Standalone downloads for Linux. Choose x64 for Intel/AMD, or ARM64 for a 64-bit ARM system.</p>
+        <div class="cli-links">
+          <a class="btn primary" href="/download/linux-x64">Linux x64</a>
+          <a class="btn outline" href="/download/linux-arm64">Linux ARM64</a>
+        </div>
+        <a class="guide" href="https://github.com/Adoxcol/velo/releases/latest/download/SHA256SUMS-veloctl-linux.txt">Linux SHA-256 checksums</a>
+      </article>
+      <article class="cli-card">
+        <h3>macOS CLI</h3>
+        <p>Choose Apple Silicon for M-series Macs, or Intel for an Intel Mac. Binaries are unsigned and not notarized.</p>
+        <div class="cli-links">
+          <a class="btn primary" href="/download/macos-arm64">Apple Silicon</a>
+          <a class="btn outline" href="/download/macos-x64">Intel Mac</a>
+        </div>
+        <a class="guide" href="https://github.com/Adoxcol/velo/releases/latest/download/SHA256SUMS-veloctl-darwin.txt">macOS SHA-256 checksums</a>
+      </article>
+    </div>
+    <pre class="terminal"><code><span class="comment"># Extract your downloaded archive, then run:</span>
+./veloctl get "https://example.com/file.zip"
+<span class="comment"># Or choose a destination folder:</span>
+./veloctl get "https://example.com/file.zip" "$HOME/Downloads"
+<span class="comment"># Ctrl+C pauses. Repeat the same command to resume.</span></code></pre>
+    <p class="cli-note"><a href="https://github.com/Adoxcol/velo/blob/main/docs/cli.md">Installation, checksums and command guide →</a></p>
+    <p class="cli-note">Linux and macOS currently support standalone terminal downloads. The desktop interface, browser extension connection, queue and scheduler are Windows features. A Linux desktop app and AppImage/.deb packages are planned.</p>
+    <p class="cli-note">Regular file downloads need no extra tools. Video pages need yt-dlp and ffmpeg; YouTube also needs a supported JavaScript runtime such as Deno. These tools are installed separately.</p>
+  </div>
+</section>
+
 <section id="features">
   <div class="wrap">
     <div class="head center">
       <div class="eyebrow">Why Velo</div>
-      <h2>Built for the downloads browsers get wrong</h2>
+      <h2>A desktop app for your Windows downloads</h2>
       <p class="sub">Big files, slow servers, flaky Wi-Fi and links that expire.</p>
     </div>
     <div class="features">
@@ -419,7 +474,7 @@
 <section>
   <div class="wrap">
     <div class="head center">
-      <div class="eyebrow">Get started</div>
+      <div class="eyebrow">Windows setup</div>
       <h2>Up and running in a minute</h2>
       <p class="sub">No account, no sign-up, no administrator rights.</p>
     </div>
@@ -430,7 +485,7 @@
     </div>
     <div class="note">
       <svg class="i"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.5"/></svg>
-      <div><h3>What Velo doesn't do</h3><p>Velo downloads what websites openly serve. It doesn't get around DRM, encryption or other protections, so protected streaming services and sites like YouTube aren't supported.</p></div>
+      <div><h3>What Velo doesn't do</h3><p>Velo does not bypass DRM or access restrictions. Supported YouTube, Facebook and X video pages use optional yt-dlp, ffmpeg and Deno tools. Availability depends on the site and extractor; live streams are not supported.</p></div>
     </div>
   </div>
 </section>
@@ -439,11 +494,12 @@
   <div class="wrap">
     <div class="head center"><div class="eyebrow">FAQ</div><h2>Questions</h2></div>
     <div class="faq">
+      <details><summary>Does Velo work on Linux and macOS?</summary><p>Yes: <code>veloctl get &lt;url&gt;</code> downloads directly in your terminal, without the desktop app. Intel/AMD and ARM64 packages are available above. The Linux desktop app is planned; browser integration remains Windows-only.</p></details>
       <details><summary>Is Velo really free?</summary><p>Yes. Velo is open source under the MIT license, with no ads, no paid tier and no tracking.</p></details>
-      <details><summary>Does Velo collect any data?</summary><p>No. The extension only talks to the Velo app on your own PC, and Velo only contacts GitHub to check for updates. Read the <a href="https://gist.github.com/Adoxcol/ea9009ab50bad69a5067c20ae35edd49">privacy policy</a>.</p></details>
+      <details><summary>Does Velo collect any data?</summary><p>Velo has no analytics or tracking. Downloads contact the sites you choose; the Windows app contacts GitHub to check for updates. The extension sends download information to the local Velo app. Read the <a href="https://gist.github.com/Adoxcol/ea9009ab50bad69a5067c20ae35edd49">privacy policy</a>.</p></details>
       <details><summary>Why does Windows warn about an unknown publisher?</summary><p>The installer isn't code-signed yet, so SmartScreen doesn't recognise it. Choose "More info" and then "Run anyway". The source is public, and every release lists its SHA-256 so you can check the file.</p></details>
-      <details><summary>How does Velo update?</summary><p>Velo checks GitHub for new versions, verifies the download's SHA-256 and installs it when nothing is downloading. You can turn this off in Settings.</p></details>
-      <details><summary>Does it work with Firefox?</summary><p>Yes, and with Chrome, Edge and Brave. In Firefox, allow Velo on all sites when the add-on asks, so it can find videos and catch downloads.</p></details>
+      <details><summary>How does Velo update?</summary><p>The installed Windows app checks GitHub, verifies the installer checksum and updates while idle. Portable Windows copies and Linux/macOS CLI users download the new package manually. Keep optional video tools up to date separately.</p></details>
+      <details><summary>Does it work with Firefox?</summary><p>On Windows, yes—and with Chrome, Edge and Brave. Linux/macOS CLI builds do not connect to browser extensions yet. In Firefox, allow Velo on all sites when the add-on asks, so it can find videos and catch downloads.</p></details>
       <details><summary>Can I use it without installing?</summary><p>Yes. Unzip the portable version anywhere, even a USB stick, and run velo.exe. Settings stay in a folder next to it.</p></details>
     </div>
   </div>
@@ -483,10 +539,11 @@
   <div class="wrap">
     <div class="band">
       <h2>Download Velo</h2>
-      <p>Free for Windows 10 and 11. Installs for your account only, no administrator rights needed.</p>
+      <p>Desktop app for Windows 10 and 11, including veloctl. Installs for your account only, no administrator rights needed.</p>
       <div class="ctas">
         <a class="btn primary" href="/download"><svg class="i"><use href="#win"/></svg>Download for Windows</a>
         <a class="btn glass" href="/download/portable">Portable zip</a>
+        <a class="btn glass" href="#cli">Linux &amp; macOS CLI</a>
       </div>
       <p class="fine" style="margin-bottom:0">Every version, with its SHA-256, is on the <a href="https://github.com/Adoxcol/velo/releases" style="color:#c9d6ea">GitHub releases page</a>.</p>
       <p class="fine" style="margin-bottom:0">Windows may say "Windows protected your PC" because Velo isn't code-signed yet. Choose <b>More info</b> → <b>Run anyway</b>.</p>

@@ -43,6 +43,26 @@
       "source": "/download/portable",
       "destination": "https://github.com/Adoxcol/velo/releases/latest/download/Velo-Portable.zip",
       "permanent": false
+    },
+    {
+      "source": "/download/linux-x64",
+      "destination": "https://github.com/Adoxcol/velo/releases/latest/download/veloctl-linux-amd64.tar.gz",
+      "permanent": false
+    },
+    {
+      "source": "/download/linux-arm64",
+      "destination": "https://github.com/Adoxcol/velo/releases/latest/download/veloctl-linux-arm64.tar.gz",
+      "permanent": false
+    },
+    {
+      "source": "/download/macos-x64",
+      "destination": "https://github.com/Adoxcol/velo/releases/latest/download/veloctl-darwin-amd64.tar.gz",
+      "permanent": false
+    },
+    {
+      "source": "/download/macos-arm64",
+      "destination": "https://github.com/Adoxcol/velo/releases/latest/download/veloctl-darwin-arm64.tar.gz",
+      "permanent": false
     }
   ]
 }
