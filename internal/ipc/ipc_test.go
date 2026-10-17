@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -35,14 +36,16 @@ func TestEndpointReadWrite(t *testing.T) {
 		t.Fatalf("failed to write endpoint: %v", err)
 	}
 
-	// Verify file permissions
+	// Verify file permissions (on POSIX systems)
 	p := endpointPath()
 	info, err := os.Stat(p)
 	if err != nil {
 		t.Fatalf("failed to stat endpoint file: %v", err)
 	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
-		t.Errorf("expected endpoint file permission 0600, got %o", perm)
+	if runtime.GOOS != "windows" {
+		if perm := info.Mode().Perm(); perm != 0o600 {
+			t.Errorf("expected endpoint file permission 0600, got %o", perm)
+		}
 	}
 
 	// Verify reading
