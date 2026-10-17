@@ -90,7 +90,6 @@ if (require.main === module) {
     const keys = new Set(fs.existsSync(keysFile) ? JSON.parse(fs.readFileSync(keysFile, "utf8")) : []);
     const missing = all ? strings : strings.filter((s) => !keys.has(s));
     console.log(`## ${group}: ${missing.length} ${all ? "found" : "not in keys.json (code fragments are expected here)"}`);
-    missing.forEach((s) => console.log("  " + s));
   }
 }
 module.exports = { extract, SOURCES };
