@@ -82,6 +82,39 @@ Then load the extension: open `chrome://extensions` or `edge://extensions`, turn
 click **Load unpacked** and choose the `extension` folder. Its ID is
 `dmdcijgljocjdmafenflenjhdjhenokc`.
 
+## Command line (veloctl)
+
+Velo comes with `veloctl.exe`, a small command-line tool for scripts and terminals. It is installed next to Velo in `%LOCALAPPDATA%\Programs\Velo` (in the portable zip, it sits next to `velo.exe`). It isn't added to `PATH`, so either run it by its full path or add that folder to `PATH` once:
+
+```powershell
+$dir = "$env:LOCALAPPDATA\Programs\Velo"
+[Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ";$dir", "User")
+```
+
+Open a new terminal afterwards. Most commands control the running Velo app, so start Velo first (it can stay in the tray).
+
+| Command | What it does |
+|---|---|
+| `veloctl list` | Show all downloads with their number (`#id`), status, progress, speed and connections |
+| `veloctl add <url>` | Add a download to Velo (HLS `.m3u8` and DASH `.mpd` links are recognised); prints `ok <id>` |
+| `veloctl pause <id>` | Pause a download |
+| `veloctl resume <id>` | Resume a paused or failed download |
+| `veloctl remove <id>` | Remove a download from the list (unfinished partial files are deleted) |
+| `veloctl limit <KB/s>` | Set the speed limit for all downloads; `0` removes it |
+| `veloctl get <url> [folder]` | Download right in the terminal, without the app. Saves to `Downloads\Velo` unless you give a folder. Ctrl+C pauses; run the same command again to resume |
+
+Examples:
+
+```powershell
+veloctl add https://example.com/big-file.zip
+veloctl list
+veloctl pause 3
+veloctl resume 3
+veloctl limit 2048        # 2 MB/s
+veloctl limit 0           # no limit
+veloctl get https://example.com/big-file.zip D:\Downloads
+```
+
 ## Video page downloads
 
 Install [yt-dlp](https://github.com/yt-dlp/yt-dlp#installation),
