@@ -211,7 +211,9 @@ func TestDownloadFolderChange(t *testing.T) {
 }
 
 func TestBatchCookiesStayOnSameSite(t *testing.T) {
-	a := testApp(t, defaultSettings())
+	// This tests paused requests only. A dispatcher would race temporary-folder
+	// cleanup by saving history after the assertions have finished.
+	a := &app{eng: engine.New(t.TempDir()), wake: make(chan struct{}, 1), settings: defaultSettings()}
 	var b batchReq
 	b.Page, b.Cookies = "https://files.example.com/list", "session=secret"
 	b.Links = append(b.Links, struct {
