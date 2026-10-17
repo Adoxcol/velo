@@ -71,6 +71,9 @@ async function cookieHeader(url) {
 }
 
 async function handOff({ url, referrer, filename, kind, title, source, size }) {
+  const facebook = facebookVideoPage(url);
+  if (facebook) { url = facebook; kind = "page"; filename = ""; }
+  else if (partialMediaURL(url)) return { ok: false, error: "This link is only part of a video. Open the original video post and download from there." };
   return send({
     type: "download",
     url,
@@ -248,6 +251,8 @@ function header(details, name) {
 function classify(details) {
   const url = details.url;
   const type = header(details, "content-type").toLowerCase().split(";")[0].trim();
+  if (facebookVideoPage(url)) return "page";
+  if (partialMediaURL(url)) return null;
   if (/\.m3u8(\?|$)/i.test(url) || type === "application/vnd.apple.mpegurl" || type === "application/x-mpegurl") return "hls";
   if (/\.mpd(\?|$)/i.test(url) || type === "application/dash+xml") return "dash";
   if (SEGMENT_EXT.test(url) || type === "video/mp2t" || type === "video/iso.segment") return null;
@@ -344,7 +349,7 @@ chrome.webRequest.onHeadersReceived.addListener(
 
 async function recordMedia(details, kind) {
   const tabId = details.tabId;
-  const entry = { url: details.url, kind, size: mediaSize(details), quality: "", note: "" };
+  const entry = { url: kind === "page" ? facebookVideoPage(details.url) : details.url, kind, size: kind === "page" ? 0 : mediaSize(details), quality: kind === "page" ? "Best quality" : "", note: "" };
   if (kind === "file" && entry.size && entry.size < 300 * 1024) return; // ignore tiny clips/sounds
   if (kind === "hls") {
     const info = await inspectPlaylist(details.url);
@@ -406,8 +411,8 @@ function unsupportedSite(url) {
 
 // The best candidate: a playable stream (HLS, then DASH) first, then the largest file.
 function best(items) {
-  const ok = items.filter((x) => !x.note);
-  return ok.find((x) => x.kind === "hls") || ok.find((x) => x.kind === "dash") || ok.sort((a, b) => b.size - a.size)[0];
+  const ok = items.filter((x) => !x.note && !partialMediaURL(x.url));
+  return ok.find((x) => x.kind === "page") || ok.find((x) => x.kind === "hls") || ok.find((x) => x.kind === "dash") || ok.sort((a, b) => b.size - a.size)[0];
 }
 
 async function grab(tabId, entry) {
@@ -431,6 +436,11 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     const tab = tabId != null ? await chrome.tabs.get(tabId).catch(() => null) : null;
     const unsupported = tab && unsupportedSite(tab.url);
     const media = tab ? await getMedia(tabId) : { items: [] };
+    // Normalize cached entries from older extension versions too.
+    media.items = media.items.map((item) => {
+      const page = facebookVideoPage(item.url);
+      return page ? { url: page, kind: "page", quality: "Best quality", note: "", size: 0 } : item;
+    }).filter((item, i, all) => !partialMediaURL(item.url) && all.findIndex((x) => x.url === item.url) === i);
     // Resolve the page on demand: SPA navigation must never reuse the previous video.
     let page = videoPage(tab?.url);
     // Content scripts can identify the hovered post on a feed. Keep the URL
@@ -478,4 +488,28 @@ function videoPage(raw) {
         (p.length === 2 && p[0] === "reel") || (p.length >= 3 && p[1] === "videos"))) return u.href;
   } catch {}
   return null;
+}
+
+// Facebook's CDN URLs may be a range of a single DASH track, not a movie.
+// Its efg metadata identifies the original video without stripping signatures
+// or guessing that a complete video track also contains audio.
+function facebookVideoPage(raw) {
+  try {
+    const u = new URL(raw);
+    if (!/^https?:$/.test(u.protocol) || !(u.hostname === "fbcdn.net" || u.hostname.endsWith(".fbcdn.net"))) return null;
+    const encoded = u.searchParams.get("efg");
+    if (!encoded || encoded.length > 16384) return null;
+    const meta = JSON.parse(atob(encoded.replace(/-/g, "+").replace(/_/g, "/")));
+    const id = meta.video_id;
+    if (typeof id === "number" && !Number.isSafeInteger(id)) return null;
+    if (!/^[1-9][0-9]{0,19}$/.test(String(id))) return null;
+    return "https://www.facebook.com/watch/?v=" + id;
+  } catch { return null; }
+}
+
+function partialMediaURL(raw) {
+  try {
+    const u = new URL(raw);
+    return u.searchParams.has("bytestart") || u.searchParams.has("byteend");
+  } catch { return false; }
 }

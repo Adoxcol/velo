@@ -89,12 +89,18 @@ Install [yt-dlp](https://github.com/yt-dlp/yt-dlp#installation),
 [Deno](https://github.com/yt-dlp/yt-dlp/wiki/EJS) for YouTube's JavaScript challenges.
 Put their executables on `PATH` or beside `velo.exe`, then restart Velo.
 These optional tools are not bundled in the installer. Keep yt-dlp current as sites change.
+The official Windows yt-dlp executable includes the EJS components; Deno and ffmpeg
+remain separate tools. If YouTube reports "The page needs to be reloaded", update
+yt-dlp; the upstream fix is available in its nightly builds (`yt-dlp --update-to nightly`).
 
 Open an individual YouTube, Facebook video/reel, or X/Twitter post and hover over
 its video, then click **Download with Velo**. You can also use the extension popup
 or paste the video page URL into Velo. On feeds, the hover button uses the enclosing
 post's permalink when available; otherwise open the individual video/post first.
-Other sites retain the existing HLS, DASH and direct media detection.
+Facebook CDN byte-range fragments are resolved to the original video page when
+the link identifies it; otherwise Velo refuses the fragment. Videos requiring a
+Facebook login must be sent through the browser extension so it can supply the
+page cookies. Other sites retain the existing HLS, DASH and direct media detection.
 
 Page downloads select the best available audio and video and save a merged MKV.
 They support cancellation and resuming partial files. Browser cookies for the
