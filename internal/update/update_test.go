@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -65,12 +66,20 @@ func TestCheckAndDownload(t *testing.T) {
 		if rel.Version != "0.2.0" || rel.SHA256 != hex.EncodeToString(sum[:]) {
 			t.Fatalf("release %+v", rel)
 		}
-		path, err := Download(context.Background(), http.DefaultClient, rel, t.TempDir())
+		targetDir := filepath.Join(t.TempDir(), "subdir")
+		path, err := Download(context.Background(), http.DefaultClient, rel, targetDir)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if b, _ := os.ReadFile(path); string(b) != string(body) {
 			t.Fatal("wrong installer contents")
+		}
+		fi, err := os.Stat(targetDir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if perm := fi.Mode().Perm(); perm != 0o700 {
+			t.Fatalf("expected directory permissions 0700, got %o", perm)
 		}
 	}
 }
