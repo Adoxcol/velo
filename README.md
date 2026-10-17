@@ -84,7 +84,7 @@ click **Load unpacked** and choose the `extension` folder. Its ID is
 
 ## Command line (veloctl)
 
-Velo comes with `veloctl.exe`, a small command-line tool for scripts and terminals. It is installed next to Velo in `%LOCALAPPDATA%\Programs\Velo` (in the portable zip, it sits next to `velo.exe`). It isn't added to `PATH`, so either run it by its full path or add that folder to `PATH` once:
+Velo comes with `veloctl.exe`, a small command-line tool for scripts and terminals. It is installed next to Velo in `%LOCALAPPDATA%\Programs\Velo` (in the portable zip, it sits next to `velo.exe`). The installer asks whether to **add Velo to PATH**; choose Yes and `veloctl` works in any new terminal. If you chose No (or use the portable zip), run it by its full path or add the folder yourself:
 
 ```powershell
 $dir = "$env:LOCALAPPDATA\Programs\Velo"

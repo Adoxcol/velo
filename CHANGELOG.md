@@ -2,6 +2,12 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.7.2 — 2026-10-17
+
+### New
+- The installer offers to **add Velo to PATH**, so the `veloctl` command-line tool works from any terminal. Updates keep your choice, and uninstalling removes it.
+- The README explains every `veloctl` command, with examples.
+
 ## 0.7.1 — 2026-10-17
 
 ### Fixed

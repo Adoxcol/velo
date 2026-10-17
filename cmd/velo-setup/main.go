@@ -133,6 +133,19 @@ func install() error {
 	}
 	refreshAutostart(dir)
 
+	// Command line: offer to put veloctl on PATH. Silent installs and updates
+	// leave the user's earlier choice alone.
+	if !silent && !onPath(dir) && confirm(appName+" Setup",
+		"Add Velo to PATH?\n\n"+
+			"This lets you use the veloctl command-line tool from any terminal, for example:\n"+
+			"   veloctl add https://example.com/file.zip\n"+
+			"   veloctl list\n\n"+
+			"Choose No if you don't use the command line. You can still run veloctl from:\n"+dir) {
+		if err := setOnPath(dir, true); err != nil {
+			message(appName+" Setup", "Couldn't add Velo to PATH: "+err.Error(), mbIconInfo)
+		}
+	}
+
 	if silent { // updates and scripted installs: back to the tray, no window
 		exec.Command(filepath.Join(dir, "velo.exe"), "-background").Start()
 	} else {
@@ -326,6 +339,9 @@ func uninstall(confirmed bool) error {
 	}
 	registry.DeleteKey(registry.CURRENT_USER, uninstallKey)
 	os.Remove(startMenuShortcut())
+	if onPath(dir) {
+		setOnPath(dir, false)
+	}
 
 	var err error
 	for i := 0; i < 20; i++ {
