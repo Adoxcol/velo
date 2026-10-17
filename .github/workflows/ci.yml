@@ -32,3 +32,22 @@ jobs:
         run: for f in extension/*.js; do node --check "$f"; done
       - name: Test video page routing
         run: node --test tools/tests/video.test.cjs
+
+  portable-cli:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Test portable engine and CLI
+        run: go test -race ./internal/engine ./internal/ipc ./cmd/veloctl
+      - name: Vet portable packages
+        run: go vet ./internal/engine ./internal/ipc ./cmd/veloctl
+      - name: Build both architectures
+        run: |
+          GOARCH=amd64 CGO_ENABLED=0 go build -o bin/veloctl-amd64 ./cmd/veloctl
+          GOARCH=arm64 CGO_ENABLED=0 go build -o bin/veloctl-arm64 ./cmd/veloctl

@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -41,7 +42,11 @@ func VideoPage(raw string) bool {
 
 func videoTool(name string) (string, error) {
 	if app, err := os.Executable(); err == nil {
-		p := filepath.Join(filepath.Dir(app), name+".exe")
+		toolName := name
+		if runtime.GOOS == "windows" {
+			toolName += ".exe"
+		}
+		p := filepath.Join(filepath.Dir(app), toolName)
 		if st, err := os.Stat(p); err == nil && !st.IsDir() {
 			return p, nil
 		}
@@ -141,14 +146,7 @@ func (e *Engine) runPage(ctx context.Context, d *Download) error {
 	cmd := exec.CommandContext(ctx, ytdlp, args...)
 	hideWindow(cmd)
 	// CommandContext alone kills only yt-dlp, leaving ffmpeg writing the output.
-	cmd.Cancel = func() error {
-		kill := exec.Command("taskkill.exe", "/PID", strconv.Itoa(cmd.Process.Pid), "/T", "/F")
-		hideWindow(kill)
-		if err := kill.Run(); err != nil {
-			return cmd.Process.Kill()
-		}
-		return nil
-	}
+	cmd.Cancel = func() error { return killProcessTree(cmd) }
 	cmd.WaitDelay = 5 * time.Second
 	log := &extractorLog{d: d}
 	cmd.Stdout, cmd.Stderr = log, log

@@ -2,6 +2,18 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.0 — 2026-10-17
+
+### New
+- **Standalone command-line downloads on Linux and macOS:** `veloctl get <url>` now uses the portable download engine without requiring the Windows desktop app. Release archives cover Intel/AMD 64-bit and ARM64, including Apple Silicon.
+- Linux and macOS downloads check free disk space, use standard proxy environment variables and cancel external video tools together with their child processes.
+- `veloctl version` reports the installed version. CLI downloads now recognize supported video page URLs as well as files, HLS and DASH.
+
+### Verification and scope
+- CI runs engine and CLI tests natively on Linux, macOS and Windows, including an actual command-line download against a local server. Linux and macOS release archives include checksums.
+- This is the command-line portability milestone. Linux desktop windows, browser registration and AppImage/.deb packages are next; remote-control commands still require a running desktop app. macOS binaries are unsigned and not notarized.
+- yt-dlp, ffmpeg and Deno remain separate optional dependencies for video page downloads.
+
 ## 0.7.2 — 2026-10-17
 
 ### New
