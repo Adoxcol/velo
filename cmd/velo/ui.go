@@ -34,6 +34,14 @@ var (
 
 // runTray shows the tray icon and blocks until the user picks Exit.
 func runTray(a *app, openWindow bool) {
+	setupTrayApp(a)
+	systray.Run(func() {
+		setupTrayUI(a, openWindow)
+	}, nil)
+}
+
+// setupTrayApp configures application callbacks and starts background workers.
+func setupTrayApp(a *app) {
 	a.show = func() { showMain(a) }
 	var quitOnce sync.Once
 	a.quit = func() {
@@ -75,109 +83,153 @@ func runTray(a *app, openWindow bool) {
 		a.show()
 		evalMain("openBatch()")
 	}
-	systray.Run(func() {
-		systray.SetIcon(appIcon())
-		systray.SetTitle("Velo")
-		systray.SetTooltip("Velo")
-		systray.SetOnTapped(a.show) // left click
-		// Menu items remember their English text so a language change can retitle them.
-		type titled struct {
-			m       *systray.MenuItem
-			en, tip string
+}
+
+type trayMenu struct {
+	mOpen      *systray.MenuItem
+	mAdd       *systray.MenuItem
+	mFolder    *systray.MenuItem
+	mPauseAll  *systray.MenuItem
+	mResumeAll *systray.MenuItem
+	mMini      *systray.MenuItem
+	mSched     *systray.MenuItem
+	mQuit      *systray.MenuItem
+}
+
+// setupTrayUI initializes the tray icon, builds its menu, and attaches event listeners.
+func setupTrayUI(a *app, openWindow bool) {
+	systray.SetIcon(appIcon())
+	systray.SetTitle("Velo")
+	systray.SetTooltip("Velo")
+	systray.SetOnTapped(a.show) // left click
+
+	menu := buildTrayMenu(a)
+	handleTrayEvents(a, menu)
+
+	if openWindow {
+		a.show()
+	}
+}
+
+// buildTrayMenu constructs the tray items, language titles, and speed limit controls.
+func buildTrayMenu(a *app) trayMenu {
+	// Menu items remember their English text so a language change can retitle them.
+	type titled struct {
+		m       *systray.MenuItem
+		en, tip string
+	}
+	var titledItems []titled
+	item := func(m *systray.MenuItem, en, tip string) *systray.MenuItem {
+		titledItems = append(titledItems, titled{m, en, tip})
+		m.SetTitle(a.tr(en))
+		m.SetTooltip(a.tr(tip))
+		return m
+	}
+
+	mOpen := item(systray.AddMenuItem("Show Velo", ""), "Show Velo", "Show the download list")
+	mAdd := item(systray.AddMenuItem("Add Download…", ""), "Add Download…", "Add a link")
+	mFolder := item(systray.AddMenuItem("Open downloads folder", ""), "Open downloads folder", "")
+	systray.AddSeparator()
+	mPauseAll := item(systray.AddMenuItem("Pause all", ""), "Pause all", "")
+	mResumeAll := item(systray.AddMenuItem("Resume all", ""), "Resume all", "")
+	systray.AddSeparator()
+	mLimit := item(systray.AddMenuItem("Speed limit", ""), "Speed limit", "")
+
+	limits := []int{0, 256, 1024, 5 * 1024} // KB/s
+	var limitItems []*systray.MenuItem
+	for _, kb := range limits {
+		label := "Unlimited"
+		if kb > 0 {
+			label = sizeKB(kb) + "/s"
 		}
-		var titledItems []titled
-		item := func(m *systray.MenuItem, en, tip string) *systray.MenuItem {
-			titledItems = append(titledItems, titled{m, en, tip})
-			m.SetTitle(a.tr(en))
-			m.SetTooltip(a.tr(tip))
-			return m
+		limitItems = append(limitItems, item(mLimit.AddSubMenuItemCheckbox(label, "", false), label, ""))
+	}
+	mMini := item(systray.AddMenuItemCheckbox("Show Velo Mini", "", a.getSettings().ShowMini), "Show Velo Mini", "The small progress window while downloading")
+
+	syncLimit := func() {
+		if a.getSettings().ShowMini {
+			mMini.Check()
+		} else {
+			mMini.Uncheck()
 		}
-		mOpen := item(systray.AddMenuItem("Show Velo", ""), "Show Velo", "Show the download list")
-		mAdd := item(systray.AddMenuItem("Add Download…", ""), "Add Download…", "Add a link")
-		mFolder := item(systray.AddMenuItem("Open downloads folder", ""), "Open downloads folder", "")
-		systray.AddSeparator()
-		mPauseAll := item(systray.AddMenuItem("Pause all", ""), "Pause all", "")
-		mResumeAll := item(systray.AddMenuItem("Resume all", ""), "Resume all", "")
-		systray.AddSeparator()
-		mLimit := item(systray.AddMenuItem("Speed limit", ""), "Speed limit", "")
-		limits := []int{0, 256, 1024, 5 * 1024} // KB/s
-		var limitItems []*systray.MenuItem
-		for _, kb := range limits {
-			label := "Unlimited"
-			if kb > 0 {
-				label = sizeKB(kb) + "/s"
-			}
-			limitItems = append(limitItems, item(mLimit.AddSubMenuItemCheckbox(label, "", false), label, ""))
-		}
-		mMini := item(systray.AddMenuItemCheckbox("Show Velo Mini", "", a.getSettings().ShowMini), "Show Velo Mini", "The small progress window while downloading")
-		syncLimit := func() {
-			if a.getSettings().ShowMini {
-				mMini.Check()
-			} else {
-				mMini.Uncheck()
-			}
-			cur := a.getSettings().SpeedLimitKB
-			for i, kb := range limits {
-				if kb == cur {
-					limitItems[i].Check()
-				} else {
-					limitItems[i].Uncheck()
-				}
-			}
-		}
-		syncLimit()
-		lang := a.lang()
-		a.changed = func() {
-			syncLimit()
-			if l := a.lang(); l != lang { // language changed: retitle the menu, reload the windows
-				lang = l
-				for _, t := range titledItems {
-					t.m.SetTitle(a.tr(t.en))
-					t.m.SetTooltip(a.tr(t.tip))
-				}
-				go reloadWindows(a)
-			}
-		}
-		a.onTick = a.updateTaskbar
+		cur := a.getSettings().SpeedLimitKB
 		for i, kb := range limits {
-			go func() {
-				for range limitItems[i].ClickedCh {
-					a.setSpeedLimit(kb)
-				}
-			}()
+			if kb == cur {
+				limitItems[i].Check()
+			} else {
+				limitItems[i].Uncheck()
+			}
 		}
-		mSched := item(systray.AddMenuItem("Settings…", ""), "Settings…", "Download folder, scheduler, when finished")
-		systray.AddSeparator()
-		mQuit := item(systray.AddMenuItem("Exit", ""), "Exit", "Pause everything and quit")
+	}
+	syncLimit()
+
+	lang := a.lang()
+	a.changed = func() {
+		syncLimit()
+		if l := a.lang(); l != lang { // language changed: retitle the menu, reload the windows
+			lang = l
+			for _, t := range titledItems {
+				t.m.SetTitle(a.tr(t.en))
+				t.m.SetTooltip(a.tr(t.tip))
+			}
+			go reloadWindows(a)
+		}
+	}
+	a.onTick = a.updateTaskbar
+
+	for i, kb := range limits {
+		ch := limitItems[i].ClickedCh
+		speedKB := kb
 		go func() {
-			for {
-				select {
-				case <-mAdd.ClickedCh:
-					a.show()
-					evalMain("openAdd()")
-				case <-mOpen.ClickedCh:
-					a.show()
-				case <-mFolder.ClickedCh:
-					a.openDir()
-				case <-mPauseAll.ClickedCh:
-					a.all("pause")
-				case <-mResumeAll.ClickedCh:
-					a.all("resume")
-				case <-mMini.ClickedCh:
-					a.updateSettings(func(s *Settings) { s.ShowMini = !s.ShowMini })
-				case <-mSched.ClickedCh:
-					a.show()
-					evalMain("go('settings')")
-				case <-mQuit.ClickedCh:
-					a.quit()
-					return
-				}
+			for range ch {
+				a.setSpeedLimit(speedKB)
 			}
 		}()
-		if openWindow {
-			a.show()
+	}
+
+	mSched := item(systray.AddMenuItem("Settings…", ""), "Settings…", "Download folder, scheduler, when finished")
+	systray.AddSeparator()
+	mQuit := item(systray.AddMenuItem("Exit", ""), "Exit", "Pause everything and quit")
+
+	return trayMenu{
+		mOpen:      mOpen,
+		mAdd:       mAdd,
+		mFolder:    mFolder,
+		mPauseAll:  mPauseAll,
+		mResumeAll: mResumeAll,
+		mMini:      mMini,
+		mSched:     mSched,
+		mQuit:      mQuit,
+	}
+}
+
+// handleTrayEvents processes user clicks on tray menu items in a background goroutine.
+func handleTrayEvents(a *app, m trayMenu) {
+	go func() {
+		for {
+			select {
+			case <-m.mAdd.ClickedCh:
+				a.show()
+				evalMain("openAdd()")
+			case <-m.mOpen.ClickedCh:
+				a.show()
+			case <-m.mFolder.ClickedCh:
+				a.openDir()
+			case <-m.mPauseAll.ClickedCh:
+				a.all("pause")
+			case <-m.mResumeAll.ClickedCh:
+				a.all("resume")
+			case <-m.mMini.ClickedCh:
+				a.updateSettings(func(s *Settings) { s.ShowMini = !s.ShowMini })
+			case <-m.mSched.ClickedCh:
+				a.show()
+				evalMain("go('settings')")
+			case <-m.mQuit.ClickedCh:
+				a.quit()
+				return
+			}
 		}
-	}, nil)
+	}()
 }
 
 // all pauses or resumes every download it applies to.
