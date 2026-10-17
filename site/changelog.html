@@ -78,8 +78,23 @@
 </header>
 <main>
   <div class="wrap">
+    <article class="rel" id="v0.8.1">
+      <div class="ver"><b>0.8.1</b><span>2026-10-17</span><br><span class="latest">Latest</span></div>
+      <div class="body">
+        <h3>Security</h3>
+        <ul>
+          <li>Video page downloads run yt-dlp with <code>--ignore-config</code>, <code>--no-config-locations</code> and <code>--no-exec</code>, so a yt-dlp config file on the computer can&#39;t change what Velo runs.</li>
+          <li>Velo&#39;s update folder is now private to your user account, and the local connection between the extension and the app has extra tests for its access token.</li>
+        </ul>
+        <h3>Improved</h3>
+        <ul>
+          <li>Faster handling of long download lists: downloads are looked up by number instead of searching the whole list, settings are cached in memory and the progress loop does less work.</li>
+          <li>Internal clean-up of the download engine, the video page extractor and the tray menu, with more tests for checksums, proxies and pending browser downloads.</li>
+        </ul>
+      </div>
+    </article>
     <article class="rel" id="v0.8.0">
-      <div class="ver"><b>0.8.0</b><span>2026-10-17</span><br><span class="latest">Latest</span></div>
+      <div class="ver"><b>0.8.0</b><span>2026-10-17</span></div>
       <div class="body">
         <h3>New</h3>
         <ul>

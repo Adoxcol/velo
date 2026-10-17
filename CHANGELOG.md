@@ -2,6 +2,16 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.1 — 2026-10-17
+
+### Security
+- Video page downloads run yt-dlp with `--ignore-config`, `--no-config-locations` and `--no-exec`, so a yt-dlp config file on the computer can't change what Velo runs.
+- Velo's update folder is now private to your user account, and the local connection between the extension and the app has extra tests for its access token.
+
+### Improved
+- Faster handling of long download lists: downloads are looked up by number instead of searching the whole list, settings are cached in memory and the progress loop does less work.
+- Internal clean-up of the download engine, the video page extractor and the tray menu, with more tests for checksums, proxies and pending browser downloads.
+
 ## 0.8.0 — 2026-10-17
 
 ### New
