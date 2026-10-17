@@ -470,6 +470,66 @@ func BenchmarkGet(b *testing.B) {
 	}
 }
 
+func TestPendingDownloads(t *testing.T) {
+	a := &app{pending: make(map[int]pendingDL)}
+
+	if p := a.nextPendingDL(); p != nil {
+		t.Fatalf("expected nil next pending, got %+v", p)
+	}
+
+	a.mu.Lock()
+	a.pending[1] = pendingDL{ID: 1, Req: engine.Request{URL: "https://example.com/1.zip", Filename: "1.zip"}}
+	a.pendingOrder = append(a.pendingOrder, 1)
+	a.pending[2] = pendingDL{ID: 2, Req: engine.Request{URL: "https://example.com/2.zip", Filename: "2.zip"}}
+	a.pendingOrder = append(a.pendingOrder, 2)
+	a.mu.Unlock()
+
+	p1 := a.nextPendingDL()
+	if p1 == nil || p1.ID != 1 || p1.Filename != "1.zip" {
+		t.Fatalf("expected pending ID 1, got %+v", p1)
+	}
+
+	req, ok := a.takePending(1)
+	if !ok || req.Filename != "1.zip" {
+		t.Fatalf("takePending(1) failed, got req=%+v, ok=%v", req, ok)
+	}
+
+	p2 := a.nextPendingDL()
+	if p2 == nil || p2.ID != 2 || p2.Filename != "2.zip" {
+		t.Fatalf("expected pending ID 2, got %+v", p2)
+	}
+
+	_, ok = a.takePending(999)
+	if ok {
+		t.Fatalf("takePending(999) should return false")
+	}
+
+	a.clearPending()
+	if p := a.nextPendingDL(); p != nil {
+		t.Fatalf("expected nil after clearPending, got %+v", p)
+	}
+}
+
+func BenchmarkTakePending(b *testing.B) {
+	a := &app{pending: make(map[int]pendingDL)}
+	const count = 50
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		a.mu.Lock()
+		for id := 1; id <= count; id++ {
+			p := pendingDL{ID: id, Req: engine.Request{URL: "https://example.com/f.zip"}}
+			a.pending[id] = p
+			a.pendingOrder = append(a.pendingOrder, id)
+		}
+		a.mu.Unlock()
+
+		for id := 1; id <= count; id++ {
+			a.takePending(id)
+		}
+	}
+}
+
 func TestClipboardRoundTrip(t *testing.T) {
 	old, hadText := clipboardText()
 	defer func() {

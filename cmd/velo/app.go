@@ -66,13 +66,14 @@ type app struct {
 	changed   func() // settings changed (updates the tray menu)
 	onTick    func() // every second (taskbar progress)
 
-	lastHistory   []byte      // last saved history.json contents
-	speedHist     []float64   // total speed per second, last minute
-	extSeen       time.Time   // last message from the browser extension
-	batch         *batchReq   // links waiting in the batch dialog
-	miniDismissed bool        // Velo Mini closed by the user until downloads stop
-	upd           updater     // GitHub Releases updates
-	pending       []pendingDL // browser downloads waiting for the download dialog
+	lastHistory   []byte            // last saved history.json contents
+	speedHist     []float64         // total speed per second, last minute
+	extSeen       time.Time         // last message from the browser extension
+	batch         *batchReq         // links waiting in the batch dialog
+	miniDismissed bool              // Velo Mini closed by the user until downloads stop
+	upd           updater           // GitHub Releases updates
+	pending       map[int]pendingDL // browser downloads waiting for the download dialog
+	pendingOrder  []int
 	nextPending   int
 	showPending   func() // opens the download dialog for pending downloads
 	defaultDir    string // download folder when the setting is empty
@@ -80,7 +81,7 @@ type app struct {
 }
 
 func newApp(eng *engine.Engine) *app {
-	a := &app{eng: eng, token: ipc.NewToken(), wake: make(chan struct{}, 1), settings: loadSettings(), defaultDir: eng.Dir(), home: ipc.Dir()}
+	a := &app{eng: eng, token: ipc.NewToken(), wake: make(chan struct{}, 1), settings: loadSettings(), defaultDir: eng.Dir(), home: ipc.Dir(), pending: make(map[int]pendingDL)}
 	eng.Limit.SetRate(int64(a.settings.SpeedLimitKB) * 1024)
 	if a.settings.DownloadDir != "" {
 		eng.SetDir(a.settings.DownloadDir)
@@ -251,6 +252,7 @@ type pendingView struct {
 func (a *app) clearPending() {
 	a.mu.Lock()
 	a.pending = nil
+	a.pendingOrder = nil
 	a.mu.Unlock()
 }
 
@@ -258,30 +260,37 @@ func (a *app) clearPending() {
 func (a *app) nextPendingDL() *pendingView {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if len(a.pending) == 0 {
-		return nil
+	for len(a.pendingOrder) > 0 {
+		id := a.pendingOrder[0]
+		p, ok := a.pending[id]
+		if !ok {
+			a.pendingOrder = a.pendingOrder[1:]
+			continue
+		}
+		v := &pendingView{ID: p.ID, URL: p.Req.URL, Filename: p.Req.Filename, Size: p.Size, Kind: p.Req.Kind}
+		if u, err := url.Parse(p.Req.Referrer); err == nil && u.Host != "" {
+			v.Site = u.Host
+		} else if u, err := url.Parse(p.Req.URL); err == nil {
+			v.Site = u.Host
+		}
+		return v
 	}
-	p := a.pending[0]
-	v := &pendingView{ID: p.ID, URL: p.Req.URL, Filename: p.Req.Filename, Size: p.Size, Kind: p.Req.Kind}
-	if u, err := url.Parse(p.Req.Referrer); err == nil && u.Host != "" {
-		v.Site = u.Host
-	} else if u, err := url.Parse(p.Req.URL); err == nil {
-		v.Site = u.Host
-	}
-	return v
+	return nil
 }
 
 // takePending removes a pending download and returns its request.
 func (a *app) takePending(id int) (engine.Request, bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	for i, p := range a.pending {
-		if p.ID == id {
-			a.pending = append(a.pending[:i], a.pending[i+1:]...)
-			return p.Req, true
-		}
+	p, ok := a.pending[id]
+	if !ok {
+		return engine.Request{}, false
 	}
-	return engine.Request{}, false
+	delete(a.pending, id)
+	if len(a.pending) == 0 {
+		a.pendingOrder = nil
+	}
+	return p.Req, true
 }
 
 // addOptions come from the Add Download dialog.
@@ -998,7 +1007,12 @@ func (a *app) handle(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			a.nextPending++
-			a.pending = append(a.pending, pendingDL{ID: a.nextPending, Req: r, Size: j.Size})
+			if a.pending == nil {
+				a.pending = make(map[int]pendingDL)
+			}
+			p := pendingDL{ID: a.nextPending, Req: r, Size: j.Size}
+			a.pending[p.ID] = p
+			a.pendingOrder = append(a.pendingOrder, p.ID)
 			a.mu.Unlock()
 			go a.showPending()
 			reply(0, nil)
