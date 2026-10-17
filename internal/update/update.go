@@ -145,7 +145,7 @@ func Download(ctx context.Context, client *http.Client, rel *Release, dir string
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("downloading the update: %s", resp.Status)
 	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
 	}
 	dst := filepath.Join(dir, "Velo-Setup-"+rel.Version+".exe")
