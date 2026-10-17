@@ -454,6 +454,22 @@ func TestSettingsWithBOM(t *testing.T) {
 	}
 }
 
+func BenchmarkGet(b *testing.B) {
+	for _, n := range []int{10, 100, 500, 1000} {
+		b.Run(fmt.Sprintf("items-%d", n), func(b *testing.B) {
+			a := &app{}
+			for i := 1; i <= n; i++ {
+				a.register(&engine.Download{})
+			}
+			targetID := n
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_ = a.get(targetID)
+			}
+		})
+	}
+}
+
 func TestClipboardRoundTrip(t *testing.T) {
 	old, hadText := clipboardText()
 	defer func() {

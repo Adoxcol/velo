@@ -183,6 +183,9 @@ func (a *app) clearDone() int {
 	for _, it := range a.items {
 		if s, _ := it.d.State(); s == "done" {
 			n++
+			if a.byID != nil {
+				delete(a.byID, it.d.ID)
+			}
 			continue
 		}
 		kept = append(kept, it)
