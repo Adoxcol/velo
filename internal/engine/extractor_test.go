@@ -40,6 +40,23 @@ func TestVideoPage(t *testing.T) {
 	}
 }
 
+func TestExtractorArgsSecurity(t *testing.T) {
+	args := extractorArgs("https://example.com/video", "/tmp/dir", "/usr/bin/ffmpeg")
+	hasArg := func(target string) bool {
+		for _, arg := range args {
+			if arg == target {
+				return true
+			}
+		}
+		return false
+	}
+	for _, flag := range []string{"--ignore-config", "--no-config-locations", "--no-exec"} {
+		if !hasArg(flag) {
+			t.Errorf("extractorArgs missing security flag %q", flag)
+		}
+	}
+}
+
 func TestExtractorCookies(t *testing.T) {
 	u, _ := url.Parse("https://www.facebook.com/watch?v=1")
 	got := extractorCookies(u, "session=secret=value; bad=one\ntwo; other=ok")
