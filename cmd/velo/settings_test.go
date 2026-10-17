@@ -40,6 +40,51 @@ func TestScheduleAllowed(t *testing.T) {
 	}
 }
 
+func TestLoadSettingsCaching(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("VELO_HOME", home)
+
+	s := defaultSettings()
+	s.Theme = "dark"
+	if err := s.save(); err != nil {
+		t.Fatal(err)
+	}
+
+	got1 := loadSettings()
+	if got1.Theme != "dark" {
+		t.Fatalf("want dark, got %s", got1.Theme)
+	}
+
+	// Mutate returned struct slice/pointer to test deep copying
+	got1.Queues = append(got1.Queues, Queue{ID: "test", Name: "Test"})
+	got2 := loadSettings()
+	if len(got2.Queues) != 0 {
+		t.Fatalf("cached settings were mutated! got %d queues", len(got2.Queues))
+	}
+
+	// Saving new settings updates cache
+	got2.Theme = "system"
+	if err := got2.save(); err != nil {
+		t.Fatal(err)
+	}
+	got3 := loadSettings()
+	if got3.Theme != "system" {
+		t.Fatalf("want system after save, got %s", got3.Theme)
+	}
+}
+
+func BenchmarkLoadSettings(b *testing.B) {
+	home := b.TempDir()
+	b.Setenv("VELO_HOME", home)
+	s := defaultSettings()
+	_ = s.save()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = loadSettings()
+	}
+}
+
 func TestValidate(t *testing.T) {
 	s := defaultSettings()
 	if err := s.validate(); err != nil {

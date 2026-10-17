@@ -9,12 +9,38 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
+
 	"velo/internal/engine"
 	"velo/internal/i18n"
-
 	"velo/internal/ipc"
 )
+
+var (
+	settingsMu     sync.Mutex
+	cachedSettings struct {
+		path    string
+		modTime time.Time
+		size    int64
+		exists  bool
+		val     Settings
+		loaded  bool
+	}
+)
+
+func cloneSettings(s Settings) Settings {
+	if s.Queues != nil {
+		q := make([]Queue, len(s.Queues))
+		copy(q, s.Queues)
+		s.Queues = q
+	}
+	if s.MiniPos != nil {
+		pos := *s.MiniPos
+		s.MiniPos = &pos
+	}
+	return s
+}
 
 // Settings is saved to %APPDATA%\velo\settings.json.
 type Settings struct {
@@ -75,22 +101,78 @@ func defaultSettings() Settings {
 func settingsPath() string { return filepath.Join(ipc.Dir(), "settings.json") }
 
 func loadSettings() Settings {
-	s := defaultSettings()
-	if b, err := os.ReadFile(settingsPath()); err == nil {
-		b = bytes.TrimPrefix(b, []byte{0xEF, 0xBB, 0xBF}) // a byte-order mark, if edited in Notepad
-		if err := json.Unmarshal(b, &s); err != nil {
-			log.Printf("settings.json is not valid JSON, using defaults: %v", err)
+	path := settingsPath()
+	fi, err := os.Stat(path)
+
+	settingsMu.Lock()
+	if cachedSettings.loaded && cachedSettings.path == path {
+		if err == nil && cachedSettings.exists && fi.ModTime().Equal(cachedSettings.modTime) && fi.Size() == cachedSettings.size {
+			val := cloneSettings(cachedSettings.val)
+			settingsMu.Unlock()
+			return val
+		}
+		if os.IsNotExist(err) && !cachedSettings.exists {
+			val := cloneSettings(cachedSettings.val)
+			settingsMu.Unlock()
+			return val
 		}
 	}
-	if s.validate() != nil {
-		return defaultSettings()
+	settingsMu.Unlock()
+
+	s := defaultSettings()
+	var exists bool
+	var modTime time.Time
+	var size int64
+
+	if err == nil {
+		exists = true
+		modTime = fi.ModTime()
+		size = fi.Size()
+		if b, readErr := os.ReadFile(path); readErr == nil {
+			b = bytes.TrimPrefix(b, []byte{0xEF, 0xBB, 0xBF}) // a byte-order mark, if edited in Notepad
+			if jsonErr := json.Unmarshal(b, &s); jsonErr != nil {
+				log.Printf("settings.json is not valid JSON, using defaults: %v", jsonErr)
+			}
+		}
 	}
+
+	if s.validate() != nil {
+		s = defaultSettings()
+	}
+
+	settingsMu.Lock()
+	cachedSettings.path = path
+	cachedSettings.modTime = modTime
+	cachedSettings.size = size
+	cachedSettings.exists = exists
+	cachedSettings.val = cloneSettings(s)
+	cachedSettings.loaded = true
+	settingsMu.Unlock()
+
 	return s
 }
 
 func (s Settings) save() error {
+	path := settingsPath()
 	b, _ := json.MarshalIndent(s, "", "  ")
-	return os.WriteFile(settingsPath(), b, 0o644)
+	err := os.WriteFile(path, b, 0o644)
+	if err == nil {
+		if fi, statErr := os.Stat(path); statErr == nil {
+			settingsMu.Lock()
+			cachedSettings.path = path
+			cachedSettings.modTime = fi.ModTime()
+			cachedSettings.size = fi.Size()
+			cachedSettings.exists = true
+			cachedSettings.val = cloneSettings(s)
+			cachedSettings.loaded = true
+			settingsMu.Unlock()
+		} else {
+			settingsMu.Lock()
+			cachedSettings.loaded = false
+			settingsMu.Unlock()
+		}
+	}
+	return err
 }
 
 func (s *Settings) validate() error {
