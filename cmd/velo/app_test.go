@@ -51,6 +51,16 @@ func testApp(t *testing.T, s Settings) *app {
 	a := &app{eng: eng, wake: make(chan struct{}, 1), settings: s, home: home}
 	eng.Limit.SetRate(int64(s.SpeedLimitKB) * 1024)
 	go a.dispatcher()
+	t.Cleanup(func() {
+		a.mu.Lock()
+		for _, it := range a.items {
+			if it.running && it.cancel != nil {
+				it.cancel()
+			}
+		}
+		a.mu.Unlock()
+		time.Sleep(20 * time.Millisecond)
+	})
 	return a
 }
 

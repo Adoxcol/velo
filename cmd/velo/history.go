@@ -78,7 +78,7 @@ func (a *app) saveHistory() {
 		return
 	}
 	tmp := a.historyPath() + ".tmp"
-	if err := os.WriteFile(tmp, b, 0o644); err == nil {
+	if err := os.WriteFile(tmp, b, 0o600); err == nil {
 		os.Rename(tmp, a.historyPath())
 	}
 }

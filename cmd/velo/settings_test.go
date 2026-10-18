@@ -1,6 +1,9 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -36,6 +39,34 @@ func TestScheduleAllowed(t *testing.T) {
 	for _, c := range cases {
 		if got := c.s.allowed(c.t); got != c.want {
 			t.Errorf("%s: got %v, want %v", c.name, got, c.want)
+		}
+	}
+}
+
+func TestSaveFilePermissions(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("VELO_HOME", dir)
+
+	s := defaultSettings()
+	if err := s.save(); err != nil {
+		t.Fatalf("save settings failed: %v", err)
+	}
+
+	a := &app{home: dir, lastHistory: []byte("old")}
+	a.saveHistory()
+
+	if runtime.GOOS == "windows" {
+		return
+	}
+
+	for _, name := range []string{"settings.json", "history.json"} {
+		path := filepath.Join(dir, name)
+		fi, err := os.Stat(path)
+		if err != nil {
+			t.Fatalf("failed to stat %s: %v", name, err)
+		}
+		if perm := fi.Mode().Perm(); perm != 0o600 {
+			t.Errorf("%s mode = %o, want 0600", name, perm)
 		}
 	}
 }
