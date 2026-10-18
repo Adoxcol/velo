@@ -330,7 +330,71 @@ var reservedNames = regexp.MustCompile(`(?i)^(con|prn|aux|nul|com[0-9¹²³]|lpt
 // SafeName cleans a file name the way downloads are saved (see safeName).
 func SafeName(name string) string { return safeName(name, "download") }
 
+func isFastSafe(s string) bool {
+	if len(s) == 0 || len(s) > 180 {
+		return false
+	}
+	if s[0] == ' ' || s[len(s)-1] == ' ' || s[len(s)-1] == '.' {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c < 0x20 || c == 0x7f || c == '<' || c == '>' || c == ':' || c == '"' || c == '/' || c == '\\' || c == '|' || c == '?' || c == '*' {
+			return false
+		}
+	}
+	return !isReservedName(s)
+}
+
+func isReservedName(s string) bool {
+	if len(s) < 3 {
+		return false
+	}
+	c0, c1, c2 := s[0], s[1], s[2]
+	if c0 >= 'A' && c0 <= 'Z' {
+		c0 += 32
+	}
+	if c1 >= 'A' && c1 <= 'Z' {
+		c1 += 32
+	}
+	if c2 >= 'A' && c2 <= 'Z' {
+		c2 += 32
+	}
+	if (c0 == 'c' && c1 == 'o' && c2 == 'n') ||
+		(c0 == 'p' && c1 == 'r' && c2 == 'n') ||
+		(c0 == 'a' && c1 == 'u' && c2 == 'x') ||
+		(c0 == 'n' && c1 == 'u' && c2 == 'l') {
+		if len(s) == 3 || s[3] == '.' {
+			return true
+		}
+	}
+	if (c0 == 'c' && c1 == 'o' && c2 == 'm') ||
+		(c0 == 'l' && c1 == 'p' && c2 == 't') {
+		if len(s) >= 4 {
+			rest := s[3:]
+			if strings.HasPrefix(rest, "1") || strings.HasPrefix(rest, "2") || strings.HasPrefix(rest, "3") ||
+				strings.HasPrefix(rest, "4") || strings.HasPrefix(rest, "5") || strings.HasPrefix(rest, "6") ||
+				strings.HasPrefix(rest, "7") || strings.HasPrefix(rest, "8") || strings.HasPrefix(rest, "9") ||
+				strings.HasPrefix(rest, "0") || strings.HasPrefix(rest, "¹") || strings.HasPrefix(rest, "²") ||
+				strings.HasPrefix(rest, "³") {
+				rem := rest[1:]
+				if strings.HasPrefix(rest, "¹") || strings.HasPrefix(rest, "²") || strings.HasPrefix(rest, "³") {
+					rem = rest[len("¹"):]
+				}
+				if len(rem) == 0 || rem[0] == '.' {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
 func safeName(name, fallback string) string {
+	// Fast path: if the name is already clean and valid ASCII, skip regex and allocation overhead.
+	if isFastSafe(name) {
+		return name
+	}
 	name = unsafeChars.ReplaceAllString(name, "_")
 	name = strings.TrimRight(strings.TrimSpace(name), ". ")
 	name = strings.TrimLeft(name, " ")
