@@ -302,7 +302,7 @@
         <div class="addbar" id="heroBar">
           <svg class="i" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>
           <input id="heroUrl" placeholder="https://example.com/file.zip" spellcheck="false">
-          <button class="iconbtn" id="pasteBtn" title="Paste link"><svg class="i" viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M16 5h2a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h2"/></svg></button>
+          <button class="iconbtn" id="pasteBtn" title="Paste link" aria-label="Paste link"><svg class="i" viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M16 5h2a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h2"/></svg></button>
           <button class="btn primary big" id="heroGo">Download</button>
         </div>
         <div class="hero-note">Files, HLS and DASH video streams. Protected/DRM content is not supported.</div>
@@ -412,10 +412,10 @@
 <div class="dropzone" id="dropzone">Drop a link to download it</div>
 
 <dialog id="addDlg">
-  <div class="dh"><span id="aTitle">Add Download</span><button class="iconbtn" data-close title="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="dh"><span id="aTitle">Add Download</span><button class="iconbtn" data-close title="Close" aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="db">
     <div class="inp" style="margin-bottom:10px"><svg class="i" viewBox="0 0 24 24" style="color:var(--faint)"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>
-      <input id="aUrl" placeholder="https://example.com/file.zip" spellcheck="false"><button class="iconbtn" id="aClear" title="Clear"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+      <input id="aUrl" placeholder="https://example.com/file.zip" spellcheck="false"><button class="iconbtn" id="aClear" title="Clear" aria-label="Clear link input"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
     <div class="probe" id="aProbe"></div>
     <div class="formrow"><span>Save to</span><div class="inp ro"><svg class="i" viewBox="0 0 24 24" style="color:var(--faint)"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><input id="aDir" readonly><button class="link" id="aDirChange">Change</button></div></div>
     <div class="formrow"><span>File name</span><div class="inp"><input id="aName" spellcheck="false" placeholder="From the server"></div></div>
@@ -440,7 +440,7 @@
 </dialog>
 
 <dialog id="relinkDlg">
-  <div class="dh"><span>Refresh link</span><button class="iconbtn" data-close title="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="dh"><span>Refresh link</span><button class="iconbtn" data-close title="Close" aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="db">
     <p class="hint" style="margin-top:0">If the download link expired, get a fresh one from the website (start the download again in the browser and copy its link) and paste it here. Velo checks it is the same file, then continues where it stopped.</p>
     <div class="hint" id="rlName" style="font-weight:600;color:var(--ink);margin-bottom:8px"></div>
@@ -450,7 +450,7 @@
 </dialog>
 
 <dialog id="batchDlg">
-  <div class="dh"><span id="bTitle">Download links</span><button class="iconbtn" data-close title="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="dh"><span id="bTitle">Download links</span><button class="iconbtn" data-close title="Close" aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="db">
     <div class="hint" id="bPage" style="margin:-6px 0 12px"></div>
     <div class="btools">
@@ -626,26 +626,26 @@ function card(r) {
       (known || r.kind ? `<span class="dot">${pct.toFixed(0)}%</span>` : "") +
       `<span class="dot">${size(r.speed)}/s</span>` + (r.connections > 1 ? `<span class="dot">${r.connections} connections</span>` : "");
     if (known && r.speed > 0) right = `<span class="left">${eta((r.total - r.done) / r.speed)} left</span>`;
-    acts = `<button class="iconbtn" data-act="pause" title="Pause">${icon(I.pause)}</button>`;
+    acts = `<button class="iconbtn" data-act="pause" title="Pause" aria-label="Pause">${icon(I.pause)}</button>`;
   } else if (r.status === "done") {
     const bytes = r.total > 0 ? r.total : r.done;
     meta = `<span>${bytes > 0 ? size(bytes) : "Size unknown"}</span><span class="dot">${r.finished ? ago(r.finished) : "Done"}</span>`;
     // The badge sits with the buttons so they share one centred row.
     acts = `<span class="badge ok done-badge"${r.verified ? ' title="Checksum verified"' : ""}>${icon(I.check)}${r.verified ? "Verified" : "Completed"}</span>` +
-      `<button class="iconbtn" data-act="folder" title="Show in folder">${icon(I.folder)}</button>`;
+      `<button class="iconbtn" data-act="folder" title="Show in folder" aria-label="Show in folder">${icon(I.folder)}</button>`;
   } else if (r.status === "error") {
     meta = `<span class="badge err" title="${escapeHtml(r.error || "")}">${escapeHtml(shorten(r.error || "Failed", 80))}</span>`;
-    acts = `<button class="iconbtn" data-act="resume" title="Retry">${icon(I.retry)}</button>`;
+    acts = `<button class="iconbtn" data-act="resume" title="Retry" aria-label="Retry">${icon(I.retry)}</button>`;
   } else {
     const label = r.status === "verifying" ? "Checking checksum…" : r.retrying ? (r.retryIn > 0 ? "Connection lost · retrying in " + r.retryIn + "s" : "Reconnecting…")
       : r.status === "queued" ? "Waiting in queue" : "Paused";
     meta = `<span>${known ? size(r.done) + " / " + size(r.total) : r.done ? size(r.done) : "Not started"}</span>` +
       (pct > 0 ? `<span class="dot">${pct.toFixed(0)}%</span>` : "") + `<span class="dot badge warn" title="${escapeHtml(r.retrying ? r.error || "" : "")}">${label}</span>`;
-    acts = r.status === "paused" ? `<button class="iconbtn" data-act="resume" title="Resume">${icon(I.play)}</button>`
-                                 : `<button class="iconbtn" data-act="pause" title="Hold">${icon(I.pause)}</button>`;
+    acts = r.status === "paused" ? `<button class="iconbtn" data-act="resume" title="Resume" aria-label="Resume">${icon(I.play)}</button>`
+                                 : `<button class="iconbtn" data-act="pause" title="Hold" aria-label="Pause">${icon(I.pause)}</button>`;
   }
-  acts += r.status === "done" ? `<button class="iconbtn" data-act="more" title="More">${icon(I.more)}</button>`
-                              : `<button class="iconbtn" data-act="cancel" title="Cancel">${icon(I.x)}</button>`;
+  acts += r.status === "done" ? `<button class="iconbtn" data-act="more" title="More" aria-label="More options">${icon(I.more)}</button>`
+                              : `<button class="iconbtn" data-act="cancel" title="Cancel" aria-label="Cancel download">${icon(I.x)}</button>`;
   const fresh = !seenIds.has(r.id);
   seenIds.add(r.id);
   return `<div class="card ${r.status}${r.id === selected ? " selected" : ""}${fresh ? " new" : ""}" data-id="${r.id}">
@@ -680,9 +680,9 @@ function render() {
     const counts = Object.fromEntries(FILTERS.map(([f]) => [f, f === "all" ? data.length : data.filter((r) => statusOf(r) === f).length]));
     host.innerHTML = (page === "home" ? `<div class="listhead"><h3>Downloads (${data.length})</h3><div class="acts">
         <button class="btn" data-bulk="add">${icon(I.plus)}Add</button>
-        <button class="iconbtn" data-bulk="resumeAll" title="Resume all">${icon(I.play)}</button>
-        <button class="iconbtn" data-bulk="pauseAll" title="Pause all">${icon(I.pause)}</button>
-        <button class="iconbtn" data-bulk="clear" title="Clear completed">${icon(I.trash)}</button></div></div>` : "") +
+        <button class="iconbtn" data-bulk="resumeAll" title="Resume all" aria-label="Resume all">${icon(I.play)}</button>
+        <button class="iconbtn" data-bulk="pauseAll" title="Pause all" aria-label="Pause all">${icon(I.pause)}</button>
+        <button class="iconbtn" data-bulk="clear" title="Clear completed" aria-label="Clear completed downloads">${icon(I.trash)}</button></div></div>` : "") +
       qChips + (showChips ? `<div class="chips">${FILTERS.map(([f, l]) => `<button class="chip${filter === f ? " on" : ""}" data-filter="${f}">${l} (${counts[f]})</button>`).join("")}</div>` : "") +
       (rows.length ? `<div class="list">${rows.map(card).join("")}</div>` : emptyFor(page));
   }
@@ -953,8 +953,8 @@ function renderQueues() {
   const qs = S.queues || [];
   if ($("#qList").contains(document.activeElement) && document.activeElement.dataset.qf === "name") return; // don't redraw while renaming
   $("#qList").innerHTML = qs.length ? qs.map((q, i) => `<div class="panel qpanel" data-qi="${i}">
-    <div class="qtop"><input data-qf="name" value="${escapeHtml(q.name)}" maxlength="40" title="Rename">
-      <button class="iconbtn" data-qdel="${i}" title="Delete queue">${icon(I.trash)}</button></div>
+    <div class="qtop"><input data-qf="name" value="${escapeHtml(q.name)}" maxlength="40" title="Rename" aria-label="Queue name">
+      <button class="iconbtn" data-qdel="${i}" title="Delete queue" aria-label="Delete queue">${icon(I.trash)}</button></div>
     <div class="opt"><div><div class="t">Only download during set hours</div></div>
       <span class="switch"><input type="checkbox" data-qf="enabled"${q.schedule.enabled ? " checked" : ""}><i></i></span></div>
     <div style="padding-top:12px" class="${q.schedule.enabled ? "" : "off"}">
