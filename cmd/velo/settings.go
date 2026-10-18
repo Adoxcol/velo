@@ -90,7 +90,7 @@ func loadSettings() Settings {
 
 func (s Settings) save() error {
 	b, _ := json.MarshalIndent(s, "", "  ")
-	return os.WriteFile(settingsPath(), b, 0o644)
+	return os.WriteFile(settingsPath(), b, 0o600)
 }
 
 func (s *Settings) validate() error {
