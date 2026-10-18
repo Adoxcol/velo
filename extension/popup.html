@@ -18,6 +18,7 @@
   header .logo { width: 22px; height: 22px; }
   .iconbtn { margin-left: auto; display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 8px; background: none; color: var(--muted); cursor: pointer; }
   .iconbtn:hover { background: var(--panel); color: var(--ink); }
+  .iconbtn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
   main { padding: 0 14px 14px; }
   [hidden] { display: none !important; }
   .banner { display: flex; gap: 9px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; background: var(--err-soft); color: var(--err); margin-bottom: 12px; font-size: 12.5px; }
@@ -54,7 +55,7 @@
 <body>
 <header>
   <svg class="logo" viewBox="0 0 24 24"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z" fill="#1677ff"/></svg>velo.
-  <button class="iconbtn" id="openApp" title="Open Velo"><svg class="i" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg></button>
+  <button class="iconbtn" id="openApp" title="Open Velo" aria-label="Open Velo"><svg class="i" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg></button>
 </header>
 <main>
   <div class="banner" id="access" hidden style="background:var(--hover,#eef4ff);color:inherit;flex-direction:column;align-items:stretch">
