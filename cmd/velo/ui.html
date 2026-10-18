@@ -343,10 +343,14 @@
         <h2 style="margin:0 0 6px;font-size:16px;color:var(--ink)">One-click downloads from your browser</h2>
         <p class="hint" style="margin:0 0 16px">The extension hands downloads to Velo, finds videos on pages (HLS, DASH and media files) and adds “Download with Velo” to the right-click menu. It talks to Velo through the browser's native messaging, never an open network port.</p>
         <ol class="steps">
-          <li data-i18n-html>Open <code>chrome://extensions</code> or <code>edge://extensions</code> and turn on <b>Developer mode</b>.</li>
-          <li data-i18n-html>Click <b>Load unpacked</b> and choose the <code>extension</code> folder in Velo's install folder.</li>
-          <li><span data-i18n-html>The extension ID should be:</span> <code id="extId">dmdcijgljocjdmafenflenjhdjhenokc</code></li>
+          <li data-i18n-html>Add <b>Velo Download Manager</b> from the Chrome Web Store. It works in Chrome, Edge and Brave.</li>
+          <li>Open any web page. Velo shows ✓ below when the extension connects.</li>
         </ol>
+        <button class="btn primary" id="getExt" style="margin:4px 0 16px">Add to Chrome</button>
+        <details class="hint" style="margin-bottom:12px"><summary>Developers: load the unpacked extension</summary>
+          <p data-i18n-html>Open <code>chrome://extensions</code> or <code>edge://extensions</code> and turn on <b>Developer mode</b>.</p>
+          <p data-i18n-html>Click <b>Load unpacked</b> and choose the <code>extension</code> folder in Velo's install folder.</p>
+        </details>
         <div id="extStatus"></div>
       </div>
     </section>
@@ -1122,6 +1126,7 @@ $("#bGo").onclick = async () => {
 };
 
 // ---------- extension status ----------
+document.addEventListener("click", (e) => { if (e.target.closest("#getExt, #obGetExt")) openStore(); });
 async function extStatusHTML() {
   const seen = await extensionSeen();
   return seen ? `<div class="status ok">${icon(I.check)}Connected — the extension talked to Velo ${ago(seen)}.</div>`
@@ -1140,9 +1145,9 @@ const OB = [
     <div class="opt"><div><div class="t">Sort into folders by type</div><div class="d">Video, Music, Images, Documents, E-books, Compressed, Disk images, Programs, Torrents and Fonts.</div></div><span class="switch"><input type="checkbox" id="obSort"${S.sortByType ? " checked" : ""}><i></i></span></div>
     <div class="opt"><div><div class="t">Start Velo with Windows</div><div class="d">So browser downloads and schedules always work.</div></div><span class="switch"><input type="checkbox" id="obAuto"${S.autostart ? " checked" : ""}><i></i></span></div></div>`,
   async () => `<div class="ob"><h2>Connect your browser</h2><p>The Velo extension sends downloads and videos from your browser to Velo.</p>
-    <ol class="steps"><li data-i18n-html>Open <code>chrome://extensions</code> or <code>edge://extensions</code> and turn on <b>Developer mode</b>.</li>
-    <li data-i18n-html>Click <b>Load unpacked</b> and choose the <code>extension</code> folder in Velo's install folder.</li>
+    <ol class="steps"><li data-i18n-html>Add <b>Velo Download Manager</b> from the Chrome Web Store. It works in Chrome, Edge and Brave.</li>
     <li>Open any web page. Velo shows ✓ below when the extension connects.</li></ol>
+    <button class="btn primary" id="obGetExt" style="margin-bottom:12px">Add to Chrome</button>
     <div id="obStatus">${await extStatusHTML()}</div></div>`,
   () => `<div class="ob"><div class="big" style="background:var(--ok)">${icon(I.check)}</div><h2>You're all set</h2><p>A few tips:</p>
     <ul><li>${icon(I.plus)}<span><b>Ctrl+N</b> adds a download; you can also drop a link onto the window.</span></li>

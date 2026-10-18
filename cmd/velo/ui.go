@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"log"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	webview2 "github.com/jchv/go-webview2"
 
 	"velo/internal/engine"
+	"velo/internal/hostreg"
 	"velo/internal/i18n"
 	"velo/internal/ipc"
 	"velo/internal/version"
@@ -374,6 +376,9 @@ func bind(w webview2.WebView, a *app) {
 	w.Bind("openFile", func(id int) error { return a.openFile(id, false) })
 	w.Bind("showInFolder", func(id int) error { return a.openFile(id, true) })
 	w.Bind("openDir", func() error { return a.openDir() })
+	w.Bind("openStore", func() error {
+		return exec.Command("rundll32", "url.dll,FileProtocolHandler", hostreg.ChromeStoreURL).Start()
+	})
 	w.Bind("pauseAll", func() { a.all("pause") })
 	w.Bind("clearDone", func() int { return a.clearDone() })
 	w.Bind("resumeAll", func() { a.all("resume") })

@@ -312,5 +312,8 @@
  "{0} parts (Recommended)",
  "{0} ({1})",
  "Keep it",
- "Cancel download"
+ "Cancel download",
+ "Add <b>Velo Download Manager</b> from the Chrome Web Store. It works in Chrome, Edge and Brave.",
+ "Add to Chrome",
+ "Developers: load the unpacked extension"
 ]

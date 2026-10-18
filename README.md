@@ -66,8 +66,11 @@ Facebook video/reel pages and X/Twitter posts use the optional yt-dlp integratio
 
 Download `Velo-Setup-<version>.exe` from the [releases page](https://github.com/Adoxcol/velo/releases/latest) and run it. It installs for your user account
 only (no administrator rights), adds Velo to the Start menu and to **Settings → Apps** for uninstalling,
-and connects Chrome, Edge, Brave and Firefox. Then load the browser extension from
-`%LOCALAPPDATA%\Programs\Velo\extension` (see below) until it's available in the browser stores.
+and connects Chrome, Edge, Brave and Firefox. Then add the browser extension:
+
+- **Chrome, Edge and Brave:** [Velo Download Manager on the Chrome Web Store](https://chromewebstore.google.com/detail/pcpdknogjedamkhakgfbaoieehnheelk).
+  After installing Velo, Chrome also offers it by itself ("New extension added").
+- **Firefox:** coming to Firefox Add-ons.
 
 Prefer no installer? `Velo-Portable-<version>.zip` runs from any folder (see its README.txt).
 

@@ -2,6 +2,17 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.3 — 2026-10-18
+
+### New
+- **The browser extension is on the Chrome Web Store** as **Velo Download Manager**, for Chrome, Edge and Brave. No more Developer mode: add it in one click.
+- Installing Velo now makes Chrome offer the extension by itself ("New extension added"), and the setup's last step opens the store page for Edge and Brave.
+- The Browser Extension page and the welcome guide have an **Add to Chrome** button. Loading the unpacked extension is still there for developers.
+
+### Improved
+- Clearer labels for screen readers on icon buttons, and visible focus outlines when using the keyboard.
+- Faster file-name checks for downloads.
+
 ## 0.8.2 — 2026-10-17
 
 ### Fixed

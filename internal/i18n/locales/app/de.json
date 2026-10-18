@@ -312,5 +312,8 @@
  "{0} parts (Recommended)": "{0} Teile (Empfohlen)",
  "{0} ({1})": "{0} ({1})",
  "Keep it": "Behalten",
- "Cancel download": "Download abbrechen"
+ "Cancel download": "Download abbrechen",
+ "Add <b>Velo Download Manager</b> from the Chrome Web Store. It works in Chrome, Edge and Brave.": "Füge <b>Velo Download Manager</b> aus dem Chrome Web Store hinzu. Es funktioniert in Chrome, Edge und Brave.",
+ "Add to Chrome": "Zu Chrome hinzufügen",
+ "Developers: load the unpacked extension": "Für Entwickler: entpackte Erweiterung laden"
 }

@@ -163,7 +163,13 @@ func install() error {
 				exec.Command("explorer", ext).Start()
 			}
 		} else {
-			message(appName+" Setup", msg+"Restart your browser and accept \"New extension added\" to connect it.", mbIconInfo)
+			msg += "To connect your browser, add the Velo Download Manager extension:\n" +
+				"• Chrome: restart Chrome and choose \"Enable extension\" when it says \"New extension added\".\n" +
+				"• Edge and Brave: add it from the Chrome Web Store.\n\n" +
+				"Open the Chrome Web Store page now?"
+			if confirm(appName+" Setup", msg) {
+				exec.Command("rundll32", "url.dll,FileProtocolHandler", hostreg.ChromeStoreURL).Start()
+			}
 		}
 	}
 	return nil

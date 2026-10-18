@@ -17,13 +17,15 @@ const (
 	// The development extension ID (fixed by the "key" in extension/manifest.json).
 	DevExtensionID = "dmdcijgljocjdmafenflenjhdjhenokc"
 	// FirefoxID is the Firefox add-on ID (set by tools/packext).
-	FirefoxID  = "velo@adoxcol.github.io"
-	firefoxKey = `Software\Mozilla\NativeMessagingHosts\` + HostName
+	FirefoxID = "velo@adoxcol.github.io"
+	// ChromeStoreURL is the extension's Chrome Web Store page.
+	ChromeStoreURL = "https://chromewebstore.google.com/detail/" + "pcpdknogjedamkhakgfbaoieehnheelk"
+	firefoxKey     = `Software\Mozilla\NativeMessagingHosts\` + HostName
 )
 
-// Store extension IDs: fill in once Velo is published.
+// Store extension IDs. Edge and Brave install the Chrome Web Store version too.
 var (
-	ChromeStoreID = ""
+	ChromeStoreID = "pcpdknogjedamkhakgfbaoieehnheelk"
 	EdgeStoreID   = ""
 )
 
