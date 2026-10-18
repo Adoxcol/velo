@@ -3,7 +3,7 @@
 Upload `dist/velo-extension-<version>.zip` (built by `tools/release.ps1`).
 
 ## Name
-Velo — Download Manager
+Velo Download Manager
 
 ## Short description (max 132 characters)
 Send downloads and videos to Velo for faster, resumable downloads. Grab HLS/DASH videos and download all links on a page.
