@@ -25,8 +25,23 @@ After extracting a Linux/macOS archive:
 
 Press **Ctrl+C** to pause; repeat the same command and destination to resume.
 No desktop app is needed. See [installation and checksum verification](docs/cli.md).
-Linux desktop windows, AppImage/.deb packages and browser registration are planned.
+A Linux desktop app and browser registration are planned.
 macOS binaries are unsigned and not notarized.
+
+## Install veloctl
+
+| How | Command |
+|---|---|
+| **One-line script** (Linux, macOS) | `curl -fsSL https://velo.adoxcol.com/install.sh \| sh` |
+| **Homebrew** (macOS, Linux) | `brew install adoxcol/tap/veloctl` |
+| **Scoop** (Windows) | `scoop bucket add adoxcol https://github.com/Adoxcol/scoop-bucket` then `scoop install veloctl` |
+| **Debian / Ubuntu** | Download `veloctl_<version>_amd64.deb` (or `arm64`) from the [latest release](https://github.com/Adoxcol/velo/releases/latest), then `sudo apt install ./veloctl_*.deb` |
+| **Fedora / RHEL / openSUSE** | Download `veloctl-<version>-1.x86_64.rpm` (or `aarch64`), then `sudo dnf install ./veloctl-*.rpm` |
+| **Go** 1.27+ | `go install github.com/Adoxcol/velo/cmd/veloctl@latest` |
+| **Windows app** | The [installer](https://velo.adoxcol.com/download) includes `veloctl` and can add it to PATH |
+
+The install script checks the download's SHA-256 and puts `veloctl` in
+`~/.local/bin` (set `VELO_INSTALL_DIR` to choose another folder).
 
 ## Windows desktop features
 

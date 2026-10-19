@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Velo Setup</title>
+<style>
+  :root { --primary: #1677ff; --primary-h: #0f6ae6; --ink: #0d1728; --text: #334155; --muted: #64748b; --bg: #ffffff; --bg2: #f5f8fc; --line: #e3e9f2; --ok: #22c55e; --err: #ef4444; --err-soft: #fdecec; }
+  @media (prefers-color-scheme: dark) {
+    :root { --primary: #3b8bff; --primary-h: #5a9dff; --ink: #eef3fa; --text: #c3cede; --muted: #93a1b5; --bg: #111b2e; --bg2: #0d1628; --line: #22314a; --err-soft: #3a1820; }
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.5 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; display: flex; flex-direction: column; user-select: none; overflow: hidden; -webkit-font-smoothing: antialiased; }
+  :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+  .hero { position: relative; padding: 26px 32px 22px; background: #0d1728; color: #fff; overflow: hidden; }
+  .hero::before { content: ""; position: absolute; inset: 0; background: radial-gradient(70% 140% at 15% 0%, rgba(22,119,255,.55), transparent 70%), radial-gradient(50% 120% at 100% 100%, rgba(76,155,255,.2), transparent 70%); }
+  .hero > * { position: relative; }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 18px; letter-spacing: -.02em; }
+  .brand svg { width: 20px; height: 20px; }
+  .hero h1 { margin-top: 16px; font: 700 25px/1.15 "Segoe UI Variable Display", "Segoe UI", sans-serif; letter-spacing: -.02em; }
+  .hero p { margin-top: 6px; color: #aebbd0; font-size: 14px; }
+  .segs { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; margin-top: 18px; max-width: 280px; }
+  .segs i { height: 5px; border-radius: 9px; background: rgba(255,255,255,.14); overflow: hidden; }
+  .segs i::after { content: ""; display: block; height: 100%; width: var(--p); background: linear-gradient(90deg, #4c9bff, #8fc0ff); border-radius: 9px; }
+
+  main { flex: 1; padding: 22px 32px 0; overflow: auto; }
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 9px; border: 3px solid var(--bg); }
+  .page { display: none; }
+  .page.on { display: block; animation: in .2s ease; }
+  @keyframes in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  .where { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg2); }
+  .where svg { flex: none; width: 20px; height: 20px; color: var(--primary); }
+  .where b { display: block; color: var(--ink); font-weight: 600; font-size: 13px; }
+  .where span { display: block; color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 470px; }
+
+  .opts { margin-top: 16px; display: grid; gap: 4px; }
+  .opt { display: flex; gap: 12px; align-items: flex-start; padding: 9px 10px; margin: 0 -10px; border-radius: 10px; cursor: pointer; }
+  .opt:hover { background: var(--bg2); }
+  .opt input { appearance: none; flex: none; width: 18px; height: 18px; margin-top: 1px; border: 1.5px solid var(--line); border-radius: 5px; background: var(--bg); display: grid; place-items: center; cursor: pointer; transition: all .12s; }
+  .opt input:checked { background: var(--primary); border-color: var(--primary); }
+  .opt input:checked::after { content: ""; width: 10px; height: 6px; border: solid #fff; border-width: 0 0 2px 2px; transform: translateY(-1px) rotate(-45deg); }
+  .opt input:disabled { opacity: .6; }
+  .opt b { display: block; color: var(--ink); font-weight: 600; }
+  .opt span { color: var(--muted); font-size: 12.5px; }
+  .opt code { font: 12px ui-monospace, "Cascadia Code", Consolas, monospace; background: var(--bg2); border: 1px solid var(--line); padding: 0 5px; border-radius: 5px; color: var(--ink); }
+
+  .bar { height: 8px; border-radius: 99px; background: var(--bg2); border: 1px solid var(--line); overflow: hidden; margin-top: 26px; }
+  .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--primary), #4c9bff); border-radius: 99px; transition: width .25s ease; }
+  .status { margin-top: 10px; color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .big { color: var(--ink); font-weight: 600; font-size: 16px; }
+
+  .card { margin-top: 18px; display: flex; gap: 14px; align-items: center; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg2); }
+  .card .ic { flex: none; width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--primary) 14%, transparent); color: var(--primary); }
+  .card .ic svg { width: 20px; height: 20px; }
+  .card b { display: block; color: var(--ink); font-weight: 600; }
+  .card span { color: var(--muted); font-size: 12.5px; }
+  .card .btn { margin-left: auto; }
+
+  .err { margin-top: 14px; padding: 12px 14px; border-radius: 10px; background: var(--err-soft); color: var(--err); font-size: 13px; overflow-wrap: anywhere; user-select: text; }
+
+  footer { display: flex; gap: 10px; align-items: center; padding: 16px 32px 20px; }
+  footer .note { margin-right: auto; color: var(--muted); font-size: 12.5px; }
+  .btn { height: 36px; padding: 0 18px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: 600 14px inherit; font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+  .btn:hover { background: var(--bg2); }
+  .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; box-shadow: 0 8px 20px -10px rgba(22,119,255,.9); }
+  .btn.primary:hover { background: var(--primary-h); }
+  .btn.danger { background: var(--err); border-color: var(--err); color: #fff; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="brand"><svg viewBox="0 0 24 24"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z" fill="#4c9bff"/></svg>velo.</div>
+  <h1 id="title">Install Velo</h1>
+  <p id="subtitle">Fast, free downloads for Windows.</p>
+  <div class="segs" id="segs"></div>
+</header>
+
+<main>
+  <!-- install: welcome and options -->
+  <section class="page" id="pWelcome">
+    <div class="where">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      <div><b>Installs for your account only</b><span id="dir"></span></div>
+    </div>
+    <div class="opts">
+      <label class="opt"><input type="checkbox" id="optDesktop"><div><b>Create a desktop shortcut</b><span>Velo is always in the Start menu and the system tray.</span></div></label>
+      <label class="opt"><input type="checkbox" id="optPath"><div><b>Add Velo to PATH</b><span id="pathNote">Use the <code>veloctl</code> command-line tool from any terminal.</span></div></label>
+    </div>
+  </section>
+
+  <!-- uninstall: confirm -->
+  <section class="page" id="pConfirm">
+    <p class="big">Velo will be removed from this PC.</p>
+    <p style="margin-top:6px">Files you downloaded stay where they are.</p>
+    <div class="opts">
+      <label class="opt"><input type="checkbox" id="optData"><div><b>Also delete my settings and download history</b><span>Leave this off if you plan to install Velo again.</span></div></label>
+    </div>
+  </section>
+
+  <!-- progress -->
+  <section class="page" id="pWork">
+    <p class="big" id="workTitle">Installing Velo…</p>
+    <div class="bar"><i id="bar"></i></div>
+    <p class="status" id="status">Starting…</p>
+  </section>
+
+  <!-- finished -->
+  <section class="page" id="pDone">
+    <p class="big" id="doneTitle">Velo is ready.</p>
+    <p style="margin-top:4px" id="doneText">It runs in the system tray and picks up downloads from your browser.</p>
+    <div class="card" id="extCard">
+      <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 8.5h8.5M8.97 13.75 4.7 6.4M15.03 13.75l-4.27 7.2"/></svg></div>
+      <div><b>Connect your browser</b><span>Add Velo Download Manager for Chrome, Edge or Brave.</span></div>
+      <button class="btn" id="store">Add to Chrome</button>
+    </div>
+    <div class="opts" id="launchOpt">
+      <label class="opt"><input type="checkbox" id="optLaunch" checked><div><b>Open Velo now</b></div></label>
+    </div>
+  </section>
+
+  <!-- failed -->
+  <section class="page" id="pFail">
+    <p class="big" id="failTitle">Setup couldn't finish.</p>
+    <div class="err" id="errText"></div>
+    <p style="margin-top:12px;font-size:13px">Close any open Velo windows and try again. If it keeps happening, please report it at github.com/Adoxcol/velo/issues.</p>
+  </section>
+</main>
+
+<footer>
+  <span class="note" id="note">No administrator rights needed</span>
+  <button class="btn" id="cancel">Cancel</button>
+  <button class="btn primary" id="go">Install</button>
+</footer>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  let info = {}, step = "";
+  document.addEventListener("contextmenu", (e) => e.preventDefault());
+
+  // The header's segmented bar: Velo's "parts downloading at once" motif.
+  const segFill = [100, 100, 80, 100, 64, 100, 92, 58, 100, 76, 100, 70];
+  function segs(frac) {
+    $("segs").innerHTML = segFill.map((p, i) => {
+      const v = frac == null ? p : Math.max(0, Math.min(100, (frac * 12 - i) * 100));
+      return `<i style="--p:${v}%"></i>`;
+    }).join("");
+  }
+
+  function show(page) {
+    step = page;
+    for (const s of document.querySelectorAll(".page")) s.classList.toggle("on", s.id === page);
+  }
+  function buttons(cancel, go, goClass) {
+    $("cancel").hidden = !cancel;
+    if (cancel) $("cancel").textContent = cancel;
+    $("go").hidden = !go;
+    if (go) $("go").textContent = go;
+    $("go").className = "btn " + (goClass || "primary");
+  }
+
+  async function start() {
+    info = await window.info();
+    $("dir").textContent = info.dir;
+    $("optDesktop").checked = !!info.desktop;
+    $("optData").checked = false;
+    if (info.mode === "uninstall") {
+      $("title").textContent = "Uninstall Velo";
+      $("subtitle").textContent = "Sorry to see you go.";
+      $("note").textContent = "";
+      show("pConfirm");
+      buttons("Cancel", "Uninstall", "danger");
+    } else {
+      $("title").textContent = info.upgrade ? `Update Velo to ${info.version}` : `Install Velo ${info.version}`;
+      $("subtitle").textContent = info.upgrade ? "Your settings and downloads are kept." : "Fast, free downloads for Windows.";
+      if (info.onPath) { $("optPath").checked = true; $("optPath").disabled = true; $("pathNote").textContent = "Already on PATH."; }
+      show("pWelcome");
+      buttons("Cancel", info.upgrade ? "Update" : "Install");
+    }
+    segs(null);
+    $("go").focus();
+  }
+
+  $("cancel").onclick = () => quit();
+  $("store").onclick = () => openStore();
+  $("go").onclick = async () => {
+    if (step === "pWelcome" || step === "pConfirm") {
+      const uninstalling = step === "pConfirm";
+      $("workTitle").textContent = uninstalling ? "Removing Velo…" : info.upgrade ? "Updating Velo…" : "Installing Velo…";
+      show("pWork");
+      buttons(null, null);
+      $("note").textContent = "";
+      progress(0, "Starting…");
+      if (uninstalling) await startUninstall($("optData").checked);
+      else await startInstall({ path: $("optPath").checked && !$("optPath").disabled, desktop: $("optDesktop").checked });
+    } else if (step === "pDone") {
+      finish(info.mode === "install" && $("optLaunch").checked);
+    } else {
+      quit();
+    }
+  };
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !$("go").hidden) $("go").click();
+    if (e.key === "Escape" && !$("cancel").hidden) $("cancel").click();
+  });
+
+  // Called from Go while installing or removing.
+  window.progress = (frac, status) => {
+    $("bar").style.width = Math.round(frac * 100) + "%";
+    $("status").textContent = status;
+    segs(frac);
+  };
+  window.finished = () => {
+    segs(1);
+    if (info.mode === "uninstall") {
+      $("title").textContent = "Velo was removed";
+      $("subtitle").textContent = "Thanks for trying it.";
+      $("doneTitle").textContent = "Velo has been uninstalled.";
+      $("doneText").textContent = "You can remove the Velo Download Manager extension from your browser's extensions page.";
+      $("extCard").hidden = true;
+      $("launchOpt").hidden = true;
+    } else {
+      $("title").textContent = info.upgrade ? `Velo ${info.version} is installed` : "Velo is installed";
+      $("subtitle").textContent = "Fast downloads, from now on.";
+    }
+    show("pDone");
+    buttons(null, "Finish");
+    $("go").focus();
+  };
+  window.failed = (msg) => {
+    $("title").textContent = "Something went wrong";
+    $("subtitle").textContent = info.mode === "uninstall" ? "Velo wasn't fully removed." : "Velo wasn't installed.";
+    $("errText").textContent = msg;
+    show("pFail");
+    buttons(null, "Close");
+  };
+
+  start();
+</script>
+</body>
+</html>

@@ -84,7 +84,7 @@ go run ./tools/packext -browser firefox -version $Version -out (Join-Path $dist 
 if ($LASTEXITCODE) { throw 'Firefox package failed' }
 
 Get-ChildItem -LiteralPath $payload | Where-Object Name -ne 'README.md' | Remove-Item -Recurse -Force
-Get-ChildItem -LiteralPath $dist | ForEach-Object {
+Get-ChildItem -LiteralPath $dist -File | ForEach-Object {
     $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash.ToLower()
     '{0,-34} {1,8:N0} KB  sha256 {2}' -f $_.Name, ($_.Length / 1KB), $hash
 }

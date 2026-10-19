@@ -1,0 +1,25 @@
+# .deb and .rpm packages for veloctl, built by the release workflow with
+# nfpm. The workflow fills in @VERSION@ and @ARCH@ and copies the binary to
+# dist/nfpm/veloctl first (nfpm does not expand variables in file paths).
+name: veloctl
+version: "@VERSION@"
+arch: "@ARCH@"
+platform: linux
+section: net
+priority: optional
+maintainer: Adoxcol <99127099+Adoxcol@users.noreply.github.com>
+description: |
+  Velo's command-line downloader: fast, resumable, segmented downloads.
+  Ctrl+C pauses; run the same command again to resume.
+vendor: Velo
+homepage: https://velo.adoxcol.com
+license: MIT
+contents:
+  - src: ./dist/nfpm/veloctl
+    dst: /usr/bin/veloctl
+    file_info:
+      mode: 0755
+  - src: ./LICENSE
+    dst: /usr/share/doc/veloctl/LICENSE
+  - src: ./docs/cli.md
+    dst: /usr/share/doc/veloctl/README.md

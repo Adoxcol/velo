@@ -404,13 +404,18 @@
         <a class="guide" href="https://github.com/Adoxcol/velo/releases/latest/download/SHA256SUMS-veloctl-darwin.txt">macOS SHA-256 checksums</a>
       </article>
     </div>
-    <pre class="terminal"><code><span class="comment"># Extract your downloaded archive, then run:</span>
-./veloctl get "https://example.com/file.zip"
-<span class="comment"># Or choose a destination folder:</span>
-./veloctl get "https://example.com/file.zip" "$HOME/Downloads"
-<span class="comment"># Ctrl+C pauses. Repeat the same command to resume.</span></code></pre>
+    <pre class="terminal"><code><span class="comment"># Install with one line (Linux, macOS):</span>
+curl -fsSL https://velo.adoxcol.com/install.sh | sh
+<span class="comment"># …or with a package manager:</span>
+brew install adoxcol/tap/veloctl                <span class="comment"># macOS, Linux</span>
+scoop bucket add adoxcol https://github.com/Adoxcol/scoop-bucket; scoop install veloctl   <span class="comment"># Windows</span>
+go install github.com/Adoxcol/velo/cmd/veloctl@latest
+
+<span class="comment"># Then download. Ctrl+C pauses; run it again to resume.</span>
+veloctl get "https://example.com/file.zip"</code></pre>
+    <p class="cli-note">Debian/Ubuntu <b>.deb</b> and Fedora <b>.rpm</b> packages are on the <a href="https://github.com/Adoxcol/velo/releases/latest">latest release</a>.</p>
     <p class="cli-note"><a href="https://github.com/Adoxcol/velo/blob/main/docs/cli.md">Installation, checksums and command guide →</a></p>
-    <p class="cli-note">Linux and macOS currently support standalone terminal downloads. The desktop interface, browser extension connection, queue and scheduler are Windows features. A Linux desktop app and AppImage/.deb packages are planned.</p>
+    <p class="cli-note">Linux and macOS currently support standalone terminal downloads. The desktop interface, browser extension connection, queue and scheduler are Windows features. A Linux desktop app is planned.</p>
     <p class="cli-note">Regular file downloads need no extra tools. Video pages need yt-dlp and ffmpeg; YouTube also needs a supported JavaScript runtime such as Deno. These tools are installed separately.</p>
   </div>
 </section>

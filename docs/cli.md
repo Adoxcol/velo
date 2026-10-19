@@ -17,7 +17,22 @@ the installed version.
 Run `uname -m` on Linux/macOS to check your architecture. `darwin` means macOS;
 `amd64` also covers Intel x64 processors. macOS binaries are unsigned and not notarized.
 
-## Install on Linux or macOS
+## Install veloctl
+
+| How | Command |
+|---|---|
+| **One-line script** (Linux, macOS) | `curl -fsSL https://velo.adoxcol.com/install.sh \| sh` |
+| **Homebrew** (macOS, Linux) | `brew install adoxcol/tap/veloctl` |
+| **Scoop** (Windows) | `scoop bucket add adoxcol https://github.com/Adoxcol/scoop-bucket` then `scoop install veloctl` |
+| **Debian / Ubuntu** | Download `veloctl_<version>_amd64.deb` (or `arm64`) from the [latest release](https://github.com/Adoxcol/velo/releases/latest), then `sudo apt install ./veloctl_*.deb` |
+| **Fedora / RHEL / openSUSE** | Download `veloctl-<version>-1.x86_64.rpm` (or `aarch64`), then `sudo dnf install ./veloctl-*.rpm` |
+| **Go** 1.27+ | `go install github.com/Adoxcol/velo/cmd/veloctl@latest` |
+| **Windows app** | The [installer](https://velo.adoxcol.com/download) includes `veloctl` and can add it to PATH |
+
+The install script checks the download's SHA-256 and puts `veloctl` in
+`~/.local/bin` (set `VELO_INSTALL_DIR` to choose another folder).
+
+## Install by hand on Linux or macOS
 
 1. Download your archive and the matching checksum file from the
    [latest release](https://github.com/Adoxcol/velo/releases/latest):

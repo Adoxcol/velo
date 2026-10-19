@@ -2,6 +2,16 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.4 — 2026-10-19
+
+### New
+- **A proper setup wizard.** Installing, updating and uninstalling Velo now happen in one Velo-styled window instead of a series of pop-ups: choose a desktop shortcut and whether to add `veloctl` to PATH, watch the progress, then add the browser extension and open Velo from the last page. Uninstalling asks once, with an option to also delete your settings and history. Automatic updates stay silent.
+- **Install `veloctl` with a package manager:** `brew install adoxcol/tap/veloctl` on macOS and Linux, `scoop install veloctl` on Windows, `.deb` and `.rpm` packages for Debian, Ubuntu and Fedora, `go install github.com/Adoxcol/velo/cmd/veloctl@latest`, or one line: `curl -fsSL https://velo.adoxcol.com/install.sh | sh`.
+- A standalone `veloctl` for Windows (x64 and ARM64), without the desktop app.
+
+### Improved
+- The website's Download buttons start the download straight away and confirm it.
+
 ## 0.8.3 — 2026-10-18
 
 ### New
