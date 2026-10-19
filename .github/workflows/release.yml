@@ -132,7 +132,7 @@ jobs:
           for arch in amd64 arm64; do
             folder="dist/veloctl-${version}-${TARGET_OS}-${arch}"
             mkdir -p "$folder"
-            GOOS="$TARGET_OS" GOARCH="$arch" CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X velo/internal/version.Version=$version" -o "$folder/veloctl" ./cmd/veloctl
+            GOOS="$TARGET_OS" GOARCH="$arch" CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X github.com/Adoxcol/velo/internal/version.Version=$version" -o "$folder/veloctl" ./cmd/veloctl
             cp LICENSE "$folder/"
             cp docs/cli.md "$folder/README.md"
             tar -czf "$folder.tar.gz" -C "$folder" veloctl LICENSE README.md

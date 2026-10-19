@@ -8,7 +8,7 @@ import (
 
 	"golang.org/x/sys/windows/registry"
 
-	"velo/internal/ipc"
+	"github.com/Adoxcol/velo/internal/ipc"
 )
 
 // migrateFromMyDM carries settings and history over from the app's old name

@@ -26,9 +26,9 @@ import (
 
 	"golang.org/x/sys/windows/registry"
 
-	"velo/internal/hostreg"
-	"velo/internal/ipc"
-	"velo/internal/version"
+	"github.com/Adoxcol/velo/internal/hostreg"
+	"github.com/Adoxcol/velo/internal/ipc"
+	"github.com/Adoxcol/velo/internal/version"
 )
 
 //go:embed all:payload

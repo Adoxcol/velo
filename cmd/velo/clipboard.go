@@ -9,7 +9,7 @@ import (
 	"time"
 	"unsafe"
 
-	"velo/internal/engine"
+	"github.com/Adoxcol/velo/internal/engine"
 )
 
 // Clipboard monitor: when a link to a downloadable file is

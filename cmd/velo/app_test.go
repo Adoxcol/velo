@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"velo/internal/engine"
+	"github.com/Adoxcol/velo/internal/engine"
 )
 
 func slowServer(t *testing.T, size int) string {

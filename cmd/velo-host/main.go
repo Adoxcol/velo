@@ -17,7 +17,7 @@ import (
 	"syscall"
 	"time"
 
-	"velo/internal/ipc"
+	"github.com/Adoxcol/velo/internal/ipc"
 )
 
 func readMsg(r io.Reader) ([]byte, error) {

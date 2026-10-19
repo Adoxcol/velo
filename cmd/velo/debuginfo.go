@@ -13,7 +13,7 @@ import (
 
 	"golang.org/x/sys/windows"
 
-	"velo/internal/version"
+	"github.com/Adoxcol/velo/internal/version"
 )
 
 // Link query strings and fragments often hold login tokens; bug reports

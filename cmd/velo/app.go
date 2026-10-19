@@ -18,10 +18,10 @@ import (
 	"sync"
 	"time"
 
-	"velo/internal/engine"
-	"velo/internal/i18n"
-	"velo/internal/ipc"
-	"velo/internal/version"
+	"github.com/Adoxcol/velo/internal/engine"
+	"github.com/Adoxcol/velo/internal/i18n"
+	"github.com/Adoxcol/velo/internal/ipc"
+	"github.com/Adoxcol/velo/internal/version"
 )
 
 type item struct {

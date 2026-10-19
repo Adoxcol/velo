@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"velo/internal/hostreg"
+	"github.com/Adoxcol/velo/internal/hostreg"
 )
 
 func main() {

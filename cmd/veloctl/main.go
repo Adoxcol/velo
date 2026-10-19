@@ -19,9 +19,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"velo/internal/engine"
-	"velo/internal/ipc"
-	"velo/internal/version"
+	"github.com/Adoxcol/velo/internal/engine"
+	"github.com/Adoxcol/velo/internal/ipc"
+	"github.com/Adoxcol/velo/internal/version"
 )
 
 type row struct {
@@ -49,7 +49,7 @@ func main() {
 	}
 	switch cmd {
 	case "version", "--version", "-version":
-		fmt.Println("Velo " + version.Version)
+		fmt.Println("Velo " + version.Display())
 	case "list":
 		b, err := ipc.Call("list", "", nil)
 		check(err)

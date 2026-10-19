@@ -15,11 +15,11 @@ import (
 	"fyne.io/systray"
 	webview2 "github.com/jchv/go-webview2"
 
-	"velo/internal/engine"
-	"velo/internal/hostreg"
-	"velo/internal/i18n"
-	"velo/internal/ipc"
-	"velo/internal/version"
+	"github.com/Adoxcol/velo/internal/engine"
+	"github.com/Adoxcol/velo/internal/hostreg"
+	"github.com/Adoxcol/velo/internal/i18n"
+	"github.com/Adoxcol/velo/internal/ipc"
+	"github.com/Adoxcol/velo/internal/version"
 )
 
 //go:embed ui.html

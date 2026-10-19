@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"velo/internal/engine"
+	"github.com/Adoxcol/velo/internal/engine"
 )
 
 // The download list is saved to %APPDATA%\velo\history.json so finished,

@@ -1,4 +1,4 @@
-module velo
+module github.com/Adoxcol/velo
 
 go 1.27.0
 

@@ -9,9 +9,9 @@ import (
 
 	webview2 "github.com/jchv/go-webview2"
 
-	"velo/internal/engine"
-	"velo/internal/i18n"
-	"velo/internal/ipc"
+	"github.com/Adoxcol/velo/internal/engine"
+	"github.com/Adoxcol/velo/internal/i18n"
+	"github.com/Adoxcol/velo/internal/ipc"
 )
 
 // The download dialog: a small window of its own, like IDM's "Download

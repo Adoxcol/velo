@@ -20,9 +20,9 @@ import (
 	"time"
 	"unsafe"
 
-	"velo/internal/engine"
-	"velo/internal/hostreg"
-	"velo/internal/ipc"
+	"github.com/Adoxcol/velo/internal/engine"
+	"github.com/Adoxcol/velo/internal/hostreg"
+	"github.com/Adoxcol/velo/internal/ipc"
 )
 
 func main() {

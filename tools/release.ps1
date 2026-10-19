@@ -22,7 +22,7 @@ $root = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $root
 
 if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw "Version must look like 1.2.3" }
-$ld = "-X velo/internal/version.Version=$Version"
+$ld = "-X github.com/Adoxcol/velo/internal/version.Version=$Version"
 $payload = Join-Path $root 'cmd\velo-setup\payload'
 $dist = Join-Path $root 'dist'
 

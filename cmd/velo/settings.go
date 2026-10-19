@@ -4,16 +4,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/Adoxcol/velo/internal/engine"
+	"github.com/Adoxcol/velo/internal/i18n"
 	"log"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
-	"velo/internal/engine"
-	"velo/internal/i18n"
 
-	"velo/internal/ipc"
+	"github.com/Adoxcol/velo/internal/ipc"
 )
 
 // Settings is saved to %APPDATA%\velo\settings.json.

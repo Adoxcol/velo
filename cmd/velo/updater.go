@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"velo/internal/ipc"
-	"velo/internal/update"
-	"velo/internal/version"
+	"github.com/Adoxcol/velo/internal/ipc"
+	"github.com/Adoxcol/velo/internal/update"
+	"github.com/Adoxcol/velo/internal/version"
 )
 
 // updater keeps Velo up to date from GitHub Releases. With auto-update on
