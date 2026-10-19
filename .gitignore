@@ -15,3 +15,6 @@ Thumbs.db
 /cmd/velo-setup/payload/*
 !/cmd/velo-setup/payload/README.md
 /dist/
+
+# /brag promo video output
+/brag-output*/

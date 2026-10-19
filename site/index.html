@@ -257,6 +257,11 @@
     footer .links { margin-left: 0; }
   }
 
+  /* promo video */
+  .promo { max-width: 1040px; margin: 0 auto; border-radius: 20px; overflow: hidden; background: #0d1728;
+    box-shadow: 0 40px 90px -40px rgba(13, 23, 40, .55), 0 0 0 1px var(--line); }
+  .promo video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; }
+
   /* "download started" notice */
   #dlnote { position: fixed; left: 50%; bottom: 24px; z-index: 50; transform: translate(-50%, 16px); opacity: 0; pointer-events: none;
     display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 32px); padding: 14px 18px; border-radius: 14px;
@@ -417,6 +422,20 @@ veloctl get "https://example.com/file.zip"</code></pre>
     <p class="cli-note"><a href="https://github.com/Adoxcol/velo/blob/main/docs/cli.md">Installation, checksums and command guide →</a></p>
     <p class="cli-note">Linux and macOS currently support standalone terminal downloads. The desktop interface, browser extension connection, queue and scheduler are Windows features. A Linux desktop app is planned.</p>
     <p class="cli-note">Regular file downloads need no extra tools. Video pages need yt-dlp and ffmpeg; YouTube also needs a supported JavaScript runtime such as Deno. These tools are installed separately.</p>
+  </div>
+</section>
+
+<section id="video" class="alt">
+  <div class="wrap">
+    <div class="head center">
+      <div class="eyebrow">See it in action</div>
+      <h2>Twenty seconds of Velo</h2>
+      <p class="sub">From a crawling download to sixteen parts at once, and from a click in the browser to a finished file.</p>
+    </div>
+    <div class="promo">
+      <video src="video/velo-promo.mp4" poster="video/velo-promo.jpg" controls playsinline preload="metadata" width="1920" height="1080"
+        aria-label="Velo promo video: Velo speeds up a slow download by splitting it into sixteen parts, then catches a video download from the browser."></video>
+    </div>
   </div>
 </section>
 
