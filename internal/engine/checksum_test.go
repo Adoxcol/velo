@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -89,5 +90,39 @@ func TestChecksumError(t *testing.T) {
 	expected := "SHA-256 checksum doesn't match: the file may be damaged or not the one expected"
 	if got := err.Error(); got != expected {
 		t.Errorf("ChecksumError.Error() = %q, want %q", got, expected)
+	}
+}
+
+func TestVerifyChecksum(t *testing.T) {
+	tmp, err := os.CreateTemp("", "checksum-test-*.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmp.Name())
+
+	content := []byte("hello world")
+	if _, err := tmp.Write(content); err != nil {
+		t.Fatal(err)
+	}
+	tmp.Close()
+
+	// SHA-256 of "hello world"
+	sha256Hash := "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+
+	if err := verifyChecksum(tmp.Name(), sha256Hash); err != nil {
+		t.Errorf("verifyChecksum valid lowercase failed: %v", err)
+	}
+
+	if err := verifyChecksum(tmp.Name(), strings.ToUpper(sha256Hash)); err != nil {
+		t.Errorf("verifyChecksum valid uppercase failed: %v", err)
+	}
+
+	badHash := "0000000000000000000000000000000000000000000000000000000000000000"
+	if err := verifyChecksum(tmp.Name(), badHash); err == nil {
+		t.Errorf("verifyChecksum should fail for invalid hash")
+	}
+
+	if err := verifyChecksum(tmp.Name(), "invalid-algo"); err == nil {
+		t.Errorf("verifyChecksum should fail for unknown checksum length")
 	}
 }

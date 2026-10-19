@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
+	"crypto/subtle"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -76,8 +77,10 @@ func verifyChecksum(path, want string) error {
 	if _, err := io.Copy(h, f); err != nil {
 		return err
 	}
-	if got := hex.EncodeToString(h.Sum(nil)); got != want {
-		return &ChecksumError{Algo: algo, Want: want, Got: got}
+	got := hex.EncodeToString(h.Sum(nil))
+	wantLower := strings.ToLower(want)
+	if subtle.ConstantTimeCompare([]byte(got), []byte(wantLower)) != 1 {
+		return &ChecksumError{Algo: algo, Want: wantLower, Got: got}
 	}
 	return nil
 }
