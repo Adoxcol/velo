@@ -202,7 +202,7 @@ func (e *Engine) runHLS(ctx context.Context, d *Download) error {
 // first part is its init segment, if it has one.
 func (e *Engine) runStream(ctx context.Context, d *Download, tracks [][]string, ext string) error {
 	if len(tracks) > 1 {
-		if _, err := exec.LookPath("ffmpeg"); err != nil {
+		if _, err := videoTool("ffmpeg"); err != nil {
 			return errors.New("ffmpeg is needed to merge this video's separate audio and video tracks; install it and add it to PATH")
 		}
 	}
@@ -384,7 +384,7 @@ func concat(dst string, n int, partFile func(int) string) error {
 
 // muxTracks joins each track, then merges them with ffmpeg into one MP4.
 func (e *Engine) muxTracks(d *Download, tracks [][]string, partFile func(t, i int) string) error {
-	ff, err := exec.LookPath("ffmpeg")
+	ff, err := videoTool("ffmpeg")
 	if err != nil {
 		return errors.New("ffmpeg is needed to merge audio and video")
 	}
@@ -426,7 +426,7 @@ func (e *Engine) joinParts(d *Download, n int, partFile func(int) string) error 
 	}
 	final := d.Path
 	if strings.HasSuffix(final, ".ts") {
-		if ff, err := exec.LookPath("ffmpeg"); err == nil {
+		if ff, err := videoTool("ffmpeg"); err == nil {
 			mp4 := uniquePath(filepath.Dir(final), strings.TrimSuffix(filepath.Base(final), ".ts")+".mp4")
 			cmd := exec.Command(ff, "-v", "error", "-y", "-f", "mpegts", "-i", d.Path+".part",
 				"-c", "copy", "-bsf:a", "aac_adtstoasc", mp4)

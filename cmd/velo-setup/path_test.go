@@ -32,3 +32,20 @@ func TestPathAddRemove(t *testing.T) {
 		t.Fatal("other PATH entries changed")
 	}
 }
+
+func TestCompactPathParts(t *testing.T) {
+	t.Setenv("LOCALAPPDATA", `C:\Users\Test\AppData\Local`)
+	t.Setenv("USERPROFILE", `C:\Users\Test`)
+	sys := `C:\Windows\system32;C:\Program Files\Git\cmd`
+	user := []string{
+		`C:\Windows\system32`,
+		`C:\Users\Test\scoop\shims`,
+		`C:\Users\Test\scoop\shims\`,
+		`C:\Users\Test\AppData\Local\Programs\Velo`,
+	}
+	got := compactPathParts(user, sys, true)
+	if len(got) != 2 || got[0] != `%USERPROFILE%\scoop\shims` || got[1] != `%LOCALAPPDATA%\Programs\Velo` {
+		t.Fatalf("compactPathParts = %v", got)
+	}
+}
+

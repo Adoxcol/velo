@@ -5,7 +5,9 @@ package engine
 import (
 	"golang.org/x/sys/unix"
 	"net/url"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"syscall"
 )
 
@@ -23,3 +25,28 @@ var freeSpace = func(dir string) int64 {
 // A separate group lets cancellation stop yt-dlp and its ffmpeg children.
 func hideWindow(cmd *exec.Cmd)            { cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true} }
 func killProcessTree(cmd *exec.Cmd) error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
+
+// findPlatformTool checks standard Unix package-manager and user bin locations
+// when a GUI/browser host starts with a minimal PATH.
+func findPlatformTool(toolName string) string {
+	var dirs []string
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		dirs = append(dirs,
+			filepath.Join(home, ".local", "bin"),
+			filepath.Join(home, ".deno", "bin"),
+		)
+	}
+	dirs = append(dirs,
+		"/opt/homebrew/bin",
+		"/usr/local/bin",
+		"/home/linuxbrew/.linuxbrew/bin",
+		"/snap/bin",
+	)
+	for _, dir := range dirs {
+		if p := filepath.Join(dir, toolName); isRegularFile(p) {
+			return p
+		}
+	}
+	return ""
+}
+

@@ -2,10 +2,17 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.6 — 2026-10-19
+
+### Fixed
+- **Video tools (`ffmpeg`, `yt-dlp`, `deno`) are found reliably even when missing from the process `PATH`:** Velo now reads the live Windows Registry `Path` (`HKCU` and `HKLM`) and checks standard package-manager directories (WinGet Links and Packages, Scoop, Chocolatey, Homebrew, `~/.local/bin`, `~/.deno/bin`, Snap) for both video page downloads and HLS/DASH streams. Tools installed while Velo is already running work immediately without restarting Velo or rebooting.
+- **Prevent Windows from dropping the User `PATH` when `PATH` exceeds 4,095 characters:** When adding Velo to `PATH` would push `System PATH + User PATH` past Windows's 4,095-character `WM_SETTINGCHANGE` buffer limit, the installer now deduplicates the User `PATH`, removes entries already present in System `PATH`, and compacts `%LOCALAPPDATA%` and `%USERPROFILE%` prefixes.
+
 ## 0.8.5 — 2026-10-19
 
 ### Fixed
 - `go install github.com/Adoxcol/velo/cmd/veloctl@latest` works: the repository no longer contains two folders whose names differ only in capital letters, which Go refuses to download.
+
 
 ## 0.8.4 — 2026-10-19
 

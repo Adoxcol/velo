@@ -40,19 +40,35 @@ func VideoPage(raw string) bool {
 	return false
 }
 
+func isRegularFile(p string) bool {
+	st, err := os.Stat(p)
+	return err == nil && !st.IsDir()
+}
+
 func videoTool(name string) (string, error) {
+	toolName := name
+	if runtime.GOOS == "windows" && !strings.HasSuffix(strings.ToLower(toolName), ".exe") {
+		toolName += ".exe"
+	}
 	if app, err := os.Executable(); err == nil {
-		toolName := name
-		if runtime.GOOS == "windows" {
-			toolName += ".exe"
-		}
 		p := filepath.Join(filepath.Dir(app), toolName)
-		if st, err := os.Stat(p); err == nil && !st.IsDir() {
+		if isRegularFile(p) {
 			return p, nil
 		}
 	}
-	return exec.LookPath(name)
+	if p, err := exec.LookPath(name); err == nil {
+		return p, nil
+	}
+	// When PATH is not explicitly cleared (as in isolated unit tests), also
+	// check live OS PATH settings and standard package-manager locations.
+	if os.Getenv("PATH") != "" {
+		if p := findPlatformTool(toolName); p != "" {
+			return p, nil
+		}
+	}
+	return "", &exec.Error{Name: name, Err: exec.ErrNotFound}
 }
+
 
 func extractorArgs(raw, dir, ffmpeg string) []string {
 	return []string{"--ignore-config", "--no-config-locations", "--no-exec", "--no-playlist", "--max-downloads", "1", "--no-warnings", "--newline", "--progress", "--no-colors",

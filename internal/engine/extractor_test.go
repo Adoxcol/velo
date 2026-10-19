@@ -122,3 +122,38 @@ func TestExtractorLocalIntegration(t *testing.T) {
 		t.Fatal("state file remains")
 	}
 }
+
+func TestVideoToolFallbackDiscovery(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
+
+	binDir := filepath.Join(home, ".local", "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	fakeTool := "velo-fake-tool-test"
+	fileName := fakeTool
+	if filepath.Separator == '\\' {
+		fileName += ".exe"
+	}
+	want := filepath.Join(binDir, fileName)
+	if err := os.WriteFile(want, []byte("fake"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Non-empty PATH that does not contain binDir: fallback discovery finds it.
+	t.Setenv("PATH", t.TempDir())
+	got, err := videoTool(fakeTool)
+	if err != nil || got != want {
+		t.Fatalf("videoTool(%q) = %q, %v; want %q", fakeTool, got, err, want)
+	}
+
+	// Explicitly empty PATH (used by isolated tests): fallback is skipped.
+	t.Setenv("PATH", "")
+	if _, err := videoTool(fakeTool); err == nil {
+		t.Fatal("expected error when PATH is explicitly empty")
+	}
+}
+

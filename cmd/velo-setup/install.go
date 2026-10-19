@@ -123,7 +123,7 @@ func doInstall(dir string, opts installOptions, progress progressFunc) error {
 		return fmt.Errorf("registering the uninstaller: %w", err)
 	}
 	refreshAutostart(dir)
-	if opts.Path && !onPath(dir) {
+	if opts.Path || onPath(dir) {
 		report(0.96, "Adding Velo to PATH…")
 		if err := setOnPath(dir, true); err != nil {
 			return fmt.Errorf("adding Velo to PATH: %w", err)

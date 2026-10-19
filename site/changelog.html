@@ -78,8 +78,18 @@
 </header>
 <main>
   <div class="wrap">
+    <article class="rel" id="v0.8.6">
+      <div class="ver"><b>0.8.6</b><span>2026-10-19</span><br><span class="latest">Latest</span></div>
+      <div class="body">
+        <h3>Fixed</h3>
+        <ul>
+          <li><b>Video tools (<code>ffmpeg</code>, <code>yt-dlp</code>, <code>deno</code>) are found reliably even when missing from the process <code>PATH</code>:</b> Velo now reads the live Windows Registry <code>Path</code> (<code>HKCU</code> and <code>HKLM</code>) and checks standard package-manager directories (WinGet Links and Packages, Scoop, Chocolatey, Homebrew, <code>~/.local/bin</code>, <code>~/.deno/bin</code>, Snap) for both video page downloads and HLS/DASH streams. Tools installed while Velo is already running work immediately without restarting Velo or rebooting.</li>
+          <li><b>Prevent Windows from dropping the User <code>PATH</code> when <code>PATH</code> exceeds 4,095 characters:</b> When adding Velo to <code>PATH</code> would push <code>System PATH + User PATH</code> past Windows's 4,095-character <code>WM_SETTINGCHANGE</code> buffer limit, the installer now deduplicates the User <code>PATH</code>, removes entries already present in System <code>PATH</code>, and compacts <code>%LOCALAPPDATA%</code> and <code>%USERPROFILE%</code> prefixes.</li>
+        </ul>
+      </div>
+    </article>
     <article class="rel" id="v0.8.5">
-      <div class="ver"><b>0.8.5</b><span>2026-10-19</span><br><span class="latest">Latest</span></div>
+      <div class="ver"><b>0.8.5</b><span>2026-10-19</span></div>
       <div class="body">
         <h3>Fixed</h3>
         <ul>
