@@ -2,6 +2,11 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.5 — 2026-10-19
+
+### Fixed
+- `go install github.com/Adoxcol/velo/cmd/veloctl@latest` works: the repository no longer contains two folders whose names differ only in capital letters, which Go refuses to download.
+
 ## 0.8.4 — 2026-10-19
 
 ### New
