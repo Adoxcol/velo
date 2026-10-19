@@ -1061,7 +1061,7 @@ func (a *app) handle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		r := engine.Request{URL: j.URL, Referrer: j.Referrer, Cookies: j.Cookies,
-			UserAgent: j.UserAgent, Filename: j.Filename, Kind: j.Kind, Title: j.Title}
+			UserAgent: j.UserAgent, Filename: j.Filename, Kind: j.Kind, Format: j.Format, Title: j.Title}
 		// Like IDM: a download the browser started opens Velo's download
 		// dialog (unless turned off); the browser's own download is stopped.
 		if j.Source == "capture" && a.getSettings().AskOnCapture && a.showPending != nil {

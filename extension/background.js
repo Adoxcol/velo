@@ -70,7 +70,7 @@ async function cookieHeader(url) {
   }
 }
 
-async function handOff({ url, referrer, filename, kind, title, source, size }) {
+async function handOff({ url, referrer, filename, kind, format, title, source, size }) {
   const facebook = facebookVideoPage(url);
   if (facebook) { url = facebook; kind = "page"; filename = ""; }
   else if (partialMediaURL(url)) return { ok: false, error: "This link is only part of a video. Open the original video post and download from there." };
@@ -80,6 +80,7 @@ async function handOff({ url, referrer, filename, kind, title, source, size }) {
     referrer: referrer || "",
     filename: filename || "",
     kind: kind || "",
+    format: format || "",
     title: title || "",
     source: source || "",
     size: size > 0 ? size : 0,
@@ -415,16 +416,18 @@ function best(items) {
   return ok.find((x) => x.kind === "page") || ok.find((x) => x.kind === "hls") || ok.find((x) => x.kind === "dash") || ok.sort((a, b) => b.size - a.size)[0];
 }
 
-async function grab(tabId, entry) {
+async function grab(tabId, entry, format) {
   const tab = await chrome.tabs.get(tabId);
   if (entry.note === "encrypted") return { ok: false, error: "This video is DRM-protected and can't be downloaded." };
   if (entry.note === "live") return { ok: false, error: "Live streams aren't supported." };
   if (entry.note === "unsupported") return { ok: false, error: "This video's format (multi-part DASH) isn't supported yet." };
   const stream = entry.kind !== "file";
+  const fmt = stream && ["1080p", "720p", "480p", "audio"].includes(format) ? format : "";
   return handOff({
     url: entry.url,
     referrer: tab.url,
     kind: stream ? entry.kind : "",
+    format: fmt,
     title: stream ? tab.title : "",
     filename: "",
   });
@@ -460,7 +463,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
       if (!entry) return reply({ ok: false, error: "No downloadable video found on this page yet. Start playing it first." });
       // A chosen quality must be one the page offered.
       const variant = msg.variant && entry.options?.some((o) => o.url === msg.variant) ? msg.variant : null;
-      return reply(await grab(tabId, variant ? { ...entry, url: variant } : entry));
+      return reply(await grab(tabId, variant ? { ...entry, url: variant } : entry, msg.format));
     }
     if (msg.type === "ping" || msg.type === "show") return reply(await send({ type: msg.type }));
     if (msg.type === "all") {

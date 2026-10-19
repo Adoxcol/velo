@@ -35,7 +35,15 @@ const KIND = { hls: "Stream (HLS)", dash: "Stream (DASH)", file: "File", page: "
 
 function say(text, cls) { $("msg").textContent = text; $("msg").className = cls || ""; }
 
-// Each choice is { item, variant?, label, meta, note }.
+const PAGE_FORMATS = [
+  { format: "", label: "Best quality", meta: "Best audio + video" },
+  { format: "1080p", label: "Video · 1080p", meta: "Full HD" },
+  { format: "720p", label: "Video · 720p", meta: "HD" },
+  { format: "480p", label: "Video · 480p", meta: "SD" },
+  { format: "audio", label: "Audio only (MP3)", meta: "MP3 audio" },
+];
+
+// Each choice is { item, variant?, format?, label, meta, note }.
 function choicesFor(items) {
   const out = [];
   for (const item of items) {
@@ -43,10 +51,18 @@ function choicesFor(items) {
       for (const o of item.options) {
         out.push({ item, variant: o.url, label: o.height ? `Video · ${o.height}p` : "Video", meta: [KIND[item.kind], o.bandwidth ? mbps(o.bandwidth) : ""].filter(Boolean).join(" · ") });
       }
+      out.push({ item, format: "audio", label: "Audio only (MP3)", meta: `${KIND[item.kind]} · MP3 audio` });
+    } else if ((item.kind === "page" || item.kind === "dash") && !item.note) {
+      for (const f of PAGE_FORMATS) {
+        out.push({ item, format: f.format, label: f.label, meta: item.kind === "dash" ? `${KIND.dash} · ${f.meta}` : f.meta });
+      }
     } else {
       const stream = item.kind !== "file";
       out.push({ item, label: stream ? `Video${item.quality ? " · " + item.quality : ""}` : fileName(item.url),
         meta: [KIND[item.kind], stream ? "" : size(item.size)].filter(Boolean).join(" · "), note: item.note });
+      if (item.kind === "hls" && !item.note) {
+        out.push({ item, format: "audio", label: "Audio only (MP3)", meta: `${KIND.hls} · MP3 audio` });
+      }
     }
   }
   return out;
@@ -106,7 +122,7 @@ function choicesFor(items) {
     $("go").onclick = async () => {
       const c = choices[+document.querySelector('input[name="c"]:checked').value];
       $("go").disabled = true;
-      const r = await chrome.runtime.sendMessage({ type: "grab", tabId: tab.id, url: c.item.url, variant: c.variant });
+      const r = await chrome.runtime.sendMessage({ type: "grab", tabId: tab.id, url: c.item.url, variant: c.variant, format: c.format });
       if (r.ok) { say("Sent to Velo ✓", "ok"); setTimeout(() => window.close(), 700); }
       else { say(r.error, "err"); $("go").disabled = false; }
     };
