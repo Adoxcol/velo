@@ -138,4 +138,3 @@ func expandWinEnv(s string) string {
 		s = s[i+2+j:]
 	}
 }
-

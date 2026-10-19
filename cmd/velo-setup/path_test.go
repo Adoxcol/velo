@@ -48,4 +48,3 @@ func TestCompactPathParts(t *testing.T) {
 		t.Fatalf("compactPathParts = %v", got)
 	}
 }
-

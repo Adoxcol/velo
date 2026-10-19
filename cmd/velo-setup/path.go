@@ -156,4 +156,3 @@ func broadcastEnvChange() {
 	syscall.NewLazyDLL("user32.dll").NewProc("SendMessageTimeoutW").Call(
 		hwndBroadcast, wmSettingChange, 0, uintptr(unsafe.Pointer(env)), smtoAbortIfHung, 2000, uintptr(unsafe.Pointer(&result)))
 }
-

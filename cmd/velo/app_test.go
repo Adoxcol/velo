@@ -621,4 +621,3 @@ func TestDeleteFileAndBatchLinksAndVideoTools(t *testing.T) {
 		t.Fatalf("expected 3 video tools, got %+v", vt.Tools)
 	}
 }
-

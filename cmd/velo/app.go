@@ -914,22 +914,22 @@ func (a *app) measure() {
 func pct(d *engine.Download) float64 { return d.Progress() }
 
 type row struct {
-	ID          int     `json:"id"`
-	Status      string  `json:"status"`
-	Percent     float64 `json:"percent"`
-	Done        int64   `json:"done"`
-	Total       int64   `json:"total"`
-	Speed       float64 `json:"speed"`
-	Connections int     `json:"connections"`
-	File        string  `json:"file"`
-	URL         string  `json:"url"`
-	Kind        string  `json:"kind,omitempty"`
-	Category    string  `json:"category"` // Video, Music, Images, ... or ""
-	Folder      string  `json:"folder"`
-	Added       int64   `json:"added"`    // unix ms
-	Finished    int64   `json:"finished"` // unix ms, 0 until done
-	Error       string  `json:"error,omitempty"`
-	Queue       string  `json:"queue,omitempty"`    // named queue ID
+	ID          int          `json:"id"`
+	Status      string       `json:"status"`
+	Percent     float64      `json:"percent"`
+	Done        int64        `json:"done"`
+	Total       int64        `json:"total"`
+	Speed       float64      `json:"speed"`
+	Connections int          `json:"connections"`
+	File        string       `json:"file"`
+	URL         string       `json:"url"`
+	Kind        string       `json:"kind,omitempty"`
+	Category    string       `json:"category"` // Video, Music, Images, ... or ""
+	Folder      string       `json:"folder"`
+	Added       int64        `json:"added"`    // unix ms
+	Finished    int64        `json:"finished"` // unix ms, 0 until done
+	Error       string       `json:"error,omitempty"`
+	Queue       string       `json:"queue,omitempty"`    // named queue ID
 	Verified    bool         `json:"verified,omitempty"` // matched the checksum given when added
 	Retrying    bool         `json:"retrying,omitempty"` // waiting after a network drop
 	RetryIn     int          `json:"retryIn,omitempty"`  // seconds until the next try

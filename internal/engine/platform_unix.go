@@ -49,4 +49,3 @@ func findPlatformTool(toolName string) string {
 	}
 	return ""
 }
-

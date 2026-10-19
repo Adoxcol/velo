@@ -76,7 +76,6 @@ func videoTool(name string) (string, error) {
 	return "", &exec.Error{Name: name, Err: exec.ErrNotFound}
 }
 
-
 func extractorExt(format string) string {
 	if format == "audio" {
 		return ".mp3"

@@ -184,4 +184,3 @@ func TestExtractorArgsFormatsAndRemainingGaps(t *testing.T) {
 		t.Fatalf("unexpected RemainingGaps: %+v", gaps)
 	}
 }
-
