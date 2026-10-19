@@ -24,6 +24,10 @@ jobs:
     runs-on: windows-latest
     env:
       WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+      CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+      CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+      CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+      CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID || 'pcpdknogjedamkhakgfbaoieehnheelk' }}
     defaults:
       run:
         shell: pwsh
@@ -102,6 +106,29 @@ jobs:
             --urls "https://github.com/Adoxcol/velo/releases/download/v$v/Velo-Setup-$v.exe" `
             --release-notes-url https://velo.adoxcol.com/changelog `
             --token $env:WINGET_TOKEN --submit
+
+      # Uploads velo-extension-<version>.zip to the Chrome Web Store and submits
+      # it for publishing when CWS_CLIENT_ID, CWS_CLIENT_SECRET, and
+      # CWS_REFRESH_TOKEN secrets are configured.
+      - name: Publish Chrome Web Store extension
+        if: github.event_name == 'push' && env.CWS_CLIENT_ID != '' && env.CWS_CLIENT_SECRET != '' && env.CWS_REFRESH_TOKEN != ''
+        continue-on-error: true
+        run: |
+          $v = "${{ steps.v.outputs.version }}"
+          $id = $env:CWS_EXTENSION_ID
+          $tok = (Invoke-RestMethod -Method Post -Uri "https://oauth2.googleapis.com/token" -Body @{
+            client_id     = $env:CWS_CLIENT_ID
+            client_secret = $env:CWS_CLIENT_SECRET
+            refresh_token = $env:CWS_REFRESH_TOKEN
+            grant_type    = "refresh_token"
+          }).access_token
+          $headers = @{ Authorization = "Bearer $tok"; "x-goog-api-version" = "2" }
+          $up = Invoke-RestMethod -Method Put -Uri "https://www.googleapis.com/upload/chromewebstore/v1.1/items/$id" `
+            -Headers $headers -InFile "dist/velo-extension-$v.zip" -ContentType "application/zip"
+          Write-Host "Upload state: $($up.uploadState)"
+          if ($up.uploadState -eq "FAILURE") { throw "Chrome Web Store upload failed: $($up.itemError | ConvertTo-Json -Compress)" }
+          $pub = Invoke-RestMethod -Method Post -Uri "https://www.googleapis.com/chromewebstore/v1.1/items/$id/publish" -Headers $headers
+          Write-Host "Publish status: $($pub.status -join ', ')"
 
   portable-cli:
     needs: release
