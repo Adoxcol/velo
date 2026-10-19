@@ -5,6 +5,7 @@
 <title>Velo</title>
 <style>
   :root {
+    color-scheme: light;
     --primary: #1677ff; --primary-hover: #0f63dd; --primary-soft: #e8f1ff;
     --ink: #0d1728; --text: #1b2433; --muted: #64748b; --faint: #94a3b8;
     --bg: #f5f8fc; --panel: #ffffff; --panel-2: #f8fafd; --line: #e6ebf2; --line-2: #eef2f7;
@@ -14,6 +15,7 @@
     --radius: 12px;
   }
   html[data-theme="dark"] {
+    color-scheme: dark;
     --primary: #3b8bff; --primary-hover: #5c9eff; --primary-soft: #16294a;
     --ink: #eef3fa; --text: #dbe3ee; --muted: #93a1b5; --faint: #66758b;
     --bg: #0d1728; --panel: #131f33; --panel-2: #172540; --line: #22314a; --line-2: #1b2a42;
@@ -185,11 +187,29 @@
   .field { display: grid; gap: 6px; margin-bottom: 14px; }
   .field > label, .field > .lbl { font-weight: 600; font-size: 12.5px; color: var(--muted); }
   .inp { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); padding: 0 6px 0 12px; }
-  .inp input, .inp select { flex: 1; min-width: 0; border: 0; outline: 0; background: none; padding: 9px 0; user-select: text; }
+  .inp input, .inp select { flex: 1; min-width: 0; border: 0; outline: 0; background: none; padding: 9px 0; color: var(--ink); user-select: text; }
   .inp .link { border: 0; background: none; color: var(--primary); font-weight: 600; padding: 6px 8px; border-radius: 7px; }
   .inp .link:hover { background: var(--primary-soft); }
   .inp.ro input { color: var(--muted); }
-  select.sel, input.num, input.time { border: 1px solid var(--line); border-radius: 9px; background: var(--panel); padding: 8px 10px; }
+  select {
+    appearance: none; -webkit-appearance: none; cursor: pointer; color: var(--ink);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2393a1b5' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 8px center; padding-right: 28px !important;
+  }
+  select option { background: var(--panel); color: var(--ink); }
+  select.sel, input.num, input.time { border: 1px solid var(--line); border-radius: 9px; background-color: var(--panel); padding: 8px 10px; color: var(--ink); }
+  .dd-menu {
+    position: fixed; z-index: 9999; min-width: 140px; max-height: 240px; overflow-y: auto;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: var(--shadow-lg); padding: 5px; display: none;
+  }
+  .dd-menu button {
+    display: flex; width: 100%; justify-content: space-between; gap: 10px; align-items: center;
+    padding: 8px 10px; border: 0; background: none; border-radius: 7px; text-align: left; color: var(--ink); font-weight: 500;
+  }
+  .dd-menu button:hover { background: var(--panel-2); }
+  .dd-menu button.on { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+  .dd-menu button svg.i { width: 15px; height: 15px; color: var(--primary); }
   .row2 { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .days { display: flex; gap: 6px; flex-wrap: wrap; }
   .days label { padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-size: 12.5px; }
@@ -1337,6 +1357,67 @@ $("#onboard").addEventListener("cancel", (e) => e.preventDefault()); // finish i
 async function maybeOnboard() {
   if (S && !S.onboarded) { obStep = 0; await obShow(); $("#onboard").showModal(); }
 }
+
+// ---------- custom UI dropdown for <select> ----------
+let ddEl = null, ddSel = null;
+function closeDD() {
+  if (ddEl) ddEl.style.display = "none";
+  ddSel = null;
+}
+function openDD(sel) {
+  if (ddSel === sel && ddEl && ddEl.style.display === "block") return closeDD();
+  ddSel = sel;
+  const host = sel.closest("dialog") || document.body;
+  if (!ddEl) {
+    ddEl = document.createElement("div");
+    ddEl.className = "dd-menu";
+  }
+  if (ddEl.parentElement !== host) host.appendChild(ddEl);
+  const cur = sel.value;
+  ddEl.innerHTML = [...sel.options].map((o, i) => {
+    const on = o.value === cur;
+    return `<button type="button" data-ddi="${i}" class="${on ? "on" : ""}"><span>${escapeHtml(o.textContent)}</span>${on ? icon(I.check) : ""}</button>`;
+  }).join("");
+  const box = sel.closest(".inp") || sel;
+  const r = box.getBoundingClientRect();
+  ddEl.style.minWidth = Math.max(r.width, 140) + "px";
+  ddEl.style.display = "block";
+  const mh = ddEl.offsetHeight, mw = ddEl.offsetWidth;
+  let top = r.bottom + 4;
+  if (top + mh > innerHeight - 8 && r.top - mh - 4 >= 8) top = r.top - mh - 4;
+  ddEl.style.left = Math.min(Math.max(r.left, 8), innerWidth - mw - 8) + "px";
+  ddEl.style.top = top + "px";
+  ddEl.onclick = (e) => {
+    const b = e.target.closest("[data-ddi]");
+    if (!b) return;
+    const opt = sel.options[+b.dataset.ddi];
+    if (opt && sel.value !== opt.value) {
+      sel.value = opt.value;
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    closeDD();
+  };
+}
+document.addEventListener("mousedown", (e) => {
+  if (e.target.closest(".dd-menu")) return;
+  const sel = e.target.closest("select");
+  if (sel && !sel.disabled) {
+    e.preventDefault();
+    sel.focus();
+    openDD(sel);
+    return;
+  }
+  closeDD();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && ddSel) { e.stopPropagation(); closeDD(); return; }
+  if (document.activeElement?.tagName === "SELECT" && (e.key === " " || e.key === "Enter")) {
+    e.preventDefault();
+    openDD(document.activeElement);
+  }
+}, true);
+window.addEventListener("resize", closeDD);
+document.addEventListener("scroll", (e) => { if (ddEl && e.target !== ddEl) closeDD(); }, true);
 
 // ---------- start ----------
 loadSettings().then(() => { go("home"); maybeOnboard(); openBatch(); });
