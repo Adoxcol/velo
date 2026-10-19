@@ -10,6 +10,7 @@
   html, body { margin: 0; height: 100%; overflow: hidden; }
   body { background: var(--bg); color: var(--ink); font: 13.5px/1.4 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; display: flex; flex-direction: column; user-select: none; }
   svg.i { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
   .top { display: flex; gap: 12px; align-items: center; padding: 12px 18px; background: var(--bg2); border-bottom: 1px solid var(--line); }
   .tile { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; flex: none; }
@@ -58,7 +59,7 @@
   <div class="top">
     <div class="tile" id="tile"></div>
     <div class="head">
-      <input class="name" id="name" spellcheck="false" title="File name (click to rename)">
+      <input class="name" id="name" spellcheck="false" title="File name (click to rename)" aria-label="File name">
       <div class="sub" id="sub"></div>
     </div>
     <div class="count" id="count"></div>
