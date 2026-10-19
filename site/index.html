@@ -257,6 +257,16 @@
     footer .links { margin-left: 0; }
   }
 
+  /* "download started" notice */
+  #dlnote { position: fixed; left: 50%; bottom: 24px; z-index: 50; transform: translate(-50%, 16px); opacity: 0; pointer-events: none;
+    display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 32px); padding: 14px 18px; border-radius: 14px;
+    background: #0d1728; color: #fff; border: 1px solid rgba(255,255,255,.12); box-shadow: 0 20px 50px -12px rgba(0,0,0,.5);
+    font-size: 15px; transition: opacity .2s, transform .2s; }
+  #dlnote.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  #dlnote .ok { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: #22c55e; }
+  #dlnote a { color: #8fc0ff; }
+  #dlnote button { all: unset; cursor: pointer; color: #97a6ba; font-size: 20px; padding: 0 4px; }
+
   /* CLI downloads */
   .cli-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
   .cli-card { min-width:0; border:1px solid var(--line); border-radius:18px; padding:28px; background:var(--surface); }
@@ -297,7 +307,7 @@
       <a href="#faq">FAQ</a>
       <a href="/changelog">Changelog</a>
       <a href="https://github.com/Adoxcol/velo">GitHub</a>
-      <a class="btn primary" href="#download">Download</a>
+      <a class="btn primary" href="/download">Download</a>
     </div>
   </div>
 </nav>
@@ -308,7 +318,7 @@
     <h1>Fast downloads.<br><span class="grad">A smoother internet.</span></h1>
     <p class="lead">Parallel downloads that pick up where they left off. Use the desktop app and browser extension on Windows, or download straight from your terminal on Linux and macOS.</p>
     <div class="ctas">
-      <a class="btn primary" href="#download"><svg class="i"><use href="#win"/></svg>Download for Windows</a>
+      <a class="btn primary" href="/download"><svg class="i"><use href="#win"/></svg>Download for Windows</a>
       <a class="btn glass" href="#cli">Linux &amp; macOS CLI <span aria-hidden="true">→</span></a>
     </div>
     <p class="fine">Free and open source · Windows desktop · Linux &amp; macOS command line</p>
@@ -568,5 +578,27 @@
   </div>
 </footer>
 
+<div id="dlnote" role="status" aria-live="polite">
+  <span class="ok" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
+  <span><b>Your download has started.</b> <span id="dltext"></span> Not starting? <a id="dlretry" href="/download">Try again</a>.</span>
+  <button type="button" aria-label="Close" onclick="this.parentNode.classList.remove('on')">×</button>
+</div>
+<script>
+  // Download links start the file straight away; this just confirms it.
+  (function () {
+    var note = document.getElementById("dlnote"), timer;
+    var tips = { "/download": "Open Velo-Setup.exe when it finishes.", "/download/portable": "Unzip it anywhere and run velo.exe." };
+    document.addEventListener("click", function (e) {
+      var a = e.target.closest && e.target.closest('a[href^="/download"]');
+      if (!a || a.id === "dlretry") return;
+      var path = a.getAttribute("href");
+      document.getElementById("dlretry").setAttribute("href", path);
+      document.getElementById("dltext").textContent = tips[path] || "Extract the archive, then run ./veloctl.";
+      note.classList.add("on");
+      clearTimeout(timer);
+      timer = setTimeout(function () { note.classList.remove("on"); }, 9000);
+    });
+  })();
+</script>
 </body>
 </html>
