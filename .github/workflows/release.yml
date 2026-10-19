@@ -134,9 +134,10 @@ jobs:
           $up = Invoke-RestMethod -Method Put -Uri "https://www.googleapis.com/upload/chromewebstore/v1.1/items/$id" `
             -Headers $headers -InFile "dist/velo-extension-$v.zip" -ContentType "application/zip"
           Write-Host "Upload state: $($up.uploadState)"
-          if ($up.uploadState -eq "FAILURE") { throw "Chrome Web Store upload failed: $($up.itemError | ConvertTo-Json -Compress)" }
-          $pub = Invoke-RestMethod -Method Post -Uri "https://www.googleapis.com/chromewebstore/v1.1/items/$id/publish" -Headers $headers
-          $status = $pub.status -join ", "
+          $status = if ($up.uploadState -eq "FAILURE") { $up.itemError | ConvertTo-Json -Compress } else {
+            $pub = Invoke-RestMethod -Method Post -Uri "https://www.googleapis.com/chromewebstore/v1.1/items/$id/publish" -Headers $headers
+            $pub.status -join ", "
+          }
           Write-Host "Publish status: $status"
           @(
             "### Chrome Web Store Publish"
@@ -147,6 +148,7 @@ jobs:
             "| Upload State | ``$($up.uploadState)`` |"
             "| Publish Status | ``$status`` |"
           ) >> $env:GITHUB_STEP_SUMMARY
+          if ($up.uploadState -eq "FAILURE") { throw "Chrome Web Store upload failed: $status" }
 
   portable-cli:
     needs: release
