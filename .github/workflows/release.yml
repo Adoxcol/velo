@@ -9,8 +9,12 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to build (like 0.4.1); builds without publishing"
+        description: "Version to build (like 0.8.8); builds without publishing a GitHub release"
         required: true
+      publish_extension:
+        description: "Upload and submit the extension to the Chrome Web Store"
+        type: boolean
+        default: false
 
 permissions:
   contents: write # create the GitHub release
@@ -109,11 +113,15 @@ jobs:
 
       # Uploads velo-extension-<version>.zip to the Chrome Web Store and submits
       # it for publishing when CWS_CLIENT_ID, CWS_CLIENT_SECRET, and
-      # CWS_REFRESH_TOKEN secrets are configured.
+      # CWS_REFRESH_TOKEN secrets are configured (or when manually triggered
+      # with publish_extension=true).
       - name: Publish Chrome Web Store extension
-        if: github.event_name == 'push' && env.CWS_CLIENT_ID != '' && env.CWS_CLIENT_SECRET != '' && env.CWS_REFRESH_TOKEN != ''
-        continue-on-error: true
+        if: (github.event_name == 'push' && env.CWS_CLIENT_ID != '' && env.CWS_CLIENT_SECRET != '' && env.CWS_REFRESH_TOKEN != '') || inputs.publish_extension == true
+        continue-on-error: ${{ github.event_name == 'push' }}
         run: |
+          if (-not $env:CWS_CLIENT_ID -or -not $env:CWS_CLIENT_SECRET -or -not $env:CWS_REFRESH_TOKEN) {
+            throw "Missing Chrome Web Store secrets (CWS_CLIENT_ID, CWS_CLIENT_SECRET, CWS_REFRESH_TOKEN)."
+          }
           $v = "${{ steps.v.outputs.version }}"
           $id = $env:CWS_EXTENSION_ID
           $tok = (Invoke-RestMethod -Method Post -Uri "https://oauth2.googleapis.com/token" -Body @{
@@ -128,7 +136,17 @@ jobs:
           Write-Host "Upload state: $($up.uploadState)"
           if ($up.uploadState -eq "FAILURE") { throw "Chrome Web Store upload failed: $($up.itemError | ConvertTo-Json -Compress)" }
           $pub = Invoke-RestMethod -Method Post -Uri "https://www.googleapis.com/chromewebstore/v1.1/items/$id/publish" -Headers $headers
-          Write-Host "Publish status: $($pub.status -join ', ')"
+          $status = $pub.status -join ", "
+          Write-Host "Publish status: $status"
+          @(
+            "### Chrome Web Store Publish"
+            "| Field | Value |"
+            "|---|---|"
+            "| Extension ID | ``$id`` |"
+            "| Version | ``$v`` |"
+            "| Upload State | ``$($up.uploadState)`` |"
+            "| Publish Status | ``$status`` |"
+          ) >> $env:GITHUB_STEP_SUMMARY
 
   portable-cli:
     needs: release
