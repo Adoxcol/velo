@@ -286,7 +286,7 @@
 <main>
   <div class="topbar">
     <label class="search"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <input id="search" placeholder="Search downloads…" spellcheck="false"><kbd>Ctrl K</kbd></label>
+      <input id="search" placeholder="Search downloads…" spellcheck="false" aria-label="Search downloads"><kbd>Ctrl K</kbd></label>
   </div>
   <div class="content">
 
@@ -594,7 +594,11 @@ $("#nav").innerHTML = PAGES.map(([id, label, ic]) =>
 let page = "home";
 function go(p) {
   page = p;
-  $$("#nav button").forEach((b) => b.classList.toggle("active", b.dataset.go === p));
+  $$("#nav button").forEach((b) => {
+    const active = b.dataset.go === p;
+    b.classList.toggle("active", active);
+    if (active) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+  });
   $$(".page").forEach((s) => s.classList.toggle("on", s.dataset.page === p));
   if (p === "settings" || p === "scheduler") loadSettings();
   if (p === "extension") extStatusHTML().then((h) => ($("#extStatus").innerHTML = h));
