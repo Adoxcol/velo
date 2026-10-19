@@ -224,6 +224,26 @@ func TestWildcardMatch(t *testing.T) {
 	}
 }
 
+func BenchmarkWildcardMatch(b *testing.B) {
+	benchmarks := []struct {
+		pattern string
+		host    string
+	}{
+		{"example.com", "example.com"},
+		{"*.corp.com", "sub.corp.com"},
+		{"10.*", "10.0.0.1"},
+		{"*a*b*", "1a2b3"},
+		{"foo*bar", "foo123bar"},
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, bm := range benchmarks {
+			wildcardMatch(bm.pattern, bm.host)
+		}
+	}
+}
+
 func TestEngineProxy(t *testing.T) {
 	e := New(t.TempDir())
 
