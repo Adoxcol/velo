@@ -11,7 +11,9 @@
   html, body { margin: 0; height: 100%; overflow: hidden; }
   body { background: var(--bg); color: var(--ink); font: 13px/1.4 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; user-select: none; border: 1px solid var(--line); border-radius: 8px; }
   .wrap { display: grid; grid-template-columns: 56px 1fr auto; gap: 12px; align-items: center; padding: 14px 12px 14px 14px; height: 100%; cursor: pointer; }
-  .tile { width: 52px; height: 52px; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--c, #94a3b8) 15%, transparent); color: var(--c, #94a3b8); }
+  .tile { width: 52px; height: 52px; border-radius: 12px; display: grid; place-items: center; overflow: hidden; background: color-mix(in srgb, var(--c, #94a3b8) 15%, transparent); color: var(--c, #94a3b8); }
+  .tile img.thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tile img.ficon { width: 30px; height: 30px; object-fit: contain; display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,.12)); }
   svg.i { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
   .tile svg.i { width: 26px; height: 26px; }
   .info { min-width: 0; }
@@ -67,7 +69,8 @@ const TILE = {"Video":"#3b82f6","Music":"#a855f7","Images":"#14b8a6","Documents"
 const svg = (d) => `<svg class="i" viewBox="0 0 24 24">${d}</svg>`;
 function size(n) { if (!(n > 0)) return "0 B"; const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0; while (n >= 1024 && i < 4) { n /= 1024; i++; } return n.toFixed(i && n < 100 ? 1 : 0) + " " + u[i]; }
 function eta(s) { s = Math.round(s); return [Math.floor(s / 3600), Math.floor(s % 3600 / 60), s % 60].map((v) => String(v).padStart(2, "0")).join(":"); }
-let current = null;
+let current = null, lastKey = "";
+const previews = new Map();
 async function refresh() {
   const st = await appStatus();
   const active = st.rows.filter((r) => r.status === "downloading");
@@ -76,8 +79,22 @@ async function refresh() {
   if (!r) return;
   current = r;
   const cat = r.category || "Other";
-  $("#tile").innerHTML = svg(ICON[cat] || ICON.Other);
   $("#tile").style.setProperty("--c", TILE[cat] || TILE.Other);
+  const key = `${r.id}:${r.status === "done" ? 1 : 0}:${r.file || ""}`;
+  if (key !== lastKey) {
+    lastKey = key;
+    const pv = previews.get(key) || (typeof itemPreview === "function" ? await itemPreview(r.id).catch(() => null) : null);
+    if (pv) previews.set(key, pv);
+    if (pv && pv.src) {
+      const img = document.createElement("img");
+      img.className = pv.mode === "cover" ? "thumb" : "ficon";
+      img.src = pv.src;
+      img.onerror = () => { $("#tile").innerHTML = svg(ICON[cat] || ICON.Other); };
+      $("#tile").replaceChildren(img);
+    } else {
+      $("#tile").innerHTML = svg(ICON[cat] || ICON.Other);
+    }
+  }
   $("#name").textContent = r.file || "Starting…";
   const pct = r.status === "done" ? 100 : r.percent;
   const parts = [r.total > 0 || r.kind ? pct.toFixed(0) + "%" : size(r.done)];

@@ -45,6 +45,13 @@ func isRegularFile(p string) bool {
 	return err == nil && !st.IsDir()
 }
 
+// VideoTool locates an external helper (ffmpeg, yt-dlp, deno) beside Velo,
+// on the process PATH, in the live OS PATH registry, or in common package
+// manager directories.
+func VideoTool(name string) (string, error) {
+	return videoTool(name)
+}
+
 func videoTool(name string) (string, error) {
 	toolName := name
 	if runtime.GOOS == "windows" && !strings.HasSuffix(strings.ToLower(toolName), ".exe") {

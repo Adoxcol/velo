@@ -555,3 +555,18 @@ func TestClipboardRoundTrip(t *testing.T) {
 		t.Fatalf("read back %q (ok=%v), want %q", got, ok, want)
 	}
 }
+
+func TestItemPreviewAndShellIcon(t *testing.T) {
+	if got := youtubeThumbURL("https://www.youtube.com/watch?v=dQw4w9WgXcQ"); got != "https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg" {
+		t.Fatalf("youtubeThumbURL = %q", got)
+	}
+	if got := youtubeThumbURL("https://youtu.be/dQw4w9WgXcQ"); got != "https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg" {
+		t.Fatalf("youtubeThumbURL short = %q", got)
+	}
+	a := &app{eng: engine.New(t.TempDir()), wake: make(chan struct{}, 1), settings: defaultSettings()}
+	ic := a.fileTypeIcon("archive.zip")
+	if ic.Mode != "icon" || !strings.HasPrefix(ic.Src, "data:image/png;base64,") {
+		t.Fatalf("fileTypeIcon = %+v", ic)
+	}
+}
+

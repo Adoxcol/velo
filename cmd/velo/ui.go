@@ -384,6 +384,8 @@ func bind(w webview2.WebView, a *app) {
 	w.Bind("resumeAll", func() { a.all("resume") })
 	w.Bind("downloadDir", func() string { return a.eng.Dir() })
 	w.Bind("defaultDir", func() string { return a.defaultDir })
+	w.Bind("itemPreview", func(id int) thumbResult { return a.itemPreview(id) })
+	w.Bind("fileTypeIcon", func(name string) thumbResult { return a.fileTypeIcon(name) })
 	// Runs on the window's thread, so the picker is modal to it.
 	w.Bind("pickFolder", func(start string) (string, error) {
 		return pickFolder(uintptr(w.Window()), "Choose download folder", start)

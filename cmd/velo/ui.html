@@ -115,8 +115,12 @@
   }
   .card.new { animation: rise .25s ease; }
   @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-  .tile { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; flex: none; }
+  .tile { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; flex: none; overflow: hidden; position: relative; }
   .tile svg.i { width: 23px; height: 23px; stroke-width: 1.8; }
+  .tile img.thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tile img.ficon { width: 28px; height: 28px; object-fit: contain; display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,.12)); }
+  .tile .play-badge { position: absolute; right: 3px; bottom: 3px; width: 16px; height: 16px; border-radius: 50%; background: rgba(13,23,40,.75); color: #fff; display: grid; place-items: center; backdrop-filter: blur(2px); }
+  .tile .play-badge svg { width: 9px; height: 9px; fill: currentColor; stroke: none; }
   .tile { background: color-mix(in srgb, var(--c, #94a3b8) 15%, transparent); color: var(--c, #94a3b8); }
   .t-Video { --c: #3b82f6; }
   .t-Music { --c: #a855f7; }
@@ -313,7 +317,6 @@
     <section class="page" data-page="downloads"><h1>Downloads</h1><div data-list="downloads"></div></section>
     <section class="page" data-page="queue"><h1>Queue</h1><div data-list="queue"></div></section>
     <section class="page" data-page="completed"><h1>Completed</h1><div data-list="completed"></div></section>
-    <section class="page" data-page="media"><h1>Video / Audio</h1><div data-list="media"></div></section>
 
     <!-- Scheduler -->
     <section class="page" data-page="scheduler">
@@ -586,7 +589,7 @@ async function act(fn, ...args) {
 // ---------- navigation ----------
 const PAGES = [
   ["home", "Home", I.home], ["downloads", "Downloads", I.dl], ["queue", "Queue", I.queue],
-  ["completed", "Completed", I.check], ["media", "Video/Audio", I.media], ["scheduler", "Scheduler", I.clock],
+  ["completed", "Completed", I.check], ["scheduler", "Scheduler", I.clock],
   ["extension", "Browser Extension", I.puzzle], ["settings", "Settings", I.gear],
 ];
 $("#nav").innerHTML = PAGES.map(([id, label, ic]) =>
@@ -608,21 +611,53 @@ window.go = go;
 $("#nav").onclick = (e) => { const b = e.target.closest("[data-go]"); if (b) go(b.dataset.go); };
 
 // ---------- list ----------
-let data = [], filter = "all", query = "", selected = null, qFilter = "*";
+let data = [], filter = "all", cFilter = "all", query = "", selected = null, qFilter = "*";
 const queueName = (id) => (S?.queues || []).find((q) => q.id === id)?.name || "";
 const seenIds = new Set(); // cards already shown (only new ones animate in)
-const FILTERS = [["all", "All"], ["downloading", "Downloading"], ["completed", "Completed"], ["paused", "Paused"], ["scheduled", "Scheduled"]];
+const previews = new Map(), pendingPreviews = new Set();
+const FILTERS = [["all", "All"], ["downloading", "Downloading"], ["completed", "Completed"], ["paused", "Paused"], ["scheduled", "Scheduled"], ["media", "Video/Audio"]];
 const statusOf = (r) => r.status === "done" ? "completed" : r.status === "queued" ? "scheduled" : r.status === "error" ? "paused" : r.status;
+const isMedia = (r) => r.category === "Video" || r.category === "Music";
 function rowsFor(view) {
   let rows = data.slice().reverse();
   if (query) rows = rows.filter((r) => (r.file + " " + r.url).toLowerCase().includes(query));
   switch (view) {
     case "queue": return rows.reverse().filter((r) => ["queued", "paused", "error"].includes(r.status) && (qFilter === "*" || (r.queue || "") === qFilter)); // in the order they will run
-    case "completed": return rows.filter((r) => r.status === "done").sort((a, b) => b.finished - a.finished);
-    case "media": return rows.filter((r) => r.category === "Video" || r.category === "Music");
+    case "completed":
+      rows = rows.filter((r) => r.status === "done").sort((a, b) => b.finished - a.finished);
+      return cFilter === "media" ? rows.filter(isMedia) : rows;
   }
+  if (filter === "media") return rows.filter(isMedia);
   return filter === "all" ? rows : rows.filter((r) => statusOf(r) === filter);
 }
+
+function tileHTML(r, cat) {
+  const key = `${r.id}:${r.status === "done" ? 1 : 0}:${r.file || ""}`;
+  const pv = previews.get(key);
+  if (!pv && !pendingPreviews.has(key) && typeof itemPreview === "function") {
+    pendingPreviews.add(key);
+    itemPreview(r.id).then((res) => {
+      pendingPreviews.delete(key);
+      previews.set(key, res || {});
+      if (res && res.src) render();
+    }).catch(() => pendingPreviews.delete(key));
+  }
+  if (pv && pv.src) {
+    const cls = pv.mode === "cover" ? "thumb" : "ficon";
+    const play = pv.mode === "cover" && cat === "Video"
+      ? `<span class="play-badge"><svg viewBox="0 0 24 24"><path d="m8 5 12 7-12 7z"/></svg></span>` : "";
+    return `<img class="${cls}" src="${escapeHtml(pv.src)}" alt="" data-fallback="${escapeHtml(cat)}">${play}`;
+  }
+  return icon(I[cat] || I.Other);
+}
+document.addEventListener("error", (e) => {
+  const img = e.target;
+  if (img && img.tagName === "IMG" && img.dataset.fallback) {
+    const cat = img.dataset.fallback;
+    const p = img.parentElement;
+    if (p) p.innerHTML = icon(I[cat] || I.Other);
+  }
+}, true);
 
 function card(r) {
   const cat = r.category || "Other";
@@ -657,7 +692,7 @@ function card(r) {
   const fresh = !seenIds.has(r.id);
   seenIds.add(r.id);
   return `<div class="card ${r.status}${r.id === selected ? " selected" : ""}${fresh ? " new" : ""}" data-id="${r.id}">
-    <div class="tile t-${cat.replace(/\W/g, "")}">${icon(I[cat] || I.Other)}</div>
+    <div class="tile t-${cat.replace(/\W/g, "")}">${tileHTML(r, cat)}</div>
     <div class="info"><div class="name" title="${escapeHtml(r.url)}">${escapeHtml(r.file || "Starting…")}${r.queue && r.status !== "done" && queueName(r.queue) ? ` <span class="qbadge">${escapeHtml(queueName(r.queue))}</span>` : ""}</div>
       <div class="meta">${meta}${right}</div>
       ${r.status === "done" ? "" : `<div class="bar"><i style="width:${pct}%"></i></div>`}</div>
@@ -671,11 +706,12 @@ function emptyFor(view) {
     home: ["No downloads yet", "Paste a link above, drop one onto the window, or download a file in your browser."],
     downloads: ["No downloads", "Everything you download shows up here."],
     queue: ["The queue is empty", "Paused, waiting and failed downloads appear here."],
-    completed: ["Nothing completed yet", "Finished downloads are listed here, newest first."],
-    media: ["No video or audio yet", "Play a video in your browser and use the Velo extension to grab it."],
+    completed: cFilter === "media"
+      ? ["No video or audio yet", "Play a video in your browser and use the Velo extension to grab it."]
+      : ["Nothing completed yet", "Finished downloads are listed here, newest first."],
   }[view];
   if (query) return `<div class="empty"><div class="ill">${icon(I.dl)}</div><b>No matches</b>Nothing matches “${escapeHtml(query)}”.</div>`;
-  return `<div class="empty"><div class="ill">${icon(view === "completed" ? I.check : view === "media" ? I.media : I.dl)}</div><b>${m[0]}</b>${m[1]}</div>`;
+  return `<div class="empty"><div class="ill">${icon(view === "completed" ? (cFilter === "media" ? I.media : I.check) : I.dl)}</div><b>${m[0]}</b>${m[1]}</div>`;
 }
 
 function render() {
@@ -685,23 +721,27 @@ function render() {
     const showChips = page === "home" || page === "downloads";
     const qChips = page === "queue" && S?.queues?.length
       ? `<div class="chips">${[["*", "All queues"], ["", "Main"], ...S.queues.map((q) => [q.id, q.name])].map(([id, n]) => `<button class="chip${qFilter === id ? " on" : ""}" data-qfilter="${escapeHtml(id)}">${escapeHtml(n)}</button>`).join("")}</div>` : "";
-    const counts = Object.fromEntries(FILTERS.map(([f]) => [f, f === "all" ? data.length : data.filter((r) => statusOf(r) === f).length]));
+    const doneRows = data.filter((r) => r.status === "done");
+    const cChips = page === "completed"
+      ? `<div class="chips" style="align-items:center"><button class="chip${cFilter === "all" ? " on" : ""}" data-cfilter="all">All (${doneRows.length})</button><button class="chip${cFilter === "media" ? " on" : ""}" data-cfilter="media">Video/Audio (${doneRows.filter(isMedia).length})</button>${doneRows.length ? `<button class="iconbtn" style="margin-left:auto" data-bulk="clear" title="Clear completed" aria-label="Clear completed downloads">${icon(I.trash)}</button>` : ""}</div>` : "";
+    const counts = Object.fromEntries(FILTERS.map(([f]) => [f, f === "all" ? data.length : f === "media" ? data.filter(isMedia).length : data.filter((r) => statusOf(r) === f).length]));
     host.innerHTML = (page === "home" ? `<div class="listhead"><h3>Downloads (${data.length})</h3><div class="acts">
         <button class="btn" data-bulk="add">${icon(I.plus)}Add</button>
         <button class="iconbtn" data-bulk="resumeAll" title="Resume all" aria-label="Resume all">${icon(I.play)}</button>
         <button class="iconbtn" data-bulk="pauseAll" title="Pause all" aria-label="Pause all">${icon(I.pause)}</button>
         <button class="iconbtn" data-bulk="clear" title="Clear completed" aria-label="Clear completed downloads">${icon(I.trash)}</button></div></div>` : "") +
-      qChips + (showChips ? `<div class="chips">${FILTERS.map(([f, l]) => `<button class="chip${filter === f ? " on" : ""}" data-filter="${f}">${l} (${counts[f]})</button>`).join("")}</div>` : "") +
+      qChips + cChips + (showChips ? `<div class="chips">${FILTERS.map(([f, l]) => `<button class="chip${filter === f ? " on" : ""}" data-filter="${f}">${l} (${counts[f]})</button>`).join("")}</div>` : "") +
       (rows.length ? `<div class="list">${rows.map(card).join("")}</div>` : emptyFor(page));
   }
   const active = data.filter((r) => r.status === "downloading").length;
-  const setCount = (id, n) => { const el = $(`[data-count="${id}"]`); el.hidden = !n; el.textContent = n; };
+  const setCount = (id, n) => { const el = $(`[data-count="${id}"]`); if (el) { el.hidden = !n; el.textContent = n; } };
   setCount("downloads", active);
   setCount("queue", data.filter((r) => ["queued", "paused", "error"].includes(r.status)).length);
 }
 
 document.addEventListener("click", (e) => {
   const f = e.target.closest("[data-filter]"); if (f) { filter = f.dataset.filter; render(); return; }
+  const cf = e.target.closest("[data-cfilter]"); if (cf) { cFilter = cf.dataset.cfilter; render(); return; }
   const qf = e.target.closest("[data-qfilter]"); if (qf) { qFilter = qf.dataset.qfilter; render(); return; }
   const b = e.target.closest("[data-bulk]");
   if (b) {
@@ -793,7 +833,7 @@ async function refresh() {
 // ---------- search ----------
 $("#search").oninput = (e) => {
   query = e.target.value.trim().toLowerCase();
-  if (query && !["home", "downloads", "queue", "completed", "media"].includes(page)) go("downloads"); else render();
+  if (query && !["home", "downloads", "queue", "completed"].includes(page)) go("downloads"); else render();
 };
 document.addEventListener("keydown", (e) => {
   if (e.ctrlKey && e.key.toLowerCase() === "k") { e.preventDefault(); $("#search").focus(); $("#search").select(); }
@@ -1086,6 +1126,22 @@ function bVisible() {
   const m = bMatcher();
   return batch.links.filter((l) => bInCat(l, bCat) && m(l));
 }
+const extIcons = new Map();
+function extIconHTML(name, cat) {
+  const m = (name || "").match(/\.([a-z0-9]{1,8})$/i);
+  if (!m) return icon(I[cat] || I.Other);
+  const ext = "." + m[1].toLowerCase();
+  const pv = extIcons.get(ext);
+  if (pv === undefined && typeof fileTypeIcon === "function") {
+    extIcons.set(ext, null);
+    fileTypeIcon("file" + ext).then((res) => {
+      extIcons.set(ext, res || {});
+      if (res && res.src && $("#batchDlg").open) bRender();
+    }).catch(() => {});
+  }
+  if (pv && pv.src) return `<img class="ficon" style="width:20px;height:20px" src="${escapeHtml(pv.src)}" alt="" data-fallback="${escapeHtml(cat)}">`;
+  return icon(I[cat] || I.Other);
+}
 function bRender() {
   const rows = bVisible();
   $("#bChips").innerHTML = BCHIPS.filter(([k]) => k === "files" || k === "all" || batch.links.some((l) => l.category === k))
@@ -1093,7 +1149,7 @@ function bRender() {
   $("#bList").innerHTML = rows.length ? rows.map((l) => {
     const cat = l.category || "Other";
     return `<label class="brow" title="${escapeHtml(l.url)}"><input type="checkbox" data-u="${escapeHtml(l.url)}"${bSel.has(l.url) ? " checked" : ""}>
-      <div class="tile t-${cat.replace(/\W/g, "")}">${icon(I[cat] || I.Other)}</div>
+      <div class="tile t-${cat.replace(/\W/g, "")}">${extIconHTML(l.name, cat)}</div>
       <div><div class="n">${escapeHtml(l.file ? l.name : (l.text || l.name))}</div><div class="u">${escapeHtml(l.url)}</div></div></label>`;
   }).join("") : `<div class="empty" style="border:0">No links match.</div>`;
   $("#bCount").textContent = `${bSel.size} selected of ${batch.links.length}`;

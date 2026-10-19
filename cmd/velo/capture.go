@@ -81,6 +81,7 @@ func showCapture(a *app) {
 		w.Bind("addDownload", func(o addOptions) (int, error) { return a.addWith(o) })
 		w.Bind("folderFor", func(name string) string { return a.eng.FolderFor(engine.SafeName(name)) })
 		w.Bind("categoryOf", func(name string) string { return engine.CategoryOf(name) })
+		w.Bind("fileTypeIcon", func(name string) thumbResult { return a.fileTypeIcon(name) })
 		w.Bind("getSettings", func() Settings { return a.getSettings() })
 		w.Bind("openMain", func() { go a.show() })
 		w.Bind("closeDialog", func() { go closeCapture() })

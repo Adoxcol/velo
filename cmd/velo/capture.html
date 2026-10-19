@@ -13,8 +13,9 @@
   :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
   .top { display: flex; gap: 12px; align-items: center; padding: 12px 18px; background: var(--bg2); border-bottom: 1px solid var(--line); }
-  .tile { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; flex: none; }
+  .tile { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; flex: none; overflow: hidden; }
   .tile svg { width: 21px; height: 21px; }
+  .tile img.ficon { width: 24px; height: 24px; object-fit: contain; display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,.12)); }
   .tile { background: color-mix(in srgb, var(--c, #94a3b8) 15%, transparent); color: var(--c, #94a3b8); }
   .t-Video { --c: #3b82f6; }
   .t-Music { --c: #a855f7; }
@@ -103,10 +104,20 @@ async function showFolder() {
   $("dir").dataset.full = full;
 }
 async function showKind() {
-  const cat = cur.kind ? "Video" : (await categoryOf($("name").value)) || "Other";
+  const fname = $("name").value;
+  const cat = cur.kind ? "Video" : (await categoryOf(fname)) || "Other";
   $("tile").className = "tile t-" + cat.replace(/\W/g, "");
-  $("tile").innerHTML = svg(ICON[cat] || ICON.Other);
-  const ext = ($("name").value.match(/\.([a-z0-9]{1,6})$/i) || [])[1];
+  const pv = !cur.kind && typeof fileTypeIcon === "function" ? await fileTypeIcon(fname).catch(() => null) : null;
+  if (pv && pv.src) {
+    const img = document.createElement("img");
+    img.className = "ficon";
+    img.src = pv.src;
+    img.onerror = () => { $("tile").innerHTML = svg(ICON[cat] || ICON.Other); };
+    $("tile").replaceChildren(img);
+  } else {
+    $("tile").innerHTML = svg(ICON[cat] || ICON.Other);
+  }
+  const ext = (fname.match(/\.([a-z0-9]{1,6})$/i) || [])[1];
   $("sub").innerHTML = [size(cur.size) && `<b>${size(cur.size)}</b>`, ext && ext.toUpperCase() + " file", cur.site && "from " + escapeHtml(cur.site)].filter(Boolean).map((x) => `<span>${x}</span>`).join("");
 }
 const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));

@@ -115,6 +115,7 @@ func showMini(a *app) {
 
 		w.Bind("appStatus", func() status { return a.status() })
 		w.Bind("getSettings", func() Settings { return a.getSettings() })
+		w.Bind("itemPreview", func(id int) thumbResult { return a.itemPreview(id) })
 		w.Bind("pause", func(id int) error { return a.pause(id) })
 		w.Bind("resume", func(id int) error { return a.resume(id) })
 		w.Bind("openMain", func() { go a.show() })

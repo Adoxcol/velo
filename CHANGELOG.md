@@ -2,11 +2,20 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.7 — 2026-10-19
+
+### New
+- **Video thumbnails, image previews and native file/app icons:** Download cards, Velo Mini, the browser capture dialog and the batch download dialog now display real previews—instant YouTube/Shorts thumbnails while queued or downloading, extracted frame thumbnails (with a play badge) for completed videos, cropped previews for images, and real Windows file-type and embedded `.exe` application icons. Extracted thumbnails are cached on disk across restarts.
+
+### Improved
+- **Cleaner sidebar navigation:** Merged the separate **Video/Audio** sidebar tab into filter chips on **Home**, **Downloads** and **Completed**, and added a one-click **Clear completed** button directly on the **Completed** page.
+
 ## 0.8.6 — 2026-10-19
 
 ### Fixed
 - **Video tools (`ffmpeg`, `yt-dlp`, `deno`) are found reliably even when missing from the process `PATH`:** Velo now reads the live Windows Registry `Path` (`HKCU` and `HKLM`) and checks standard package-manager directories (WinGet Links and Packages, Scoop, Chocolatey, Homebrew, `~/.local/bin`, `~/.deno/bin`, Snap) for both video page downloads and HLS/DASH streams. Tools installed while Velo is already running work immediately without restarting Velo or rebooting.
 - **Prevent Windows from dropping the User `PATH` when `PATH` exceeds 4,095 characters:** When adding Velo to `PATH` would push `System PATH + User PATH` past Windows's 4,095-character `WM_SETTINGCHANGE` buffer limit, the installer now deduplicates the User `PATH`, removes entries already present in System `PATH`, and compacts `%LOCALAPPDATA%` and `%USERPROFILE%` prefixes.
+
 
 ## 0.8.5 — 2026-10-19
 
