@@ -32,6 +32,10 @@ jobs:
         run: for f in extension/*.js; do node --check "$f"; done
       - name: Test video page routing
         run: node --test tools/tests/video.test.cjs
+      - name: Check site changelog
+        run: |
+          go run ./tools/changelog
+          git diff --exit-code site/changelog.html
 
   portable-cli:
     strategy:

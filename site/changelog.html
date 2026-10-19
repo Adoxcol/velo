@@ -78,8 +78,21 @@
 </header>
 <main>
   <div class="wrap">
+    <article class="rel" id="v0.8.8">
+      <div class="ver"><b>0.8.8</b><span>2026-10-19</span><br><span class="latest">Latest</span></div>
+      <div class="body">
+        <h3>New</h3>
+        <ul>
+          <li><b>One-click Video Tools Manager:</b> <b>Settings → Video Grabber</b> now shows the live status and path of <code>yt-dlp</code>, <code>ffmpeg</code>, and <code>deno</code>, with a one-click <b>Install / Update video tools</b> button (and a <b>Fix video tools</b> button directly on failed video cards) that downloads or updates them into Velo&#39;s folder.</li>
+          <li><b>Video quality and audio-only selector:</b> Pick <b>Best quality</b>, <b>1080p</b>, <b>720p</b>, <b>480p</b>, or <b>Audio only (MP3)</b> directly from the browser extension popup, the on-video <b>Download with Velo</b> menu, or the Add Download and Browser Capture dialogs for video pages, HLS, and DASH streams. Audio-only downloads extract <code>.mp3</code> and categorize under <b>Music</b>.</li>
+          <li><b>Per-segment progress bar:</b> Multi-connection downloads now display live IDM-style parallel segment progress chunks inside each download card&#39;s progress bar.</li>
+          <li><b>Drop a <code>.txt</code> link list to batch-download:</b> Dragging and dropping a <code>.txt</code> file (or multiple links) onto the Velo window opens the <b>Batch Download</b> dialog with all links pre-selected.</li>
+          <li><b>Delete file from disk:</b> Added <b>Delete file from disk…</b> (with confirmation) to the context menu of completed downloads alongside <b>Remove from list</b>.</li>
+        </ul>
+      </div>
+    </article>
     <article class="rel" id="v0.8.7">
-      <div class="ver"><b>0.8.7</b><span>2026-10-19</span><br><span class="latest">Latest</span></div>
+      <div class="ver"><b>0.8.7</b><span>2026-10-19</span></div>
       <div class="body">
         <h3>New</h3>
         <ul>
@@ -97,7 +110,7 @@
         <h3>Fixed</h3>
         <ul>
           <li><b>Video tools (<code>ffmpeg</code>, <code>yt-dlp</code>, <code>deno</code>) are found reliably even when missing from the process <code>PATH</code>:</b> Velo now reads the live Windows Registry <code>Path</code> (<code>HKCU</code> and <code>HKLM</code>) and checks standard package-manager directories (WinGet Links and Packages, Scoop, Chocolatey, Homebrew, <code>~/.local/bin</code>, <code>~/.deno/bin</code>, Snap) for both video page downloads and HLS/DASH streams. Tools installed while Velo is already running work immediately without restarting Velo or rebooting.</li>
-          <li><b>Prevent Windows from dropping the User <code>PATH</code> when <code>PATH</code> exceeds 4,095 characters:</b> When adding Velo to <code>PATH</code> would push <code>System PATH + User PATH</code> past Windows's 4,095-character <code>WM_SETTINGCHANGE</code> buffer limit, the installer now deduplicates the User <code>PATH</code>, removes entries already present in System <code>PATH</code>, and compacts <code>%LOCALAPPDATA%</code> and <code>%USERPROFILE%</code> prefixes.</li>
+          <li><b>Prevent Windows from dropping the User <code>PATH</code> when <code>PATH</code> exceeds 4,095 characters:</b> When adding Velo to <code>PATH</code> would push <code>System PATH + User PATH</code> past Windows&#39;s 4,095-character <code>WM_SETTINGCHANGE</code> buffer limit, the installer now deduplicates the User <code>PATH</code>, removes entries already present in System <code>PATH</code>, and compacts <code>%LOCALAPPDATA%</code> and <code>%USERPROFILE%</code> prefixes.</li>
         </ul>
       </div>
     </article>

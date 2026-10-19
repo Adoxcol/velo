@@ -6,7 +6,7 @@ All notable changes to Velo. The newest version is first.
 
 ### New
 - **One-click Video Tools Manager:** **Settings → Video Grabber** now shows the live status and path of `yt-dlp`, `ffmpeg`, and `deno`, with a one-click **Install / Update video tools** button (and a **Fix video tools** button directly on failed video cards) that downloads or updates them into Velo's folder.
-- **Video quality and audio-only selector:** Pick **Best quality**, **1080p**, **720p**, **480p**, or **Audio only (MP3)** in the Add Download and Browser Capture dialogs for video pages, HLS, and DASH streams. Audio-only downloads extract `.mp3` and categorize under **Music**.
+- **Video quality and audio-only selector:** Pick **Best quality**, **1080p**, **720p**, **480p**, or **Audio only (MP3)** directly from the browser extension popup, the on-video **Download with Velo** menu, or the Add Download and Browser Capture dialogs for video pages, HLS, and DASH streams. Audio-only downloads extract `.mp3` and categorize under **Music**.
 - **Per-segment progress bar:** Multi-connection downloads now display live IDM-style parallel segment progress chunks inside each download card's progress bar.
 - **Drop a `.txt` link list to batch-download:** Dragging and dropping a `.txt` file (or multiple links) onto the Velo window opens the **Batch Download** dialog with all links pre-selected.
 - **Delete file from disk:** Added **Delete file from disk…** (with confirmation) to the context menu of completed downloads alongside **Remove from list**.
