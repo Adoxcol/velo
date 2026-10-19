@@ -121,12 +121,13 @@ func (a *app) register(d *engine.Download) *item {
 	return it
 }
 
-// batchReq is a list of links sent by "Download all with Velo".
+// batchReq is a list of links sent by "Download all with Velo" or a dropped .txt file.
 type batchReq struct {
 	Page      string `json:"page"`
 	Referrer  string `json:"referrer"`
 	Cookies   string `json:"cookies"`
 	UserAgent string `json:"userAgent"`
+	FromList  bool   `json:"-"` // dropped/imported link list: pre-select all valid URLs
 	Links     []struct {
 		URL  string `json:"url"`
 		Text string `json:"text"`
@@ -147,6 +148,39 @@ type batchView struct {
 	Links []batchLink `json:"links"`
 }
 
+// loadBatchLinks populates a pending batch from a dropped or pasted list of URLs.
+func (a *app) loadBatchLinks(urls []string, source string) int {
+	seen := map[string]bool{}
+	b := &batchReq{Page: source, FromList: true}
+	if b.Page == "" {
+		b.Page = "link list"
+	}
+	for _, raw := range urls {
+		u := strings.TrimSpace(raw)
+		if u == "" || seen[u] {
+			continue
+		}
+		if lu := strings.ToLower(u); !strings.HasPrefix(lu, "http://") && !strings.HasPrefix(lu, "https://") {
+			continue
+		}
+		seen[u] = true
+		b.Links = append(b.Links, struct {
+			URL  string `json:"url"`
+			Text string `json:"text"`
+		}{URL: u, Text: linkName(u)})
+		if len(b.Links) >= 2000 {
+			break
+		}
+	}
+	if len(b.Links) == 0 {
+		return 0
+	}
+	a.mu.Lock()
+	a.batch = b
+	a.mu.Unlock()
+	return len(b.Links)
+}
+
 // takeBatch hands the pending batch to the window (once), labelling each
 // link with its file name and type.
 func (a *app) takeBatch() *batchView {
@@ -159,6 +193,9 @@ func (a *app) takeBatch() *batchView {
 	v := &batchView{Page: b.Page}
 	for _, l := range b.Links {
 		ok, kind := engine.Downloadable(l.URL)
+		if b.FromList {
+			ok = true
+		}
 		name := linkName(l.URL)
 		cat := engine.CategoryOf(name)
 		if kind != "" {
@@ -303,6 +340,7 @@ type addOptions struct {
 	Start     bool   `json:"start"`    // false = add paused
 	Checksum  string `json:"checksum"` // optional, verified when done
 	Queue     string `json:"queue"`    // named queue ID, "" = main
+	Format    string `json:"format"`   // video quality: "" (best), "1080p", "720p", "480p", "audio"
 	User      string `json:"user"`     // optional HTTP login
 	Pass      string `json:"pass"`
 }
@@ -324,7 +362,7 @@ func (a *app) addWith(o addOptions) (int, error) {
 		if name := strings.TrimSpace(o.Filename); name != "" {
 			base.Filename = name // otherwise keep the browser's suggested name
 		}
-		base.Dir, base.Segments, base.Checksum, base.Queue = o.Dir, o.Segments, sum, o.Queue
+		base.Dir, base.Segments, base.Checksum, base.Queue, base.Format = o.Dir, o.Segments, sum, o.Queue, o.Format
 		if o.User != "" {
 			base.User, base.Pass = o.User, o.Pass
 		}
@@ -346,7 +384,7 @@ func (a *app) addWith(o addOptions) (int, error) {
 	if o.Dir != "" && !filepath.IsAbs(o.Dir) {
 		return 0, errors.New("choose a full folder path")
 	}
-	r := engine.Request{URL: o.URL, Filename: strings.TrimSpace(o.Filename), Dir: o.Dir, Segments: o.Segments, Kind: kind, Checksum: sum, User: o.User, Pass: o.Pass, Queue: o.Queue}
+	r := engine.Request{URL: o.URL, Filename: strings.TrimSpace(o.Filename), Dir: o.Dir, Segments: o.Segments, Kind: kind, Format: o.Format, Checksum: sum, User: o.User, Pass: o.Pass, Queue: o.Queue}
 	if !o.Start {
 		it := a.register(&engine.Download{Req: r, Status: "paused"})
 		a.kick()
@@ -743,6 +781,25 @@ func (a *app) remove(id int) error {
 	return nil
 }
 
+// deleteFile removes a download from the list and deletes its completed file
+// from disk.
+func (a *app) deleteFile(id int) error {
+	it := a.get(id)
+	if it == nil {
+		return errors.New("no such download")
+	}
+	p, _ := it.d.Info()
+	if err := a.remove(id); err != nil {
+		return err
+	}
+	if p != "" {
+		if err := os.Remove(p); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+	return nil
+}
+
 func (a *app) getSettings() Settings {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -873,9 +930,10 @@ type row struct {
 	Finished    int64   `json:"finished"` // unix ms, 0 until done
 	Error       string  `json:"error,omitempty"`
 	Queue       string  `json:"queue,omitempty"`    // named queue ID
-	Verified    bool    `json:"verified,omitempty"` // matched the checksum given when added
-	Retrying    bool    `json:"retrying,omitempty"` // waiting after a network drop
-	RetryIn     int     `json:"retryIn,omitempty"`  // seconds until the next try
+	Verified    bool         `json:"verified,omitempty"` // matched the checksum given when added
+	Retrying    bool         `json:"retrying,omitempty"` // waiting after a network drop
+	RetryIn     int          `json:"retryIn,omitempty"`  // seconds until the next try
+	Gaps        [][2]float64 `json:"gaps,omitempty"`     // unfetched [startPct, widthPct] segment gaps
 }
 
 func (a *app) rows() []row {
@@ -904,7 +962,14 @@ func (a *app) rows() []row {
 			Connections: d.Connections(), File: name, URL: d.Req.URL, Kind: d.Req.Kind,
 			Category: engine.CategoryOf(name), Added: it.added.UnixMilli()}
 		if d.Req.Kind != "" {
-			r.Category = "Video"
+			if d.Req.Format == "audio" {
+				r.Category = "Music"
+			} else {
+				r.Category = "Video"
+			}
+		}
+		if status != "done" {
+			r.Gaps = d.RemainingGaps()
 		}
 		if p != "" {
 			r.Folder = filepath.Dir(p)

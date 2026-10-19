@@ -81,8 +81,9 @@ func attrs(s string) map[string]string {
 }
 
 // loadPlaylist fetches u; if it's a master playlist it follows the variant
-// with the highest bandwidth.
+// with the highest bandwidth (or the highest within r.Format's height cap).
 func (e *Engine) loadPlaylist(ctx context.Context, r Request, u string) (*hlsPlaylist, error) {
+	maxH := maxFormatHeight(r.Format)
 	for depth := 0; depth < 3; depth++ {
 		text, err := e.fetchText(ctx, r, u)
 		if err != nil {
@@ -93,21 +94,34 @@ func (e *Engine) loadPlaylist(ctx context.Context, r Request, u string) (*hlsPla
 		}
 		if strings.Contains(text, "#EXT-X-STREAM-INF") {
 			best, bestBW := "", int64(-1)
+			fit, fitBW := "", int64(-1)
 			sc := bufio.NewScanner(strings.NewReader(text))
 			for sc.Scan() {
 				line := strings.TrimSpace(sc.Text())
 				if !strings.HasPrefix(line, "#EXT-X-STREAM-INF:") {
 					continue
 				}
-				bw, _ := strconv.ParseInt(attrs(line)["BANDWIDTH"], 10, 64)
+				at := attrs(line)
+				bw, _ := strconv.ParseInt(at["BANDWIDTH"], 10, 64)
+				h := 0
+				if _, hs, ok := strings.Cut(at["RESOLUTION"], "x"); ok {
+					h, _ = strconv.Atoi(hs)
+				}
 				for sc.Scan() { // the URI is the next non-comment line
 					if next := strings.TrimSpace(sc.Text()); next != "" && !strings.HasPrefix(next, "#") {
+						target := resolve(u, next)
 						if bw > bestBW {
-							best, bestBW = resolve(u, next), bw
+							best, bestBW = target, bw
+						}
+						if maxH > 0 && h > 0 && h <= maxH && bw > fitBW {
+							fit, fitBW = target, bw
 						}
 						break
 					}
 				}
+			}
+			if fit != "" {
+				best = fit
 			}
 			if best == "" {
 				return nil, errors.New("master playlist has no variants")

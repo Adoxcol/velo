@@ -138,8 +138,9 @@
   .meta { display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: 12.5px; margin-top: 3px; white-space: nowrap; overflow: hidden; }
   .meta .dot::before { content: "•"; margin-right: 10px; color: var(--faint); }
   .meta .left { margin-left: auto; }
-  .bar { height: 6px; border-radius: 4px; background: var(--line-2); overflow: hidden; margin-top: 9px; }
+  .bar { height: 6px; border-radius: 4px; background: var(--line-2); overflow: hidden; margin-top: 9px; position: relative; }
   .bar > i { display: block; height: 100%; border-radius: 4px; background: var(--primary); transition: width .5s ease; }
+  .bar > b { position: absolute; top: 0; bottom: 0; background: var(--line-2); pointer-events: none; transition: left .4s ease, width .4s ease; }
   .card.done .bar > i { background: var(--ok); }
   .card.paused .bar > i, .card.queued .bar > i { background: var(--warn); }
   .card.error .bar > i { background: var(--err); }
@@ -391,7 +392,12 @@
             <p class="hint" data-i18n-html>Downloads of common file types in your browser are handed to Velo automatically. See <b>Browser Extension</b> in the sidebar to set it up.</p>
           </div>
           <div class="sec" data-sec="video"><h2>Video grabber</h2>
-            <p class="hint" data-i18n-html>The extension detects HLS (<code>.m3u8</code>) and DASH (<code>.mpd</code>) streams and media files while a video plays. Velo picks the best quality and merges audio and video with ffmpeg. YouTube, Facebook video pages and X posts use optional yt-dlp, ffmpeg and Deno tools installed on PATH or beside Velo. Page downloads select the best quality automatically. DRM and live streams are not supported.</p>
+            <p class="hint" data-i18n-html>The extension detects HLS (<code>.m3u8</code>) and DASH (<code>.mpd</code>) streams and media files while a video plays. Velo picks the best quality and merges audio and video with ffmpeg. YouTube, Facebook video pages and X posts use optional yt-dlp, ffmpeg and Deno tools installed on PATH or beside Velo. DRM and live streams are not supported.</p>
+            <div id="vtoolsList" style="margin-top:14px;border-top:1px solid var(--line-2)"></div>
+            <div class="opt" style="border-bottom:0;padding-top:14px">
+              <div><div class="t">Video helper tools</div><div class="d" id="vtoolsMsg">Automatically downloads or updates yt-dlp, ffmpeg and Deno into Velo's folder.</div></div>
+              <button class="btn primary" id="vtoolsBtn">Install / Update video tools</button>
+            </div>
           </div>
           <div class="sec" data-sec="appearance"><h2>Appearance</h2>
             <div class="opt"><div><div class="t">Theme</div></div>
@@ -416,7 +422,7 @@
 
 <div class="menu" id="menu"></div>
 <div id="toast"></div>
-<div class="dropzone" id="dropzone">Drop a link to download it</div>
+<div class="dropzone" id="dropzone">Drop a link or .txt link list to download</div>
 
 <dialog id="addDlg">
   <div class="dh"><span id="aTitle">Add Download</span><button class="iconbtn" data-close title="Close" aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
@@ -426,12 +432,19 @@
     <div class="probe" id="aProbe"></div>
     <div class="formrow"><span>Save to</span><div class="inp ro"><svg class="i" viewBox="0 0 24 24" style="color:var(--faint)"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><input id="aDir" readonly><button class="link" id="aDirChange">Change</button></div></div>
     <div class="formrow"><span>File name</span><div class="inp"><input id="aName" spellcheck="false" placeholder="From the server"></div></div>
+    <div class="formrow" id="aFormatRow" hidden><span>Quality</span><div class="inp"><select id="aFormat">
+      <option value="">Best quality (Video + Audio)</option>
+      <option value="1080p">1080p Full HD</option>
+      <option value="720p">720p HD</option>
+      <option value="480p">480p SD</option>
+      <option value="audio">Audio only (MP3)</option>
+    </select></div></div>
     <div class="formrow" id="aLoginRow" hidden><span>Login</span><div style="display:flex;gap:8px;flex:1">
       <div class="inp" style="flex:1"><input id="aUser" spellcheck="false" autocomplete="off" placeholder="Username"></div>
       <div class="inp" style="flex:1"><input id="aPass" type="password" autocomplete="off" placeholder="Password"></div></div></div>
-    <div class="formrow"><span>Checksum</span><div class="inp"><input id="aSum" spellcheck="false" placeholder="Optional: SHA-256, SHA-1 or MD5 to check the file"></div></div>
+    <div class="formrow" id="aSumRow"><span>Checksum</span><div class="inp"><input id="aSum" spellcheck="false" placeholder="Optional: SHA-256, SHA-1 or MD5 to check the file"></div></div>
     <div class="formrow" id="aQueueRow" hidden><span>Queue</span><div class="inp"><select id="aQueue"></select></div></div>
-    <div class="formrow"><span>Split into</span><div class="inp"><select id="aParts"></select></div></div>
+    <div class="formrow" id="aPartsRow"><span>Split into</span><div class="inp"><select id="aParts"></select></div></div>
     <div style="display:grid;gap:10px;margin:14px 0 4px">
       <label class="check"><input type="radio" name="aStart" value="now" checked> Start download immediately</label>
       <label class="check"><input type="radio" name="aStart" value="queue"> Add to queue (paused)</label>
@@ -678,7 +691,10 @@ function card(r) {
       `<button class="iconbtn" data-act="folder" title="Show in folder" aria-label="Show in folder">${icon(I.folder)}</button>`;
   } else if (r.status === "error") {
     meta = `<span class="badge err" title="${escapeHtml(r.error || "")}">${escapeHtml(shorten(r.error || "Failed", 80))}</span>`;
-    acts = `<button class="iconbtn" data-act="resume" title="Retry" aria-label="Retry">${icon(I.retry)}</button>`;
+    if (/yt-dlp|ffmpeg|video extraction failed/i.test(r.error || "")) {
+      acts = `<button class="btn" style="padding:5px 10px;font-size:12px" data-act="vtools" title="Install or update yt-dlp, ffmpeg and Deno">Fix video tools</button>`;
+    }
+    acts += `<button class="iconbtn" data-act="resume" title="Retry" aria-label="Retry">${icon(I.retry)}</button>`;
   } else {
     const label = r.status === "verifying" ? "Checking checksum…" : r.retrying ? (r.retryIn > 0 ? "Connection lost · retrying in " + r.retryIn + "s" : "Reconnecting…")
       : r.status === "queued" ? "Waiting in queue" : "Paused";
@@ -691,11 +707,14 @@ function card(r) {
                               : `<button class="iconbtn" data-act="cancel" title="Cancel" aria-label="Cancel download">${icon(I.x)}</button>`;
   const fresh = !seenIds.has(r.id);
   seenIds.add(r.id);
+  const barHTML = r.status === "done" ? "" : r.gaps?.length
+    ? `<div class="bar"><i style="width:100%;transition:none"></i>${r.gaps.map(([l, w]) => `<b style="left:${l}%;width:${w}%"></b>`).join("")}</div>`
+    : `<div class="bar"><i style="width:${pct}%"></i></div>`;
   return `<div class="card ${r.status}${r.id === selected ? " selected" : ""}${fresh ? " new" : ""}" data-id="${r.id}">
     <div class="tile t-${cat.replace(/\W/g, "")}">${tileHTML(r, cat)}</div>
     <div class="info"><div class="name" title="${escapeHtml(r.url)}">${escapeHtml(r.file || "Starting…")}${r.queue && r.status !== "done" && queueName(r.queue) ? ` <span class="qbadge">${escapeHtml(queueName(r.queue))}</span>` : ""}</div>
       <div class="meta">${meta}${right}</div>
-      ${r.status === "done" ? "" : `<div class="bar"><i style="width:${pct}%"></i></div>`}</div>
+      ${barHTML}</div>
     <div class="actions">${acts}</div></div>`;
 }
 const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -757,6 +776,7 @@ document.addEventListener("click", (e) => {
     case "pause": return act(pause, id);
     case "resume": return act(resume, id);
     case "folder": return act(showInFolder, id);
+    case "vtools": go("settings"); showSec("video"); startVideoToolsInstall(); return;
     case "cancel":
       ask(`Cancel “${r.file || r.url}” and delete the partial file?`, "Cancel download").then((ok) => ok && act(remove, id));
       return;
@@ -790,7 +810,11 @@ function openMenu(anchor, r) {
     if (i > 0) items.push(["up", I.up, "Move up"]);
     if (i >= 0 && i < q.length - 1) items.push(["down", I.down, "Move down"]);
   }
-  items.push(["hr"], ["remove", I.trash, r.status === "done" ? "Remove from list" : "Cancel and delete", "danger"]);
+  if (r.status === "done") {
+    items.push(["hr"], ["remove", I.x, "Remove from list"], ["deleteFile", I.trash, "Delete file from disk…", "danger"]);
+  } else {
+    items.push(["hr"], ["remove", I.trash, "Cancel and delete", "danger"]);
+  }
   m.innerHTML = items.map(([k, ic, l, cls]) => k === "hr" ? "<hr>" : `<button data-m="${k}" class="${cls || ""}">${icon(ic)}${l}</button>`).join("");
   const rect = anchor.getBoundingClientRect();
   m.style.display = "block";
@@ -805,6 +829,9 @@ function openMenu(anchor, r) {
     if (k === "pause") act(pause, r.id);
     if (k === "resume") act(resume, r.id);
     if (k === "remove") act(remove, r.id);
+    if (k === "deleteFile") {
+      ask(`Permanently delete “${r.file || r.url}” from your computer?`, "Delete file", "Keep file").then((ok) => ok && act(deleteFile, r.id));
+    }
     if (k === "relink") openRelink(r);
     if (k.startsWith("q:")) act(setQueue, r.id, k.slice(2));
     if (["now", "next", "up", "down"].includes(k)) act(reorder, r.id, k);
@@ -877,6 +904,11 @@ function partsOptions(def) {
   $("#aParts").innerHTML = [1, 2, 4, 8, 16, 32].map((n) =>
     `<option value="${n}"${n === def ? " selected" : ""}>${n} part${n > 1 ? "s" : ""}${n === def ? " (Recommended)" : ""}</option>`).join("");
 }
+function setVideoMode(isVideo) {
+  $("#aFormatRow").hidden = !isVideo;
+  $("#aPartsRow").hidden = !!isVideo;
+  $("#aSumRow").hidden = !!isVideo;
+}
 async function showAddDir() { $("#aDir").value = addDir || (await downloadDir()); }
 let pendingId = 0; // a browser download being confirmed in the dialog
 async function openAdd(url = "") {
@@ -887,6 +919,8 @@ async function openAdd(url = "") {
   addDir = "";
   defConn = await connections();
   partsOptions(defConn);
+  $("#aFormat").value = "";
+  setVideoMode(false);
   $("#aUrl").value = url; $("#aName").value = ""; $("#aSum").value = ""; fillQueuePicker(); $("#aUser").value = ""; $("#aPass").value = ""; $("#aLoginRow").hidden = true; $("#aProbe").textContent = ""; $("#aProbe").className = "probe";
   $$('input[name="aStart"]')[0].checked = true;
   await showAddDir();
@@ -908,6 +942,7 @@ async function openPending() {
   $("#aClear").hidden = true;
   $("#aName").value = v.filename || "";
   $("#aName").dataset.auto = "0";
+  setVideoMode(!!v.kind);
   const cat = (v.filename.match(/\.([a-z0-9]+)$/i) || [])[1];
   $("#aProbe").className = "probe";
   $("#aProbe").textContent = [v.size > 0 ? size(v.size) : "Size unknown", cat ? cat.toUpperCase() + " file" : null, "from your browser"].filter(Boolean).join(" · ");
@@ -921,18 +956,19 @@ $("#addDlg").addEventListener("close", () => {
 let probeTimer;
 async function runProbe() {
   const url = $("#aUrl").value.trim(), seq = ++probeSeq, p = $("#aProbe");
-  if (!/^https?:\/\//i.test(url)) { p.textContent = url ? "Enter a link starting with http:// or https://" : ""; p.className = "probe" + (url ? " err" : ""); return; }
+  if (!/^https?:\/\//i.test(url)) { p.textContent = url ? "Enter a link starting with http:// or https://" : ""; p.className = "probe" + (url ? " err" : ""); setVideoMode(false); return; }
   p.className = "probe"; p.textContent = "Checking link…";
   try {
     const info = await probe(url, $("#aUser").value, $("#aPass").value);
     if (seq !== probeSeq) return;
+    setVideoMode(!!info.kind);
     if (!$("#aName").value || $("#aName").dataset.auto === "1") { $("#aName").value = info.kind ? "" : info.name; $("#aName").dataset.auto = "1"; }
-    p.textContent = info.kind ? `Video stream (${info.kind.toUpperCase()}) · best quality is picked automatically`
+    p.textContent = info.kind ? `Video (${info.kind.toUpperCase()}) · choose quality or audio-only below`
       : [info.size > 0 ? size(info.size) : "Size unknown", info.category || null, info.resumable ? "Resumable" : "Can't resume (server doesn't support it)"].filter(Boolean).join(" · ");
   } catch (e) {
     if (seq !== probeSeq) return;
     p.className = "probe err";
-    if (/401/.test(String(e))) { // the site asks for a username and password
+    if (/ 401 /.test(String(e))) { // the site asks for a username and password
       p.textContent = $("#aUser").value ? "Wrong username or password." : "This site needs a username and password.";
       $("#aLoginRow").hidden = false;
       if (!$("#aUser").value) $("#aUser").focus();
@@ -942,15 +978,16 @@ async function runProbe() {
 $("#aUrl").oninput = () => { clearTimeout(probeTimer); probeTimer = setTimeout(runProbe, 450); };
 $("#aName").oninput = () => ($("#aName").dataset.auto = "0");
 $("#aPass").onchange = runProbe;
-$("#aClear").onclick = () => { $("#aUrl").value = ""; $("#aName").value = ""; $("#aProbe").textContent = ""; $("#aUrl").focus(); };
+$("#aClear").onclick = () => { $("#aUrl").value = ""; $("#aName").value = ""; $("#aProbe").textContent = ""; setVideoMode(false); $("#aUrl").focus(); };
 $("#aDirChange").onclick = async () => {
   try { const p = await pickFolder(addDir || (await downloadDir())); if (p) { addDir = p; showAddDir(); } } catch (e) { toast(String(e), true); }
 };
 $("#aGo").onclick = async () => {
   const start = $('input[name="aStart"]:checked').value === "now";
   const parts = +$("#aParts").value;
+  const format = $("#aFormatRow").hidden ? "" : $("#aFormat").value;
   try {
-    await addDownload({ pendingId, url: $("#aUrl").value.trim(), filename: $("#aName").value.trim(), dir: addDir, segments: parts === defConn ? 0 : parts, start, queue: $("#aQueue").value, checksum: $("#aSum").value.trim(), user: $("#aUser").value, pass: $("#aPass").value });
+    await addDownload({ pendingId, url: $("#aUrl").value.trim(), filename: $("#aName").value.trim(), dir: addDir, segments: parts === defConn ? 0 : parts, start, queue: $("#aQueue").value, format, checksum: $("#aSum").value.trim(), user: $("#aUser").value, pass: $("#aPass").value });
     pendingId = 0;
     $("#addDlg").close();
     toast(start ? "Download started" : "Added to the queue");
@@ -963,15 +1000,36 @@ $("#heroGo").onclick = () => openAdd($("#heroUrl").value.trim());
 $("#heroUrl").onkeydown = (e) => { if (e.key === "Enter") openAdd($("#heroUrl").value.trim()); };
 $("#pasteBtn").onclick = async () => { const t = await pasteText(); if (t) { $("#heroUrl").value = t; } else toast("The clipboard is empty"); };
 
-// drag & drop links
+// drag & drop links or .txt link lists
 let dragDepth = 0;
 document.addEventListener("dragenter", (e) => { e.preventDefault(); if (++dragDepth === 1) $("#dropzone").classList.add("on"); });
 document.addEventListener("dragleave", () => { if (--dragDepth === 0) $("#dropzone").classList.remove("on"); });
 document.addEventListener("dragover", (e) => e.preventDefault());
-document.addEventListener("drop", (e) => {
+async function handleDroppedText(text, source) {
+  const urls = (text || "").split(/\s+/).map((x) => x.trim()).filter((x) => /^https?:\/\/\S+$/i.test(x));
+  if (urls.length > 1 && typeof loadBatchLinks === "function") {
+    const n = await loadBatchLinks(urls, source);
+    if (n > 0) return openBatch();
+  }
+  if (urls.length >= 1) return openAdd(urls[0]);
+  toast("No web links (http:// or https://) found", true);
+}
+document.addEventListener("drop", async (e) => {
   e.preventDefault(); dragDepth = 0; $("#dropzone").classList.remove("on");
-  const t = (e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain") || "").split(/\s+/).find((x) => /^https?:\/\//i.test(x));
-  if (t) openAdd(t); else toast("Drop a web link (http:// or https://)", true);
+  const files = e.dataTransfer?.files;
+  if (files && files.length > 0) {
+    const f = files[0];
+    if (/\.txt$|\.urls?$|\.lst$/i.test(f.name) || f.type.startsWith("text/")) {
+      try {
+        const text = await f.text();
+        return handleDroppedText(text, f.name);
+      } catch (err) {
+        return toast(String(err), true);
+      }
+    }
+  }
+  const raw = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain") || "";
+  handleDroppedText(raw, "dropped links");
 });
 
 // ---------- settings ----------
@@ -979,9 +1037,46 @@ const SECS = [["general", "General", I.sliders], ["downloads", "Downloads", I.dl
   ["speed", "Speed Limit", I.gauge], ["browser", "Browser Integration", I.globe], ["video", "Video Grabber", I.media],
   ["appearance", "Appearance", I.palette], ["advanced", "Advanced", I.wrench]];
 $("#snav").innerHTML = SECS.map(([id, l, ic]) => `<button data-sec-go="${id}">${icon(ic)}${l}</button>`).join("");
+let vtTimer = null;
+async function loadVideoTools() {
+  if (typeof videoToolsStatus !== "function") return;
+  const st = await videoToolsStatus();
+  const list = $("#vtoolsList");
+  if (list && st.tools) {
+    list.innerHTML = st.tools.map((t) => `<div class="opt" style="padding:10px 0">
+      <div><div class="t"><code>${escapeHtml(t.name)}</code></div><div class="d">${escapeHtml(t.path || t.role)}</div></div>
+      <span class="badge ${t.installed ? "ok" : "warn"}">${t.installed ? icon(I.check) + "Installed" : "Not installed"}</span>
+    </div>`).join("");
+  }
+  const btn = $("#vtoolsBtn"), msg = $("#vtoolsMsg");
+  if (btn && msg) {
+    btn.disabled = !!st.installing;
+    const allOk = st.tools && st.tools.every((t) => t.installed);
+    btn.textContent = st.installing ? "Installing…" : allOk ? "Update video tools" : "Install video tools";
+    if (st.error) {
+      msg.textContent = st.error;
+      msg.style.color = "var(--err)";
+    } else if (st.step) {
+      msg.textContent = st.step;
+      msg.style.color = st.installing ? "var(--primary)" : "var(--ok)";
+    } else {
+      msg.textContent = "Automatically downloads or updates yt-dlp, ffmpeg and Deno into Velo's folder.";
+      msg.style.color = "";
+    }
+  }
+  clearTimeout(vtTimer);
+  if (st.installing) vtTimer = setTimeout(loadVideoTools, 700);
+}
+async function startVideoToolsInstall() {
+  if (typeof installVideoTools !== "function") return;
+  await installVideoTools();
+  loadVideoTools();
+}
+$("#vtoolsBtn").onclick = startVideoToolsInstall;
 function showSec(id) {
   $$("#snav button").forEach((b) => b.classList.toggle("on", b.dataset.secGo === id));
   $$(".sec").forEach((s) => s.classList.toggle("on", s.dataset.sec === id));
+  if (id === "video") loadVideoTools();
 }
 $("#snav").onclick = (e) => { const b = e.target.closest("[data-sec-go]"); if (b) showSec(b.dataset.secGo); };
 showSec("general");

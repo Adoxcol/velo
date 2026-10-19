@@ -46,6 +46,7 @@ type Request struct {
 	User, Pass                                  string `json:",omitempty"` // HTTP login for sites that ask for one
 	Checksum                                    string `json:",omitempty"`
 	Queue                                       string `json:",omitempty"` // named queue ID; "" = the main queue // expected MD5/SHA-1/SHA-256/SHA-512 (hex), checked when done
+	Format                                      string `json:",omitempty"` // video quality: "" (best), "1080p", "720p", "480p", "audio"
 }
 
 // Segment is the byte range [Pos, End] still to fetch. Guarded by Download.mu.
@@ -196,6 +197,31 @@ func (d *Download) QueueID() string {
 
 // Connections reports how many connections are currently downloading.
 func (d *Download) Connections() int { return int(d.active.Load()) }
+
+// RemainingGaps returns unfetched [startPct, widthPct] intervals for a
+// multi-part download once bytes have started arriving.
+func (d *Download) RemainingGaps() [][2]float64 {
+	if d.Done.Load() <= 0 {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if !d.Ranged || d.Total <= 0 || len(d.segs) <= 1 {
+		return nil
+	}
+	total := float64(d.Total)
+	var out [][2]float64
+	for _, s := range d.segs {
+		if s.Pos <= s.End {
+			start := float64(int(10000*float64(s.Pos)/total)) / 100
+			width := float64(int(10000*float64(s.End-s.Pos+1)/total+0.5)) / 100
+			if width > 0.1 {
+				out = append(out, [2]float64{start, width})
+			}
+		}
+	}
+	return out
+}
 
 type state struct {
 	Req      Request    `json:"req"`

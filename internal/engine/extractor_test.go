@@ -157,3 +157,31 @@ func TestVideoToolFallbackDiscovery(t *testing.T) {
 	}
 }
 
+func TestExtractorArgsFormatsAndRemainingGaps(t *testing.T) {
+	if extractorExt("audio") != ".mp3" || extractorExt("1080p") != ".mkv" || extractorExt("") != ".mkv" {
+		t.Fatal("unexpected extractorExt")
+	}
+	audioArgs := strings.Join(extractorArgsFormat("https://example.com/v", "/tmp", "ffmpeg", "audio"), " ")
+	if !strings.Contains(audioArgs, "--extract-audio") || !strings.Contains(audioArgs, "--audio-format mp3") {
+		t.Fatalf("audio args missing extract flags: %s", audioArgs)
+	}
+	hdArgs := strings.Join(extractorArgsFormat("https://example.com/v", "/tmp", "ffmpeg", "720p"), " ")
+	if !strings.Contains(hdArgs, "height<=720") {
+		t.Fatalf("720p args missing height cap: %s", hdArgs)
+	}
+
+	d := &Download{
+		Total:  1000,
+		Ranged: true,
+		segs: []*Segment{
+			{Pos: 100, End: 499},
+			{Pos: 600, End: 999},
+		},
+	}
+	d.Done.Store(200)
+	gaps := d.RemainingGaps()
+	if len(gaps) != 2 || gaps[0][0] != 10 || gaps[0][1] != 40 || gaps[1][0] != 60 || gaps[1][1] != 40 {
+		t.Fatalf("unexpected RemainingGaps: %+v", gaps)
+	}
+}
+

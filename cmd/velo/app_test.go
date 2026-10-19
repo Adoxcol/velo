@@ -570,3 +570,55 @@ func TestItemPreviewAndShellIcon(t *testing.T) {
 	}
 }
 
+func TestDeleteFileAndBatchLinksAndVideoTools(t *testing.T) {
+	dir := t.TempDir()
+	a := &app{eng: engine.New(dir), wake: make(chan struct{}, 1), settings: defaultSettings()}
+
+	// 1. deleteFile removes the item and deletes the file on disk.
+	p := filepath.Join(dir, "sample.bin")
+	if err := os.WriteFile(p, []byte("hello"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	it := a.register(&engine.Download{Path: p, Status: "done", Total: 5})
+	if err := a.deleteFile(it.d.ID); err != nil {
+		t.Fatalf("deleteFile: %v", err)
+	}
+	if _, err := os.Stat(p); !os.IsNotExist(err) {
+		t.Fatalf("expected file %s to be deleted, stat err = %v", p, err)
+	}
+	if a.get(it.d.ID) != nil {
+		t.Fatal("expected download item to be removed")
+	}
+
+	// 2. loadBatchLinks populates a pre-selected batch from a link list.
+	n := a.loadBatchLinks([]string{
+		"https://example.com/a.zip",
+		"https://example.com/b.pdf",
+		"not-a-url",
+		"https://example.com/a.zip", // duplicate
+	}, "links.txt")
+	if n != 2 {
+		t.Fatalf("loadBatchLinks = %d, want 2", n)
+	}
+	bv := a.takeBatch()
+	if bv == nil || len(bv.Links) != 2 || !bv.Links[0].File || !bv.Links[1].File {
+		t.Fatalf("unexpected batchView: %+v", bv)
+	}
+
+	// 3. addWith with Format="audio" sets Music category on video page.
+	id, err := a.addWith(addOptions{URL: "https://youtu.be/dQw4w9WgXcQ", Format: "audio", Start: false})
+	if err != nil || id == 0 {
+		t.Fatalf("addWith audio: %d, %v", id, err)
+	}
+	rows := a.rows()
+	if len(rows) != 1 || rows[0].Category != "Music" {
+		t.Fatalf("expected Music category for audio format, got %+v", rows)
+	}
+
+	// 4. videoToolsStatus returns status for yt-dlp, ffmpeg, and deno.
+	vt := a.videoToolsStatus()
+	if len(vt.Tools) != 3 {
+		t.Fatalf("expected 3 video tools, got %+v", vt.Tools)
+	}
+}
+

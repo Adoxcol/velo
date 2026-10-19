@@ -28,7 +28,7 @@ var (
 	capOpening bool
 )
 
-const capW, capH = 700, 262
+const capW, capH = 700, 292
 
 // showCapture opens the download dialog, or brings it to the front and
 // tells it a new download is waiting.

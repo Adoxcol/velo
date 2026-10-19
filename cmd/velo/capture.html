@@ -70,6 +70,16 @@
     <div class="field url" title=""><svg class="i" viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg><span id="url"></span></div>
     <label>Save to</label>
     <div class="field"><svg class="i" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span id="dir"></span><button class="link" id="change">Change…</button></div>
+    <label id="fmtLbl" hidden>Quality</label>
+    <div class="field" id="fmtRow" hidden>
+      <select id="format" style="flex:1;border:0;outline:0;background:transparent;color:var(--ink);font:inherit;height:100%">
+        <option value="">Best quality (Video + Audio)</option>
+        <option value="1080p">1080p Full HD</option>
+        <option value="720p">720p HD</option>
+        <option value="480p">480p SD</option>
+        <option value="audio">Audio only (MP3)</option>
+      </select>
+    </div>
   </div>
   <div class="err" id="err"></div>
   <div class="foot">
@@ -132,6 +142,8 @@ async function load() {
   $("name").value = cur.filename || cur.url.split(/[?#]/)[0].split("/").pop() || "download";
   $("url").textContent = cur.url;
   $("url").parentElement.title = cur.url;
+  $("format").value = "";
+  $("fmtLbl").hidden = $("fmtRow").hidden = !cur.kind;
   $("err").textContent = "";
   await Promise.all([showFolder(), showKind()]);
   $("start").focus();
@@ -143,7 +155,7 @@ async function finish(start) {
   if (busy || !cur) return;
   busy = true; $("start").disabled = $("later").disabled = true;
   try {
-    await addDownload({ pendingId: cur.id, url: cur.url, filename: $("name").value.trim(), dir: customDir, segments: 0, start });
+    await addDownload({ pendingId: cur.id, url: cur.url, filename: $("name").value.trim(), dir: customDir, segments: 0, format: cur.kind ? $("format").value : "", start });
     await load();
   } catch (e) {
     $("err").textContent = String(e);

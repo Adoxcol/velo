@@ -77,12 +77,43 @@ func videoTool(name string) (string, error) {
 }
 
 
+func extractorExt(format string) string {
+	if format == "audio" {
+		return ".mp3"
+	}
+	return ".mkv"
+}
+
+func maxFormatHeight(format string) int {
+	switch format {
+	case "1080p":
+		return 1080
+	case "720p":
+		return 720
+	case "480p":
+		return 480
+	}
+	return 0
+}
+
 func extractorArgs(raw, dir, ffmpeg string) []string {
-	return []string{"--ignore-config", "--no-config-locations", "--no-exec", "--no-playlist", "--max-downloads", "1", "--no-warnings", "--newline", "--progress", "--no-colors",
-		"--no-overwrites", "--continue", "--no-mtime", "--match-filter", "!is_live & !is_upcoming & !has_drm",
-		"--format", "bv*+ba/b", "--merge-output-format", "mkv", "--remux-video", "mkv",
-		"--ffmpeg-location", ffmpeg, "--paths", dir, "--output", "video.%(ext)s",
-		"--progress-template", "download:velo:%(progress)j", "--", raw}
+	return extractorArgsFormat(raw, dir, ffmpeg, "")
+}
+
+func extractorArgsFormat(raw, dir, ffmpeg, format string) []string {
+	args := []string{"--ignore-config", "--no-config-locations", "--no-exec", "--no-playlist", "--max-downloads", "1", "--no-warnings", "--newline", "--progress", "--no-colors",
+		"--no-overwrites", "--continue", "--no-mtime", "--match-filter", "!is_live & !is_upcoming & !has_drm"}
+	switch format {
+	case "audio":
+		args = append(args, "--format", "ba/b", "--extract-audio", "--audio-format", "mp3", "--audio-quality", "0")
+	case "1080p", "720p", "480p":
+		h := strings.TrimSuffix(format, "p")
+		args = append(args, "--format", fmt.Sprintf("bv*[height<=%s]+ba/b[height<=%s]/b", h, h), "--merge-output-format", "mkv", "--remux-video", "mkv")
+	default:
+		args = append(args, "--format", "bv*+ba/b", "--merge-output-format", "mkv", "--remux-video", "mkv")
+	}
+	return append(args, "--ffmpeg-location", ffmpeg, "--paths", dir, "--output", "video.%(ext)s",
+		"--progress-template", "download:velo:%(progress)j", "--", raw)
 }
 
 // runPage delegates site-specific extraction to yt-dlp. Its files remain in the
@@ -116,19 +147,20 @@ func checkExtractorTools(rawURL string) (*url.URL, string, string, error) {
 	}
 	ytdlp, err := videoTool("yt-dlp")
 	if err != nil {
-		return nil, "", "", errors.New("video page downloads need yt-dlp; install yt-dlp and add it to PATH, or place yt-dlp.exe beside Velo")
+		return nil, "", "", errors.New("video page downloads need yt-dlp; open Settings → Video Grabber to install it with one click")
 	}
 	ffmpeg, err := videoTool("ffmpeg")
 	if err != nil {
-		return nil, "", "", errors.New("video page downloads need ffmpeg to combine audio and video; add it to PATH or place ffmpeg.exe beside Velo")
+		return nil, "", "", errors.New("video page downloads need ffmpeg; open Settings → Video Grabber to install it with one click")
 	}
 	return u, ytdlp, ffmpeg, nil
 }
 
 func (e *Engine) prepareExtractorTarget(d *Download) (string, error) {
-	name := videoName(d.Req) + ".mkv"
+	ext := extractorExt(d.Req.Format)
+	name := videoName(d.Req) + ext
 	if d.Req.Filename != "" {
-		name = SafeName(strings.TrimSuffix(d.Req.Filename, filepath.Ext(d.Req.Filename))) + ".mkv"
+		name = SafeName(strings.TrimSuffix(d.Req.Filename, filepath.Ext(d.Req.Filename))) + ext
 	}
 	dir := e.targetDir(d.Req, name)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -151,7 +183,7 @@ func (e *Engine) prepareExtractorTarget(d *Download) (string, error) {
 }
 
 func (e *Engine) buildExtractorCmdArgs(u *url.URL, d *Download, ffmpeg, work string) ([]string, func(), error) {
-	args := extractorArgs(d.Req.URL, work, ffmpeg)
+	args := extractorArgsFormat(d.Req.URL, work, ffmpeg, d.Req.Format)
 	// Insert options before the end-of-options marker; URLs never become flags.
 	add := func(values ...string) {
 		args = append(append(args[:len(args)-2:len(args)-2], values...), "--", d.Req.URL)
@@ -229,7 +261,7 @@ func runExtractorProcess(ctx context.Context, ytdlp string, args []string, d *Do
 }
 
 func finalizeExtractorOutput(d *Download, work string) error {
-	finished := filepath.Join(work, "video.mkv")
+	finished := filepath.Join(work, "video"+extractorExt(d.Req.Format))
 	st, err := os.Stat(finished)
 	if err != nil || st.Size() == 0 {
 		return errors.New("video extractor did not produce a complete video")
