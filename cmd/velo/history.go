@@ -168,9 +168,11 @@ func (a *app) loadHistory(entries []histEntry, skip map[string]bool) {
 		it := a.register(d)
 		if e.Added > 0 {
 			it.added = time.UnixMilli(e.Added)
+			it.addedMs = e.Added
 		}
 		if e.Finished > 0 {
 			it.finished = time.UnixMilli(e.Finished)
+			it.finishedMs = e.Finished
 		}
 	}
 }

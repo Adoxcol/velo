@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"golang.org/x/sys/windows/registry"
 )
 
 const (
@@ -64,47 +63,27 @@ func Register(dir string) error {
 	if err := os.WriteFile(ffManifest, fb, 0o644); err != nil {
 		return err
 	}
-	if err := setDefault(firefoxKey, ffManifest); err != nil {
+	if err := registerKey(firefoxKey, ffManifest); err != nil {
 		return err
 	}
 	for _, br := range Browsers {
-		k, _, err := registry.CreateKey(registry.CURRENT_USER, `Software\`+br+`\NativeMessagingHosts\`+HostName, registry.SET_VALUE)
-		if err != nil {
-			return err
-		}
-		err = k.SetStringValue("", manifest)
-		k.Close()
-		if err != nil {
+		if err := registerKey(`Software\`+br+`\NativeMessagingHosts\`+HostName, manifest); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func setDefault(key, value string) error {
-	k, _, err := registry.CreateKey(registry.CURRENT_USER, key, registry.SET_VALUE)
-	if err != nil {
-		return err
-	}
-	defer k.Close()
-	return k.SetStringValue("", value)
-}
-
 // RegisteredTo reports whether browsers currently use the host in dir.
 func RegisteredTo(dir string) bool {
-	k, err := registry.OpenKey(registry.CURRENT_USER, `Software\Google\Chrome\NativeMessagingHosts\`+HostName, registry.QUERY_VALUE)
-	if err != nil {
-		return false
-	}
-	defer k.Close()
-	v, _, err := k.GetStringValue("")
+	v, err := readKey(`Software\Google\Chrome\NativeMessagingHosts\` + HostName)
 	return err == nil && strings.EqualFold(filepath.Clean(v), filepath.Clean(manifestPath(dir)))
 }
 
 // Unregister removes the host from every browser.
 func Unregister() {
-	registry.DeleteKey(registry.CURRENT_USER, firefoxKey)
+	deleteKey(firefoxKey)
 	for _, br := range Browsers {
-		registry.DeleteKey(registry.CURRENT_USER, `Software\`+br+`\NativeMessagingHosts\`+HostName)
+		deleteKey(`Software\` + br + `\NativeMessagingHosts\` + HostName)
 	}
 }

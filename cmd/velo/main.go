@@ -16,9 +16,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"syscall"
 	"time"
-	"unsafe"
 
 	"velo/internal/engine"
 	"velo/internal/hostreg"
@@ -79,11 +77,3 @@ func main() {
 	ipc.RemoveEndpoint()
 }
 
-// singleInstance takes a per-user named mutex; false if another Velo holds it.
-// The handle is kept open for the life of the process.
-func singleInstance() bool {
-	name, _ := syscall.UTF16PtrFromString(`Local\Velo.SingleInstance`)
-	h, _, err := syscall.NewLazyDLL("kernel32.dll").NewProc("CreateMutexW").
-		Call(0, 0, uintptr(unsafe.Pointer(name)))
-	return h != 0 && err != syscall.Errno(183) // ERROR_ALREADY_EXISTS
-}

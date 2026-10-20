@@ -1,10 +1,10 @@
+//go:build windows
+
 package main
 
 import (
 	"errors"
 	"log"
-	"path"
-	"strings"
 	"syscall"
 	"time"
 	"unsafe"
@@ -58,25 +58,7 @@ func clipboardText() (string, bool) {
 	return syscall.UTF16ToString(buf[:n]), true
 }
 
-// copiedLink returns the URL in text if it's a single downloadable link.
-func copiedLink(text string) (url, kind string, ok bool) {
-	text = strings.TrimSpace(text)
-	if text == "" || len(text) > 2048 || strings.ContainsAny(text, " \t\r\n") {
-		return "", "", false
-	}
-	if ok, kind := engine.Downloadable(text); ok {
-		return text, kind, true
-	}
-	return "", "", false
-}
 
-func linkName(u string) string {
-	name := path.Base(strings.SplitN(strings.SplitN(u, "?", 2)[0], "#", 2)[0])
-	if name == "" || name == "/" || name == "." {
-		return u
-	}
-	return name
-}
 
 // watchClipboard polls the clipboard's change counter (cheap) and only reads
 // the text when something new was copied. Runs until the app exits.

@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -281,6 +282,9 @@ func TestRetriesAfterNetworkDrop(t *testing.T) {
 }
 
 func TestDebugInfoHidesSecrets(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows only")
+	}
 	a := testApp(t, defaultSettings())
 	home, _ := os.UserHomeDir()
 	log := "2026/10/15 #1 queued https://cdn.example.com/f.zip?token=SECRET&sig=abc\n" +
@@ -471,6 +475,9 @@ func BenchmarkGet(b *testing.B) {
 }
 
 func TestClipboardRoundTrip(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows only")
+	}
 	old, hadText := clipboardText()
 	defer func() {
 		if hadText {

@@ -34,6 +34,16 @@ type item struct {
 	added    time.Time // when it was added
 	finished time.Time // when it completed (zero until then)
 
+	addedMs    int64
+	finishedMs int64
+
+	cachedPath     string
+	cachedURL      string
+	cachedFilename string
+	cachedName     string
+	cachedCat      string
+	cachedFolder   string
+
 	// Network drops: the download waits in the queue until retryAt.
 	retryAt   time.Time
 	retries   int   // in a row without progress
@@ -114,7 +124,8 @@ func (a *app) register(d *engine.Download) *item {
 	}
 	a.nextID++
 	d.ID = a.nextID
-	it := &item{d: d, lastDone: d.Done.Load(), added: time.Now()}
+	now := time.Now()
+	it := &item{d: d, lastDone: d.Done.Load(), added: now, addedMs: now.UnixMilli()}
 	a.items = append(a.items, it)
 	a.byID[d.ID] = it
 	return it
@@ -212,6 +223,26 @@ func (a *app) addBatch(b batchReq, urls []string, start bool) int {
 	}
 	a.kick()
 	return n
+}
+
+// copiedLink returns the URL in text if it's a single downloadable link.
+func copiedLink(text string) (url, kind string, ok bool) {
+	text = strings.TrimSpace(text)
+	if text == "" || len(text) > 2048 || strings.ContainsAny(text, " \t\r\n") {
+		return "", "", false
+	}
+	if ok, kind := engine.Downloadable(text); ok {
+		return text, kind, true
+	}
+	return "", "", false
+}
+
+func linkName(u string) string {
+	name := path.Base(strings.SplitN(strings.SplitN(u, "?", 2)[0], "#", 2)[0])
+	if name == "" || name == "/" || name == "." {
+		return u
+	}
+	return name
 }
 
 func sameHost(a, b string) bool {
@@ -486,6 +517,7 @@ func (a *app) launch(it *item) {
 		default:
 			a.mu.Lock()
 			it.finished = time.Now()
+			it.finishedMs = it.finished.UnixMilli()
 			a.mu.Unlock()
 			p, _ := d.Info()
 			log.Printf("#%d done %s (%.1f MB in %.1fs)", d.ID, p, float64(d.Done.Load())/1e6, time.Since(t).Seconds())
@@ -880,36 +912,59 @@ type row struct {
 func (a *app) rows() []row {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	rows := []row{}
+	rows := make([]row, 0, len(a.items))
 	for _, it := range a.items {
 		d := it.d
-		status, err := d.State()
-		p, total := d.Info()
-		name := filepath.Base(p)
-		if p == "" {
-			name = d.Req.Filename
-			if name == "" {
-				name = d.Req.Title
-			}
-			if name == "" && d.Req.Kind == "" { // not started yet: the name in the link
-				if u, err := url.Parse(d.Req.URL); err == nil {
-					if b, err := url.PathUnescape(path.Base(u.Path)); err == nil && b != "/" && b != "." {
-						name = b
+		status, err, p, total, queueID := d.StateInfoQueue()
+		name := it.cachedName
+		category := it.cachedCat
+		folder := it.cachedFolder
+		if p != it.cachedPath || d.Req.URL != it.cachedURL || d.Req.Filename != it.cachedFilename || name == "" {
+			it.cachedPath = p
+			it.cachedURL = d.Req.URL
+			it.cachedFilename = d.Req.Filename
+			if p != "" {
+				name = filepath.Base(p)
+				folder = filepath.Dir(p)
+			} else {
+				folder = ""
+				name = d.Req.Filename
+				if name == "" {
+					name = d.Req.Title
+				}
+				if name == "" && d.Req.Kind == "" { // not started yet: the name in the link
+					if u, err := url.Parse(d.Req.URL); err == nil {
+						if b, err := url.PathUnescape(path.Base(u.Path)); err == nil && b != "/" && b != "." {
+							name = b
+						}
 					}
 				}
 			}
+			category = engine.CategoryOf(name)
+			if d.Req.Kind != "" {
+				category = "Video"
+			}
+			it.cachedName = name
+			it.cachedCat = category
+			it.cachedFolder = folder
 		}
-		r := row{ID: d.ID, Status: status, Percent: pct(d), Done: d.Done.Load(), Total: total,
-			Connections: d.Connections(), File: name, URL: d.Req.URL, Kind: d.Req.Kind,
-			Category: engine.CategoryOf(name), Added: it.added.UnixMilli()}
-		if d.Req.Kind != "" {
-			r.Category = "Video"
-		}
-		if p != "" {
-			r.Folder = filepath.Dir(p)
-		}
-		if !it.finished.IsZero() {
-			r.Finished = it.finished.UnixMilli()
+
+		r := row{
+			ID:          d.ID,
+			Status:      status,
+			Percent:     d.ProgressWith(status, total),
+			Done:        d.Done.Load(),
+			Total:       total,
+			Connections: d.Connections(),
+			File:        name,
+			URL:         d.Req.URL,
+			Kind:        d.Req.Kind,
+			Category:    category,
+			Folder:      folder,
+			Added:       it.addedMs,
+			Finished:    it.finishedMs,
+			Verified:    d.Verified,
+			Queue:       queueID,
 		}
 		if status == "downloading" {
 			r.Speed = it.speed
@@ -917,8 +972,6 @@ func (a *app) rows() []row {
 		if err != nil {
 			r.Error = err.Error()
 		}
-		r.Verified = d.Verified
-		r.Queue = d.QueueID()
 		if status == "queued" && !it.retryAt.IsZero() {
 			r.RetryIn = max(int(time.Until(it.retryAt).Seconds()+0.99), 0)
 			r.Retrying = true

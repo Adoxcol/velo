@@ -16,11 +16,9 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 )
 
 // API is the "latest release" endpoint (changed in tests).
@@ -175,9 +173,7 @@ func Download(ctx context.Context, client *http.Client, rel *Release, dir string
 // Install starts the verified installer silently; it closes Velo, replaces
 // it and starts the new version.
 func Install(path string) error {
-	cmd := exec.Command(path, "/S", "/update")
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	return cmd.Start()
+	return runInstaller(path)
 }
 
 // Newer reports whether version a is newer than b ("dev" is never newer

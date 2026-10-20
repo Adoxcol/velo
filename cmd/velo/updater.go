@@ -146,10 +146,7 @@ func (a *app) idle() bool {
 	a.mu.Lock()
 	running := a.running
 	a.mu.Unlock()
-	miniMu.Lock()
-	miniOpen := mini != nil
-	miniMu.Unlock()
-	return running == 0 && !miniOpen && !mainVisible()
+	return running == 0 && !hasMiniWindow() && !mainVisible()
 }
 
 // run checks a minute after start, then every 12 hours; a pending update is
