@@ -46,6 +46,7 @@ type Request struct {
 	User, Pass                                  string `json:",omitempty"` // HTTP login for sites that ask for one
 	Checksum                                    string `json:",omitempty"`
 	Queue                                       string `json:",omitempty"` // named queue ID; "" = the main queue // expected MD5/SHA-1/SHA-256/SHA-512 (hex), checked when done
+	Format                                      string `json:",omitempty"` // video quality: "" (best), "1080p", "720p", "480p", "audio"
 }
 
 // Segment is the byte range [Pos, End] still to fetch. Guarded by Download.mu.
@@ -210,6 +211,31 @@ func (d *Download) QueueID() string {
 // Connections reports how many connections are currently downloading.
 func (d *Download) Connections() int { return int(d.active.Load()) }
 
+// RemainingGaps returns unfetched [startPct, widthPct] intervals for a
+// multi-part download once bytes have started arriving.
+func (d *Download) RemainingGaps() [][2]float64 {
+	if d.Done.Load() <= 0 {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if !d.Ranged || d.Total <= 0 || len(d.segs) <= 1 {
+		return nil
+	}
+	total := float64(d.Total)
+	var out [][2]float64
+	for _, s := range d.segs {
+		if s.Pos <= s.End {
+			start := float64(int(10000*float64(s.Pos)/total)) / 100
+			width := float64(int(10000*float64(s.End-s.Pos+1)/total+0.5)) / 100
+			if width > 0.1 {
+				out = append(out, [2]float64{start, width})
+			}
+		}
+	}
+	return out
+}
+
 type state struct {
 	Req      Request    `json:"req"`
 	Total    int64      `json:"total"`
@@ -343,7 +369,71 @@ var reservedNames = regexp.MustCompile(`(?i)^(con|prn|aux|nul|com[0-9¹²³]|lpt
 // SafeName cleans a file name the way downloads are saved (see safeName).
 func SafeName(name string) string { return safeName(name, "download") }
 
+func isFastSafe(s string) bool {
+	if len(s) == 0 || len(s) > 180 {
+		return false
+	}
+	if s[0] == ' ' || s[len(s)-1] == ' ' || s[len(s)-1] == '.' {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c < 0x20 || c == 0x7f || c == '<' || c == '>' || c == ':' || c == '"' || c == '/' || c == '\\' || c == '|' || c == '?' || c == '*' {
+			return false
+		}
+	}
+	return !isReservedName(s)
+}
+
+func isReservedName(s string) bool {
+	if len(s) < 3 {
+		return false
+	}
+	c0, c1, c2 := s[0], s[1], s[2]
+	if c0 >= 'A' && c0 <= 'Z' {
+		c0 += 32
+	}
+	if c1 >= 'A' && c1 <= 'Z' {
+		c1 += 32
+	}
+	if c2 >= 'A' && c2 <= 'Z' {
+		c2 += 32
+	}
+	if (c0 == 'c' && c1 == 'o' && c2 == 'n') ||
+		(c0 == 'p' && c1 == 'r' && c2 == 'n') ||
+		(c0 == 'a' && c1 == 'u' && c2 == 'x') ||
+		(c0 == 'n' && c1 == 'u' && c2 == 'l') {
+		if len(s) == 3 || s[3] == '.' {
+			return true
+		}
+	}
+	if (c0 == 'c' && c1 == 'o' && c2 == 'm') ||
+		(c0 == 'l' && c1 == 'p' && c2 == 't') {
+		if len(s) >= 4 {
+			rest := s[3:]
+			if strings.HasPrefix(rest, "1") || strings.HasPrefix(rest, "2") || strings.HasPrefix(rest, "3") ||
+				strings.HasPrefix(rest, "4") || strings.HasPrefix(rest, "5") || strings.HasPrefix(rest, "6") ||
+				strings.HasPrefix(rest, "7") || strings.HasPrefix(rest, "8") || strings.HasPrefix(rest, "9") ||
+				strings.HasPrefix(rest, "0") || strings.HasPrefix(rest, "¹") || strings.HasPrefix(rest, "²") ||
+				strings.HasPrefix(rest, "³") {
+				rem := rest[1:]
+				if strings.HasPrefix(rest, "¹") || strings.HasPrefix(rest, "²") || strings.HasPrefix(rest, "³") {
+					rem = rest[len("¹"):]
+				}
+				if len(rem) == 0 || rem[0] == '.' {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
 func safeName(name, fallback string) string {
+	// Fast path: if the name is already clean and valid ASCII, skip regex and allocation overhead.
+	if isFastSafe(name) {
+		return name
+	}
 	name = unsafeChars.ReplaceAllString(name, "_")
 	name = strings.TrimRight(strings.TrimSpace(name), ". ")
 	name = strings.TrimLeft(name, " ")
@@ -570,10 +660,7 @@ func (e *Engine) SegmentsDefault() int { return int(e.segments.Load()) }
 // SetSegments sets the default number of connections per download (1-32).
 func (e *Engine) SetSegments(n int) { e.segments.Store(int32(min(max(n, 1), 32))) }
 
-func (e *Engine) segmented(ctx context.Context, d *Download, f *os.File) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
+func startProgressSaver(d *Download) func() {
 	saveDone := make(chan struct{})
 	go func() { // periodic progress save
 		t := time.NewTicker(2 * time.Second)
@@ -587,110 +674,161 @@ func (e *Engine) segmented(ctx context.Context, d *Download, f *os.File) error {
 			}
 		}
 	}()
-	defer close(saveDone)
+	return func() { close(saveDone) }
+}
 
-	var wg sync.WaitGroup
-	var firstErr error
-	var errOnce sync.Once
-	var sawBusy atomic.Bool
-	var liveMu sync.Mutex
-	live, allDone := 0, make(chan struct{})
-	var worker func(s *Segment)
-	spawn := func(s *Segment) bool { // false once every worker has finished
-		liveMu.Lock()
-		defer liveMu.Unlock()
-		if live < 0 {
-			return false
-		}
-		live++
-		wg.Add(1)
-		go worker(s)
-		return true
+type segmentRunner struct {
+	e       *Engine
+	d       *Download
+	f       *os.File
+	ctx     context.Context
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
+	errOnce sync.Once
+	err     error
+
+	liveMu  sync.Mutex
+	live    int
+	allDone chan struct{}
+	sawBusy atomic.Bool
+}
+
+func newSegmentRunner(ctx context.Context, cancel context.CancelFunc, e *Engine, d *Download, f *os.File) *segmentRunner {
+	return &segmentRunner{
+		e:       e,
+		d:       d,
+		f:       f,
+		ctx:     ctx,
+		cancel:  cancel,
+		allDone: make(chan struct{}),
 	}
-	worker = func(s *Segment) {
-		defer func() {
-			liveMu.Lock()
-			if live--; live == 0 {
-				live = -1
-				close(allDone)
-			}
-			liveMu.Unlock()
-			wg.Done()
-		}()
-		d.active.Add(1)
-		defer d.active.Add(-1)
-		busy := 0
-		for s != nil {
-			err := e.fetch(ctx, d, f, s)
-			var b errBusy
-			if errors.As(err, &b) {
-				sawBusy.Store(true)
-				if d.active.Load() > 1 { // others are working: drop this connection
-					d.mu.Lock()
-					s.owned = false
-					d.mu.Unlock()
-					return
-				}
-				if busy++; busy <= 10 { // last connection: wait and retry
-					wait := b.retryAfter
-					if wait <= 0 {
-						wait = time.Duration(busy) * 2 * time.Second
-					}
-					select {
-					case <-ctx.Done():
-						return
-					case <-time.After(wait):
-					}
-					continue
-				}
-			}
-			if err != nil {
-				errOnce.Do(func() { firstErr = err; cancel() })
+}
+
+func (r *segmentRunner) spawn(s *Segment) bool { // false once every worker has finished
+	r.liveMu.Lock()
+	defer r.liveMu.Unlock()
+	if r.live < 0 {
+		return false
+	}
+	r.live++
+	r.wg.Add(1)
+	go r.worker(s)
+	return true
+}
+
+func (r *segmentRunner) worker(s *Segment) {
+	defer func() {
+		r.liveMu.Lock()
+		if r.live--; r.live == 0 {
+			r.live = -1
+			close(r.allDone)
+		}
+		r.liveMu.Unlock()
+		r.wg.Done()
+	}()
+
+	r.d.active.Add(1)
+	defer r.d.active.Add(-1)
+
+	busy := 0
+	for s != nil {
+		err := r.e.fetch(r.ctx, r.d, r.f, s)
+		var b errBusy
+		if errors.As(err, &b) {
+			r.sawBusy.Store(true)
+			if r.d.active.Load() > 1 { // others are working: drop this connection
+				r.d.mu.Lock()
+				s.owned = false
+				r.d.mu.Unlock()
 				return
 			}
-			busy = 0
-			s = d.steal() // dynamic segmentation
+			if busy++; busy <= 10 { // last connection: wait and retry
+				wait := b.retryAfter
+				if wait <= 0 {
+					wait = time.Duration(busy) * 2 * time.Second
+				}
+				select {
+				case <-r.ctx.Done():
+					return
+				case <-time.After(wait):
+				}
+				continue
+			}
 		}
+		if err != nil {
+			r.errOnce.Do(func() {
+				r.err = err
+				r.cancel()
+			})
+			return
+		}
+		busy = 0
+		s = r.d.steal() // dynamic segmentation
 	}
+}
 
-	d.mu.Lock()
+func (r *segmentRunner) initialSegments() []*Segment {
+	r.d.mu.Lock()
 	var start []*Segment
-	for _, s := range d.segs {
+	for _, s := range r.d.segs {
 		if s.Pos <= s.End {
 			s.owned = true
 			start = append(start, s)
 		}
 	}
-	d.mu.Unlock()
-	for len(start) < e.segmentsFor(d) { // e.g. resumed with fewer segments left
-		s := d.steal()
+	r.d.mu.Unlock()
+	for len(start) < r.e.segmentsFor(r.d) { // e.g. resumed with fewer segments left
+		s := r.d.steal()
 		if s == nil {
 			break
 		}
 		start = append(start, s)
 	}
-	for _, s := range start {
-		spawn(s)
-	}
-	if len(start) > 0 && d.Req.Segments == 0 {
-		wg.Add(1)
-		go func() { defer wg.Done(); e.grow(ctx, d, allDone, &sawBusy, spawn) }()
-	}
-	wg.Wait()
-	if firstErr == nil {
-		firstErr = ctx.Err()
-	}
-	if firstErr == nil {
-		d.mu.Lock()
-		for _, s := range d.segs {
-			if s.Pos <= s.End {
-				firstErr = fmt.Errorf("incomplete: bytes %d-%d missing", s.Pos, s.End)
-				break
-			}
+	return start
+}
+
+func (r *segmentRunner) verifyComplete() error {
+	r.d.mu.Lock()
+	defer r.d.mu.Unlock()
+	for _, s := range r.d.segs {
+		if s.Pos <= s.End {
+			return fmt.Errorf("incomplete: bytes %d-%d missing", s.Pos, s.End)
 		}
-		d.mu.Unlock()
 	}
-	return firstErr
+	return nil
+}
+
+func (r *segmentRunner) run() error {
+	start := r.initialSegments()
+	for _, s := range start {
+		r.spawn(s)
+	}
+	if len(start) > 0 && r.d.Req.Segments == 0 {
+		r.wg.Add(1)
+		go func() {
+			defer r.wg.Done()
+			r.e.grow(r.ctx, r.d, r.allDone, &r.sawBusy, r.spawn)
+		}()
+	}
+	r.wg.Wait()
+
+	if r.err == nil {
+		r.err = r.ctx.Err()
+	}
+	if r.err == nil {
+		r.err = r.verifyComplete()
+	}
+	return r.err
+}
+
+func (e *Engine) segmented(ctx context.Context, d *Download, f *os.File) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	defer startProgressSaver(d)()
+
+	r := newSegmentRunner(ctx, cancel, e, d, f)
+	return r.run()
 }
 
 // Growth limits: servers that cap each connection (GitHub, many CDNs) get

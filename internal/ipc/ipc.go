@@ -27,6 +27,7 @@ type Job struct {
 	Cookies   string `json:"cookies"`
 	UserAgent string `json:"userAgent"`
 	Kind      string `json:"kind"`   // "" = file, "hls" = video stream
+	Format    string `json:"format"` // "", "1080p", "720p", "480p", "audio"
 	Title     string `json:"title"`  // page title, used to name videos
 	Source    string `json:"source"` // "capture" = a download the browser started
 	Size      int64  `json:"size"`   // size the browser reported, if known

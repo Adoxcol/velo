@@ -11,7 +11,9 @@
   html, body { margin: 0; height: 100%; overflow: hidden; }
   body { background: var(--bg); color: var(--ink); font: 13px/1.4 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; user-select: none; border: 1px solid var(--line); border-radius: 8px; }
   .wrap { display: grid; grid-template-columns: 56px 1fr auto; gap: 12px; align-items: center; padding: 14px 12px 14px 14px; height: 100%; cursor: pointer; }
-  .tile { width: 52px; height: 52px; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--c, #94a3b8) 15%, transparent); color: var(--c, #94a3b8); }
+  .tile { width: 52px; height: 52px; border-radius: 12px; display: grid; place-items: center; overflow: hidden; background: color-mix(in srgb, var(--c, #94a3b8) 15%, transparent); color: var(--c, #94a3b8); }
+  .tile img.thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tile img.ficon { width: 30px; height: 30px; object-fit: contain; display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,.12)); }
   svg.i { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
   .tile svg.i { width: 26px; height: 26px; }
   .info { min-width: 0; }
@@ -23,6 +25,7 @@
   .acts { display: flex; gap: 2px; align-self: start; }
   button { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 7px; background: none; color: var(--muted); cursor: pointer; }
   button:hover { background: var(--hover); color: var(--ink); }
+  :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
   .ask { position: fixed; inset: 0; background: var(--bg); border-radius: 8px; display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 0 14px; }
   .ask .q { font-weight: 600; }
   .ask .row { display: flex; gap: 6px; }
@@ -36,7 +39,7 @@
 <div class="wrap" id="wrap" title="Open Velo">
   <div class="tile" id="tile"></div>
   <div class="info"><div class="name" id="name">Starting…</div><div class="meta" id="meta"></div><div class="bar"><i id="bar" style="width:0"></i></div></div>
-  <div class="acts"><button id="pp" title="Pause"></button><button id="close" title="Hide Velo Mini"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="acts"><button id="pp" title="Pause" aria-label="Pause"></button><button id="close" title="Hide Velo Mini" aria-label="Hide Velo Mini"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
 </div>
 <div class="ask" id="ask" hidden>
   <div class="q">Hide Velo Mini?</div>
@@ -66,7 +69,8 @@ const TILE = {"Video":"#3b82f6","Music":"#a855f7","Images":"#14b8a6","Documents"
 const svg = (d) => `<svg class="i" viewBox="0 0 24 24">${d}</svg>`;
 function size(n) { if (!(n > 0)) return "0 B"; const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0; while (n >= 1024 && i < 4) { n /= 1024; i++; } return n.toFixed(i && n < 100 ? 1 : 0) + " " + u[i]; }
 function eta(s) { s = Math.round(s); return [Math.floor(s / 3600), Math.floor(s % 3600 / 60), s % 60].map((v) => String(v).padStart(2, "0")).join(":"); }
-let current = null;
+let current = null, lastKey = "";
+const previews = new Map();
 async function refresh() {
   const st = await appStatus();
   const active = st.rows.filter((r) => r.status === "downloading");
@@ -75,8 +79,22 @@ async function refresh() {
   if (!r) return;
   current = r;
   const cat = r.category || "Other";
-  $("#tile").innerHTML = svg(ICON[cat] || ICON.Other);
   $("#tile").style.setProperty("--c", TILE[cat] || TILE.Other);
+  const key = `${r.id}:${r.status === "done" ? 1 : 0}:${r.file || ""}`;
+  if (key !== lastKey) {
+    lastKey = key;
+    const pv = previews.get(key) || (typeof itemPreview === "function" ? await itemPreview(r.id).catch(() => null) : null);
+    if (pv) previews.set(key, pv);
+    if (pv && pv.src) {
+      const img = document.createElement("img");
+      img.className = pv.mode === "cover" ? "thumb" : "ficon";
+      img.src = pv.src;
+      img.onerror = () => { $("#tile").innerHTML = svg(ICON[cat] || ICON.Other); };
+      $("#tile").replaceChildren(img);
+    } else {
+      $("#tile").innerHTML = svg(ICON[cat] || ICON.Other);
+    }
+  }
   $("#name").textContent = r.file || "Starting…";
   const pct = r.status === "done" ? 100 : r.percent;
   const parts = [r.total > 0 || r.kind ? pct.toFixed(0) + "%" : size(r.done)];
@@ -89,7 +107,9 @@ async function refresh() {
   $("#bar").style.width = pct + "%";
   document.body.classList.toggle("done", r.status === "done");
   $("#pp").innerHTML = svg(r.status === "downloading" ? ICON.pause : ICON.check);
-  $("#pp").title = r.status === "downloading" ? "Pause" : "Done";
+  const title = r.status === "downloading" ? "Pause" : "Done";
+  $("#pp").title = title;
+  $("#pp").setAttribute("aria-label", title);
 }
 $("#pp").onclick = (e) => { e.stopPropagation(); if (current?.status === "downloading") pause(current.id).then(refresh); };
 $("#close").onclick = (e) => { e.stopPropagation(); $("#ask").hidden = false; };

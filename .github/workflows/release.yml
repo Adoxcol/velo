@@ -9,11 +9,18 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to build (like 0.4.1); builds without publishing"
+        description: "Version to build (like 0.8.8); builds without publishing a GitHub release"
         required: true
+      publish_extension:
+        description: "Upload and submit the extension to the Chrome Web Store"
+        type: boolean
+        default: false
 
 permissions:
   contents: write # create the GitHub release
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 concurrency:
   group: release-${{ github.ref }}
@@ -24,6 +31,11 @@ jobs:
     runs-on: windows-latest
     env:
       WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+      CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+      CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+      CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+      CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID || 'pcpdknogjedamkhakgfbaoieehnheelk' }}
+      CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
     defaults:
       run:
         shell: pwsh
@@ -103,6 +115,57 @@ jobs:
             --release-notes-url https://velo.adoxcol.com/changelog `
             --token $env:WINGET_TOKEN --submit
 
+      # Uploads velo-extension-<version>.zip to the Chrome Web Store and submits
+      # it for publishing when CWS_CLIENT_ID, CWS_CLIENT_SECRET, and
+      # CWS_REFRESH_TOKEN secrets are configured (or when manually triggered
+      # with publish_extension=true).
+      - name: Publish Chrome Web Store extension
+        if: (github.event_name == 'push' && env.CWS_CLIENT_ID != '' && env.CWS_CLIENT_SECRET != '' && env.CWS_REFRESH_TOKEN != '') || inputs.publish_extension == true
+        continue-on-error: ${{ github.event_name == 'push' }}
+        run: |
+          if (-not $env:CWS_CLIENT_ID -or -not $env:CWS_CLIENT_SECRET -or -not $env:CWS_REFRESH_TOKEN) {
+            throw "Missing Chrome Web Store secrets (CWS_CLIENT_ID, CWS_CLIENT_SECRET, CWS_REFRESH_TOKEN)."
+          }
+          $v = "${{ steps.v.outputs.version }}"
+          $id = $env:CWS_EXTENSION_ID
+          $tok = (Invoke-RestMethod -Method Post -Uri "https://oauth2.googleapis.com/token" -Body @{
+            client_id     = $env:CWS_CLIENT_ID
+            client_secret = $env:CWS_CLIENT_SECRET
+            refresh_token = $env:CWS_REFRESH_TOKEN
+            grant_type    = "refresh_token"
+          }).access_token
+          $headers = @{ Authorization = "Bearer $tok"; "x-goog-api-version" = "2" }
+          $up = Invoke-RestMethod -Method Put -Uri "https://www.googleapis.com/upload/chromewebstore/v1.1/items/$id" `
+            -Headers $headers -InFile "dist/velo-extension-$v.zip" -ContentType "application/zip"
+          if ($up.uploadState -eq "FAILURE" -and ($up.itemError | ConvertTo-Json -Compress) -match "ITEM_NOT_UPDATABLE") {
+            Write-Host "Item has a pending review; attempting to cancel pending submission and retry..."
+            if ($env:CWS_PUBLISHER_ID) {
+              try {
+                Invoke-RestMethod -Method Post -Uri "https://chromewebstore.googleapis.com/v2/publishers/$($env:CWS_PUBLISHER_ID)/items/${id}:cancelSubmission" `
+                  -Headers @{ Authorization = "Bearer $tok" } -ContentType "application/json" -Body "{}" | Out-Null
+              } catch { Write-Host "v2 cancelSubmission note: $_" }
+            }
+            Start-Sleep -Seconds 5
+            $up = Invoke-RestMethod -Method Put -Uri "https://www.googleapis.com/upload/chromewebstore/v1.1/items/$id" `
+              -Headers $headers -InFile "dist/velo-extension-$v.zip" -ContentType "application/zip"
+          }
+          Write-Host "Upload state: $($up.uploadState)"
+          $status = if ($up.uploadState -eq "FAILURE") { $up.itemError | ConvertTo-Json -Compress } else {
+            $pub = Invoke-RestMethod -Method Post -Uri "https://www.googleapis.com/chromewebstore/v1.1/items/$id/publish" -Headers $headers
+            $pub.status -join ", "
+          }
+          Write-Host "Publish status: $status"
+          @(
+            "### Chrome Web Store Publish"
+            "| Field | Value |"
+            "|---|---|"
+            "| Extension ID | ``$id`` |"
+            "| Version | ``$v`` |"
+            "| Upload State | ``$($up.uploadState)`` |"
+            "| Publish Status | ``$status`` |"
+          ) >> $env:GITHUB_STEP_SUMMARY
+          if ($up.uploadState -eq "FAILURE") { throw "Chrome Web Store upload failed: $status" }
+
   portable-cli:
     needs: release
     strategy:
@@ -132,16 +195,41 @@ jobs:
           for arch in amd64 arm64; do
             folder="dist/veloctl-${version}-${TARGET_OS}-${arch}"
             mkdir -p "$folder"
-            GOOS="$TARGET_OS" GOARCH="$arch" CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X velo/internal/version.Version=$version" -o "$folder/veloctl" ./cmd/veloctl
+            GOOS="$TARGET_OS" GOARCH="$arch" CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X github.com/Adoxcol/velo/internal/version.Version=$version" -o "$folder/veloctl" ./cmd/veloctl
             cp LICENSE "$folder/"
             cp docs/cli.md "$folder/README.md"
             tar -czf "$folder.tar.gz" -C "$folder" veloctl LICENSE README.md
             cp "$folder.tar.gz" "dist/veloctl-${TARGET_OS}-${arch}.tar.gz"
           done
+          if [ "$TARGET_OS" = linux ]; then
+            # Standalone veloctl for Windows (Scoop), and .deb/.rpm packages.
+            for arch in amd64 arm64; do
+              folder="dist/veloctl-${version}-windows-${arch}"
+              mkdir -p "$folder"
+              GOOS=windows GOARCH="$arch" CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X github.com/Adoxcol/velo/internal/version.Version=$version" -o "$folder/veloctl.exe" ./cmd/veloctl
+              cp LICENSE "$folder/"
+              cp docs/cli.md "$folder/README.md"
+              (cd "$folder" && zip -q "../veloctl-${version}-windows-${arch}.zip" veloctl.exe LICENSE README.md)
+              cp "dist/veloctl-${version}-windows-${arch}.zip" "dist/veloctl-windows-${arch}.zip"
+            done
+            go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.46.3
+            mkdir -p dist/nfpm
+            for arch in amd64 arm64; do
+              cp "dist/veloctl-${version}-linux-${arch}/veloctl" dist/nfpm/veloctl
+              sed "s/@VERSION@/${version}/; s/@ARCH@/${arch}/" packaging/nfpm.yaml > dist/nfpm/nfpm.yaml
+              for fmt in deb rpm; do
+                "$(go env GOPATH)/bin/nfpm" pkg --config dist/nfpm/nfpm.yaml --packager "$fmt" --target dist/
+              done
+            done
+            rm -rf dist/nfpm
+            for f in dist/*.deb dist/*.rpm; do
+              [ "$(wc -c < "$f")" -gt 1000000 ] || { echo "::error::$f is too small"; exit 1; }
+            done
+          fi
           python3 - <<'PY'
           import hashlib, pathlib, os
           root = pathlib.Path('dist')
-          files = sorted(root.glob('*.tar.gz'))
+          files = sorted(p for pat in ('*.tar.gz', '*.zip', '*.deb', '*.rpm') for p in root.glob(pat))
           output = root / ('SHA256SUMS-veloctl-' + os.environ['TARGET_OS'] + '.txt')
           output.write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.name + '\n' for p in files))
           PY
@@ -150,9 +238,54 @@ jobs:
           name: veloctl-${{ matrix.target }}
           path: |
             dist/*.tar.gz
+            dist/*.zip
+            dist/*.deb
+            dist/*.rpm
             dist/SHA256SUMS-*.txt
       - name: Publish CLI archives
         if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.ref_name }}" dist/*.tar.gz dist/SHA256SUMS-*.txt
+        shell: bash
+        run: |
+          shopt -s nullglob
+          gh release upload "${{ github.ref_name }}" dist/*.tar.gz dist/*.zip dist/*.deb dist/*.rpm dist/SHA256SUMS-*.txt
+
+  # Updates the Homebrew tap (Adoxcol/homebrew-tap) and Scoop bucket
+  # (Adoxcol/scoop-bucket) with the new veloctl. Needs a PACKAGES_TOKEN
+  # secret (or WINGET_TOKEN): a classic token with the public_repo scope.
+  packages:
+    needs: portable-cli
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    env:
+      TOKEN: ${{ secrets.PACKAGES_TOKEN || secrets.WINGET_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: veloctl-*
+          path: dist
+          merge-multiple: true
+      - name: Write formula and manifest
+        run: python3 tools/packages.py "${{ github.ref_name }}" dist out
+      - name: Push to the tap and bucket
+        if: env.TOKEN != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          v="${{ github.ref_name }}"
+          push() { # repo, source file, destination path
+            rm -rf repo
+            git clone -q "https://x-access-token:${TOKEN}@github.com/Adoxcol/$1.git" repo
+            mkdir -p "repo/$(dirname "$3")"
+            cp "$2" "repo/$3"
+            cd repo
+            git config user.name "Velo release"
+            git config user.email "99127099+Adoxcol@users.noreply.github.com"
+            git add -A
+            git diff --cached --quiet || { git commit -q -m "veloctl ${v#v}"; git push -q; }
+            cd ..
+          }
+          push homebrew-tap out/Formula/veloctl.rb Formula/veloctl.rb
+          push scoop-bucket out/veloctl.json bucket/veloctl.json

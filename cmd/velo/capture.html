@@ -4,16 +4,19 @@
 <meta charset="utf-8">
 <title>Download file</title>
 <style>
-  :root { --primary: #1677ff; --primary-h: #0f6ae6; --ink: #0d1728; --muted: #64748b; --bg: #ffffff; --bg2: #f5f8fc; --line: #e3e9f2; --field: #ffffff; }
-  html[data-theme="dark"] { --primary: #3b8bff; --primary-h: #5a9dff; --ink: #eef3fa; --muted: #93a1b5; --bg: #111b2e; --bg2: #0d1628; --line: #22314a; --field: #0d1628; }
+  :root { color-scheme: light; --primary: #1677ff; --primary-h: #0f6ae6; --primary-soft: #e8f1ff; --ink: #0d1728; --muted: #64748b; --bg: #ffffff; --bg2: #f5f8fc; --line: #e3e9f2; --field: #ffffff; --shadow-lg: 0 12px 40px rgba(13,23,40,.18); }
+  html[data-theme="dark"] { color-scheme: dark; --primary: #3b8bff; --primary-h: #5a9dff; --primary-soft: #16294a; --ink: #eef3fa; --muted: #93a1b5; --bg: #111b2e; --bg2: #0d1628; --line: #22314a; --field: #0d1628; --shadow-lg: 0 12px 40px rgba(0,0,0,.5); }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html, body { margin: 0; height: 100%; overflow: hidden; }
   body { background: var(--bg); color: var(--ink); font: 13.5px/1.4 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; display: flex; flex-direction: column; user-select: none; }
   svg.i { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
   .top { display: flex; gap: 12px; align-items: center; padding: 12px 18px; background: var(--bg2); border-bottom: 1px solid var(--line); }
-  .tile { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; flex: none; }
+  .tile { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; flex: none; overflow: hidden; }
   .tile svg { width: 21px; height: 21px; }
+  .tile img.ficon { width: 24px; height: 24px; object-fit: contain; display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,.12)); }
   .tile { background: color-mix(in srgb, var(--c, #94a3b8) 15%, transparent); color: var(--c, #94a3b8); }
   .t-Video { --c: #3b82f6; }
   .t-Music { --c: #a855f7; }
@@ -39,6 +42,25 @@
   .field { display: flex; align-items: center; gap: 8px; min-width: 0; height: 32px; padding: 0 4px 0 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--field); }
   .field span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: text; }
   .field svg { color: var(--muted); }
+  .field select {
+    flex: 1; border: 0; outline: 0; background-color: transparent; color: var(--ink); font: inherit; height: 100%;
+    appearance: none; -webkit-appearance: none; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2393a1b5' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 6px center; padding-right: 26px;
+  }
+  .field select option { background: var(--bg); color: var(--ink); }
+  .dd-menu {
+    position: fixed; z-index: 9999; min-width: 140px; max-height: 180px; overflow-y: auto;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: var(--shadow-lg); padding: 4px; display: none;
+  }
+  .dd-menu button {
+    display: flex; width: 100%; justify-content: space-between; gap: 10px; align-items: center;
+    padding: 6px 10px; border: 0; background: none; border-radius: 7px; text-align: left; color: var(--ink); font: 500 13px inherit; cursor: pointer;
+  }
+  .dd-menu button:hover { background: var(--bg2); }
+  .dd-menu button.on { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+  .dd-menu button svg.i { width: 14px; height: 14px; color: var(--primary); }
   .link { border: 0; background: none; color: var(--primary); font: 600 12.5px inherit; cursor: pointer; padding: 4px 8px; border-radius: 7px; }
   .link:hover { background: rgba(22, 119, 255, .1); }
   .url span { color: var(--muted); }
@@ -58,7 +80,7 @@
   <div class="top">
     <div class="tile" id="tile"></div>
     <div class="head">
-      <input class="name" id="name" spellcheck="false" title="File name (click to rename)">
+      <input class="name" id="name" spellcheck="false" title="File name (click to rename)" aria-label="File name">
       <div class="sub" id="sub"></div>
     </div>
     <div class="count" id="count"></div>
@@ -68,6 +90,16 @@
     <div class="field url" title=""><svg class="i" viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg><span id="url"></span></div>
     <label>Save to</label>
     <div class="field"><svg class="i" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span id="dir"></span><button class="link" id="change">Change…</button></div>
+    <label id="fmtLbl" hidden>Quality</label>
+    <div class="field" id="fmtRow" hidden>
+      <select id="format">
+        <option value="">Best quality (Video + Audio)</option>
+        <option value="1080p">1080p Full HD</option>
+        <option value="720p">720p HD</option>
+        <option value="480p">480p SD</option>
+        <option value="audio">Audio only (MP3)</option>
+      </select>
+    </div>
   </div>
   <div class="err" id="err"></div>
   <div class="foot">
@@ -102,10 +134,20 @@ async function showFolder() {
   $("dir").dataset.full = full;
 }
 async function showKind() {
-  const cat = cur.kind ? "Video" : (await categoryOf($("name").value)) || "Other";
+  const fname = $("name").value;
+  const cat = cur.kind ? "Video" : (await categoryOf(fname)) || "Other";
   $("tile").className = "tile t-" + cat.replace(/\W/g, "");
-  $("tile").innerHTML = svg(ICON[cat] || ICON.Other);
-  const ext = ($("name").value.match(/\.([a-z0-9]{1,6})$/i) || [])[1];
+  const pv = !cur.kind && typeof fileTypeIcon === "function" ? await fileTypeIcon(fname).catch(() => null) : null;
+  if (pv && pv.src) {
+    const img = document.createElement("img");
+    img.className = "ficon";
+    img.src = pv.src;
+    img.onerror = () => { $("tile").innerHTML = svg(ICON[cat] || ICON.Other); };
+    $("tile").replaceChildren(img);
+  } else {
+    $("tile").innerHTML = svg(ICON[cat] || ICON.Other);
+  }
+  const ext = (fname.match(/\.([a-z0-9]{1,6})$/i) || [])[1];
   $("sub").innerHTML = [size(cur.size) && `<b>${size(cur.size)}</b>`, ext && ext.toUpperCase() + " file", cur.site && "from " + escapeHtml(cur.site)].filter(Boolean).map((x) => `<span>${x}</span>`).join("");
 }
 const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -120,6 +162,8 @@ async function load() {
   $("name").value = cur.filename || cur.url.split(/[?#]/)[0].split("/").pop() || "download";
   $("url").textContent = cur.url;
   $("url").parentElement.title = cur.url;
+  $("format").value = "";
+  $("fmtLbl").hidden = $("fmtRow").hidden = !cur.kind;
   $("err").textContent = "";
   await Promise.all([showFolder(), showKind()]);
   $("start").focus();
@@ -131,7 +175,7 @@ async function finish(start) {
   if (busy || !cur) return;
   busy = true; $("start").disabled = $("later").disabled = true;
   try {
-    await addDownload({ pendingId: cur.id, url: cur.url, filename: $("name").value.trim(), dir: customDir, segments: 0, start });
+    await addDownload({ pendingId: cur.id, url: cur.url, filename: $("name").value.trim(), dir: customDir, segments: 0, format: cur.kind ? $("format").value : "", start });
     await load();
   } catch (e) {
     $("err").textContent = String(e);
@@ -153,9 +197,42 @@ $("change").onclick = async () => {
   try { const p = await pickFolder(customDir || $("dir").dataset.full); if (p) { customDir = p; showFolder(); } } catch (e) { $("err").textContent = String(e); }
 };
 $("name").oninput = () => { showKind(); if (!customDir) showFolder(); };
+let ddEl = null, ddSel = null;
+function closeDD() { if (ddEl) ddEl.style.display = "none"; ddSel = null; }
+function openDD(sel) {
+  if (ddSel === sel && ddEl && ddEl.style.display === "block") return closeDD();
+  ddSel = sel;
+  if (!ddEl) { ddEl = document.createElement("div"); ddEl.className = "dd-menu"; document.body.appendChild(ddEl); }
+  const cur = sel.value;
+  ddEl.innerHTML = [...sel.options].map((o, i) => {
+    const on = o.value === cur;
+    return `<button type="button" data-ddi="${i}" class="${on ? "on" : ""}"><span>${escapeHtml(o.textContent)}</span>${on ? svg('<path d="m5 12 5 5 9-10"/>') : ""}</button>`;
+  }).join("");
+  const box = sel.closest(".field") || sel;
+  const r = box.getBoundingClientRect();
+  ddEl.style.minWidth = Math.max(r.width, 140) + "px";
+  ddEl.style.display = "block";
+  const mh = ddEl.offsetHeight, mw = ddEl.offsetWidth;
+  let top = r.bottom + 4;
+  if (top + mh > innerHeight - 6 && r.top - mh - 4 >= 6) top = r.top - mh - 4;
+  ddEl.style.left = Math.min(Math.max(r.left, 8), innerWidth - mw - 8) + "px";
+  ddEl.style.top = top + "px";
+  ddEl.onclick = (e) => {
+    const b = e.target.closest("[data-ddi]"); if (!b) return;
+    const opt = sel.options[+b.dataset.ddi];
+    if (opt && sel.value !== opt.value) { sel.value = opt.value; sel.dispatchEvent(new Event("change", { bubbles: true })); }
+    closeDD();
+  };
+}
+document.addEventListener("mousedown", (e) => {
+  if (e.target.closest(".dd-menu")) return;
+  const sel = e.target.closest("select");
+  if (sel && !sel.disabled) { e.preventDefault(); sel.focus(); openDD(sel); return; }
+  closeDD();
+});
 addEventListener("keydown", (e) => {
-  if (e.key === "Escape") { e.preventDefault(); cancel(); }
-  if (e.key === "Enter") { e.preventDefault(); finish(true); }
+  if (e.key === "Escape") { e.preventDefault(); if (ddSel) return closeDD(); cancel(); }
+  if (e.key === "Enter") { e.preventDefault(); if (ddSel) return closeDD(); finish(true); }
 });
 
 getSettings().then((s) => {

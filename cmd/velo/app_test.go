@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"velo/internal/engine"
+	"github.com/Adoxcol/velo/internal/engine"
 )
 
 func slowServer(t *testing.T, size int) string {
@@ -52,6 +52,16 @@ func testApp(t *testing.T, s Settings) *app {
 	a := &app{eng: eng, wake: make(chan struct{}, 1), settings: s, home: home}
 	eng.Limit.SetRate(int64(s.SpeedLimitKB) * 1024)
 	go a.dispatcher()
+	t.Cleanup(func() {
+		a.mu.Lock()
+		for _, it := range a.items {
+			if it.running && it.cancel != nil {
+				it.cancel()
+			}
+		}
+		a.mu.Unlock()
+		time.Sleep(20 * time.Millisecond)
+	})
 	return a
 }
 
@@ -474,6 +484,66 @@ func BenchmarkGet(b *testing.B) {
 	}
 }
 
+func TestPendingDownloads(t *testing.T) {
+	a := &app{pending: make(map[int]pendingDL)}
+
+	if p := a.nextPendingDL(); p != nil {
+		t.Fatalf("expected nil next pending, got %+v", p)
+	}
+
+	a.mu.Lock()
+	a.pending[1] = pendingDL{ID: 1, Req: engine.Request{URL: "https://example.com/1.zip", Filename: "1.zip"}}
+	a.pendingOrder = append(a.pendingOrder, 1)
+	a.pending[2] = pendingDL{ID: 2, Req: engine.Request{URL: "https://example.com/2.zip", Filename: "2.zip"}}
+	a.pendingOrder = append(a.pendingOrder, 2)
+	a.mu.Unlock()
+
+	p1 := a.nextPendingDL()
+	if p1 == nil || p1.ID != 1 || p1.Filename != "1.zip" {
+		t.Fatalf("expected pending ID 1, got %+v", p1)
+	}
+
+	req, ok := a.takePending(1)
+	if !ok || req.Filename != "1.zip" {
+		t.Fatalf("takePending(1) failed, got req=%+v, ok=%v", req, ok)
+	}
+
+	p2 := a.nextPendingDL()
+	if p2 == nil || p2.ID != 2 || p2.Filename != "2.zip" {
+		t.Fatalf("expected pending ID 2, got %+v", p2)
+	}
+
+	_, ok = a.takePending(999)
+	if ok {
+		t.Fatalf("takePending(999) should return false")
+	}
+
+	a.clearPending()
+	if p := a.nextPendingDL(); p != nil {
+		t.Fatalf("expected nil after clearPending, got %+v", p)
+	}
+}
+
+func BenchmarkTakePending(b *testing.B) {
+	a := &app{pending: make(map[int]pendingDL)}
+	const count = 50
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		a.mu.Lock()
+		for id := 1; id <= count; id++ {
+			p := pendingDL{ID: id, Req: engine.Request{URL: "https://example.com/f.zip"}}
+			a.pending[id] = p
+			a.pendingOrder = append(a.pendingOrder, id)
+		}
+		a.mu.Unlock()
+
+		for id := 1; id <= count; id++ {
+			a.takePending(id)
+		}
+	}
+}
+
 func TestClipboardRoundTrip(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("Windows only")
@@ -490,5 +560,74 @@ func TestClipboardRoundTrip(t *testing.T) {
 	}
 	if got, ok := clipboardText(); !ok || got != want {
 		t.Fatalf("read back %q (ok=%v), want %q", got, ok, want)
+	}
+}
+
+func TestItemPreviewAndShellIcon(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows only")
+	}
+	if got := youtubeThumbURL("https://www.youtube.com/watch?v=dQw4w9WgXcQ"); got != "https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg" {
+		t.Fatalf("youtubeThumbURL = %q", got)
+	}
+	if got := youtubeThumbURL("https://youtu.be/dQw4w9WgXcQ"); got != "https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg" {
+		t.Fatalf("youtubeThumbURL short = %q", got)
+	}
+	a := &app{eng: engine.New(t.TempDir()), wake: make(chan struct{}, 1), settings: defaultSettings()}
+	ic := a.fileTypeIcon("archive.zip")
+	if ic.Mode != "icon" || !strings.HasPrefix(ic.Src, "data:image/png;base64,") {
+		t.Fatalf("fileTypeIcon = %+v", ic)
+	}
+}
+
+func TestDeleteFileAndBatchLinksAndVideoTools(t *testing.T) {
+	dir := t.TempDir()
+	a := &app{eng: engine.New(dir), wake: make(chan struct{}, 1), settings: defaultSettings()}
+
+	// 1. deleteFile removes the item and deletes the file on disk.
+	p := filepath.Join(dir, "sample.bin")
+	if err := os.WriteFile(p, []byte("hello"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	it := a.register(&engine.Download{Path: p, Status: "done", Total: 5})
+	if err := a.deleteFile(it.d.ID); err != nil {
+		t.Fatalf("deleteFile: %v", err)
+	}
+	if _, err := os.Stat(p); !os.IsNotExist(err) {
+		t.Fatalf("expected file %s to be deleted, stat err = %v", p, err)
+	}
+	if a.get(it.d.ID) != nil {
+		t.Fatal("expected download item to be removed")
+	}
+
+	// 2. loadBatchLinks populates a pre-selected batch from a link list.
+	n := a.loadBatchLinks([]string{
+		"https://example.com/a.zip",
+		"https://example.com/b.pdf",
+		"not-a-url",
+		"https://example.com/a.zip", // duplicate
+	}, "links.txt")
+	if n != 2 {
+		t.Fatalf("loadBatchLinks = %d, want 2", n)
+	}
+	bv := a.takeBatch()
+	if bv == nil || len(bv.Links) != 2 || !bv.Links[0].File || !bv.Links[1].File {
+		t.Fatalf("unexpected batchView: %+v", bv)
+	}
+
+	// 3. addWith with Format="audio" sets Music category on video page.
+	id, err := a.addWith(addOptions{URL: "https://youtu.be/dQw4w9WgXcQ", Format: "audio", Start: false})
+	if err != nil || id == 0 {
+		t.Fatalf("addWith audio: %d, %v", id, err)
+	}
+	rows := a.rows()
+	if len(rows) != 1 || rows[0].Category != "Music" {
+		t.Fatalf("expected Music category for audio format, got %+v", rows)
+	}
+
+	// 4. videoToolsStatus returns status for yt-dlp, ffmpeg, and deno.
+	vt := a.videoToolsStatus()
+	if len(vt.Tools) != 3 {
+		t.Fatalf("expected 3 video tools, got %+v", vt.Tools)
 	}
 }

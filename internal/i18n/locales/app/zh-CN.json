@@ -312,5 +312,8 @@
  "{0} parts (Recommended)": "{0} 段（推荐）",
  "{0} ({1})": "{0}（{1}）",
  "Keep it": "保留",
- "Cancel download": "取消下载"
+ "Cancel download": "取消下载",
+ "Add <b>Velo Download Manager</b> from the Chrome Web Store. It works in Chrome, Edge and Brave.": "从 Chrome 网上应用店添加 <b>Velo Download Manager</b>。它适用于 Chrome、Edge 和 Brave。",
+ "Add to Chrome": "添加至 Chrome",
+ "Developers: load the unpacked extension": "开发者：加载已解压的扩展程序"
 }

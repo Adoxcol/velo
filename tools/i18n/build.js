@@ -52,4 +52,5 @@ fs.writeFileSync("extension/i18n.js",
   "  if (l.startsWith(\"pt\")) return \"pt-BR\"; if (l.startsWith(\"zh\")) return \"zh-CN\"; const b = l.split(\"-\")[0];\n" +
   "  return veloI18n.STRINGS[b] ? b : \"en\"; } catch { return \"en\"; } })();\n" +
   "veloI18n.load(veloI18n.STRINGS[veloI18n.lang] || {});\n");
+console.log(failed ? "FAILED" : "ok");
 process.exitCode = failed ? 1 : 0;

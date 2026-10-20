@@ -70,7 +70,7 @@ async function cookieHeader(url) {
   }
 }
 
-async function handOff({ url, referrer, filename, kind, title, source, size }) {
+async function handOff({ url, referrer, filename, kind, format, title, source, size }) {
   const facebook = facebookVideoPage(url);
   if (facebook) { url = facebook; kind = "page"; filename = ""; }
   else if (partialMediaURL(url)) return { ok: false, error: "This link is only part of a video. Open the original video post and download from there." };
@@ -80,6 +80,7 @@ async function handOff({ url, referrer, filename, kind, title, source, size }) {
     referrer: referrer || "",
     filename: filename || "",
     kind: kind || "",
+    format: format || "",
     title: title || "",
     source: source || "",
     size: size > 0 ? size : 0,
@@ -160,7 +161,17 @@ if (onDeterminingFilename) {
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll().then(() => {
-    chrome.contextMenus.create({ id: "velo-link", title: tr("Download with Velo"), contexts: ["link", "video", "audio", "image"] });
+    chrome.contextMenus.create({ id: "velo-link", title: tr("Download with Velo"), contexts: ["link", "image"] });
+    chrome.contextMenus.create({ id: "velo-video", title: tr("Download with Velo"), contexts: ["video", "audio"] });
+    for (const [id, label] of [
+      ["velo-fmt-best", "Best quality"],
+      ["velo-fmt-1080p", "1080p Full HD"],
+      ["velo-fmt-720p", "720p HD"],
+      ["velo-fmt-480p", "480p SD"],
+      ["velo-fmt-audio", "Audio only (MP3)"],
+    ]) {
+      chrome.contextMenus.create({ id, parentId: "velo-video", title: tr(label), contexts: ["video", "audio"] });
+    }
     chrome.contextMenus.create({ id: "velo-all", title: tr("Download all links with Velo"), contexts: ["page"] });
     chrome.contextMenus.create({ id: "velo-selection", title: tr("Download selected links with Velo"), contexts: ["selection"] });
   });
@@ -176,11 +187,13 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 // "Download with Velo" on a link, image, video or audio. Velo shows its
 // download dialog, as for a captured download.
 async function menuDownload(info, tab) {
+  const id = String(info.menuItemId || "");
+  const format = id.startsWith("velo-fmt-") ? id.slice("velo-fmt-".length).replace(/^best$/, "") : "";
   let url = info.mediaType === "video" || info.mediaType === "audio" ? info.srcUrl || info.linkUrl : info.linkUrl || info.srcUrl;
   let reply;
-  const page = videoPage(info.linkUrl) || ((info.mediaType === "video") && videoPage(info.frameUrl || tab?.url));
+  const page = videoPage(info.linkUrl) || ((info.mediaType === "video" || id.startsWith("velo-fmt-")) && videoPage(info.frameUrl || tab?.url));
   if (page) {
-    reply = await handOff({ url: page, kind: "page", title: tab?.title, referrer: tab?.url });
+    reply = await handOff({ url: page, kind: "page", format, title: tab?.title, referrer: tab?.url });
   } else if (url && /^https?:/i.test(url)) {
     reply = await handOff({ url, referrer: info.frameUrl || tab?.url, filename: "", source: "capture" });
   } else if (info.mediaType === "video" || info.mediaType === "audio") {
@@ -188,7 +201,7 @@ async function menuDownload(info, tab) {
     if (tab && unsupportedSite(tab.url)) return notifyTab(tab.id, "This site uses a protected streaming format that Velo doesn't support.");
     const entry = tab?.id != null && best((await getMedia(tab.id)).items);
     if (!entry) return notifyTab(tab.id, "Velo hasn't found this video's stream yet. Play it for a moment and try again.");
-    reply = await grab(tab.id, entry);
+    reply = await grab(tab.id, entry, format);
   } else {
     return tab?.id != null && notifyTab(tab.id, "Velo can't download this kind of link.");
   }
@@ -415,16 +428,18 @@ function best(items) {
   return ok.find((x) => x.kind === "page") || ok.find((x) => x.kind === "hls") || ok.find((x) => x.kind === "dash") || ok.sort((a, b) => b.size - a.size)[0];
 }
 
-async function grab(tabId, entry) {
+async function grab(tabId, entry, format) {
   const tab = await chrome.tabs.get(tabId);
   if (entry.note === "encrypted") return { ok: false, error: "This video is DRM-protected and can't be downloaded." };
   if (entry.note === "live") return { ok: false, error: "Live streams aren't supported." };
   if (entry.note === "unsupported") return { ok: false, error: "This video's format (multi-part DASH) isn't supported yet." };
   const stream = entry.kind !== "file";
+  const fmt = stream && ["1080p", "720p", "480p", "audio"].includes(format) ? format : "";
   return handOff({
     url: entry.url,
     referrer: tab.url,
     kind: stream ? entry.kind : "",
+    format: fmt,
     title: stream ? tab.title : "",
     filename: "",
   });
@@ -460,7 +475,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
       if (!entry) return reply({ ok: false, error: "No downloadable video found on this page yet. Start playing it first." });
       // A chosen quality must be one the page offered.
       const variant = msg.variant && entry.options?.some((o) => o.url === msg.variant) ? msg.variant : null;
-      return reply(await grab(tabId, variant ? { ...entry, url: variant } : entry));
+      return reply(await grab(tabId, variant ? { ...entry, url: variant } : entry, msg.format));
     }
     if (msg.type === "ping" || msg.type === "show") return reply(await send({ type: msg.type }));
     if (msg.type === "all") {

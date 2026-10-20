@@ -40,50 +40,205 @@ func VideoPage(raw string) bool {
 	return false
 }
 
-func videoTool(name string) (string, error) {
-	if app, err := os.Executable(); err == nil {
-		toolName := name
-		if runtime.GOOS == "windows" {
-			toolName += ".exe"
+// IsPlaylistURL reports whether raw is a YouTube playlist page URL.
+func IsPlaylistURL(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil || (u.Scheme != "https" && u.Scheme != "http") {
+		return false
+	}
+	h := strings.ToLower(u.Hostname())
+	on := func(domain string) bool { return h == domain || strings.HasSuffix(h, "."+domain) }
+	return (on("youtube.com") || on("youtube-nocookie.com")) && u.Path == "/playlist" && u.Query().Get("list") != ""
+}
+
+// PlaylistEntry is one video inside an expanded playlist.
+type PlaylistEntry struct {
+	URL   string `json:"url"`
+	Title string `json:"title"`
+}
+
+// ExpandPlaylist uses yt-dlp --flat-playlist to list the videos in a playlist.
+func ExpandPlaylist(ctx context.Context, rawURL string) (string, []PlaylistEntry, error) {
+	if !IsPlaylistURL(rawURL) {
+		return "", nil, errors.New("not a supported playlist URL")
+	}
+	ytdlp, err := videoTool("yt-dlp")
+	if err != nil {
+		return "", nil, errors.New("playlist expansion needs yt-dlp; open Settings → Video Grabber to install it with one click")
+	}
+	args := []string{"--ignore-config", "--no-config-locations", "--no-exec", "--flat-playlist", "--dump-single-json", "--no-warnings"}
+	if deno, err := videoTool("deno"); err == nil {
+		args = append(args, "--js-runtimes", "deno:"+deno)
+	}
+	args = append(args, "--", rawURL)
+	cmd := exec.CommandContext(ctx, ytdlp, args...)
+	hideWindow(cmd)
+	cmd.Cancel = func() error { return killProcessTree(cmd) }
+	cmd.WaitDelay = 5 * time.Second
+	out, err := cmd.Output()
+	if err != nil {
+		return "", nil, fmt.Errorf("could not read playlist: %w", err)
+	}
+	var data struct {
+		Title   string `json:"title"`
+		Entries []struct {
+			ID         string `json:"id"`
+			URL        string `json:"url"`
+			WebpageURL string `json:"webpage_url"`
+			Title      string `json:"title"`
+		} `json:"entries"`
+	}
+	if err := json.Unmarshal(out, &data); err != nil {
+		return "", nil, fmt.Errorf("invalid playlist data: %w", err)
+	}
+	var entries []PlaylistEntry
+	for _, e := range data.Entries {
+		u := e.WebpageURL
+		if u == "" && strings.HasPrefix(e.URL, "http") {
+			u = e.URL
 		}
+		if u == "" && e.ID != "" {
+			u = "https://www.youtube.com/watch?v=" + e.ID
+		}
+		if u == "" {
+			continue
+		}
+		title := strings.TrimSpace(e.Title)
+		if title == "" {
+			title = u
+		}
+		entries = append(entries, PlaylistEntry{URL: u, Title: title})
+	}
+	if len(entries) == 0 {
+		return "", nil, errors.New("no videos found in playlist")
+	}
+	return data.Title, entries, nil
+}
+
+func isRegularFile(p string) bool {
+	st, err := os.Stat(p)
+	return err == nil && !st.IsDir()
+}
+
+// VideoTool locates an external helper (ffmpeg, yt-dlp, deno) beside Velo,
+// on the process PATH, in the live OS PATH registry, or in common package
+// manager directories.
+func VideoTool(name string) (string, error) {
+	return videoTool(name)
+}
+
+func videoTool(name string) (string, error) {
+	toolName := name
+	if runtime.GOOS == "windows" && !strings.HasSuffix(strings.ToLower(toolName), ".exe") {
+		toolName += ".exe"
+	}
+	if app, err := os.Executable(); err == nil {
 		p := filepath.Join(filepath.Dir(app), toolName)
-		if st, err := os.Stat(p); err == nil && !st.IsDir() {
+		if isRegularFile(p) {
 			return p, nil
 		}
 	}
-	return exec.LookPath(name)
+	if p, err := exec.LookPath(name); err == nil {
+		return p, nil
+	}
+	// When PATH is not explicitly cleared (as in isolated unit tests), also
+	// check live OS PATH settings and standard package-manager locations.
+	if os.Getenv("PATH") != "" {
+		if p := findPlatformTool(toolName); p != "" {
+			return p, nil
+		}
+	}
+	return "", &exec.Error{Name: name, Err: exec.ErrNotFound}
+}
+
+func extractorExt(format string) string {
+	if format == "audio" {
+		return ".mp3"
+	}
+	return ".mkv"
+}
+
+func maxFormatHeight(format string) int {
+	switch format {
+	case "1080p":
+		return 1080
+	case "720p":
+		return 720
+	case "480p":
+		return 480
+	}
+	return 0
 }
 
 func extractorArgs(raw, dir, ffmpeg string) []string {
-	return []string{"--ignore-config", "--no-playlist", "--max-downloads", "1", "--no-warnings", "--newline", "--progress", "--no-colors",
-		"--no-overwrites", "--continue", "--no-mtime", "--match-filter", "!is_live & !is_upcoming & !has_drm",
-		"--format", "bv*+ba/b", "--merge-output-format", "mkv", "--remux-video", "mkv",
-		"--ffmpeg-location", ffmpeg, "--paths", dir, "--output", "video.%(ext)s",
-		"--progress-template", "download:velo:%(progress)j", "--", raw}
+	return extractorArgsFormat(raw, dir, ffmpeg, "")
+}
+
+func extractorArgsFormat(raw, dir, ffmpeg, format string) []string {
+	args := []string{"--ignore-config", "--no-config-locations", "--no-exec", "--no-playlist", "--max-downloads", "1", "--no-warnings", "--newline", "--progress", "--no-colors",
+		"--no-overwrites", "--continue", "--no-mtime", "--match-filter", "!is_live & !is_upcoming & !has_drm"}
+	switch format {
+	case "audio":
+		args = append(args, "--format", "ba/b", "--extract-audio", "--audio-format", "mp3", "--audio-quality", "0")
+	case "1080p", "720p", "480p":
+		h := strings.TrimSuffix(format, "p")
+		args = append(args, "--format", fmt.Sprintf("bv*[height<=%s]+ba/b[height<=%s]/b", h, h), "--embed-subs", "--merge-output-format", "mkv", "--remux-video", "mkv")
+	default:
+		args = append(args, "--format", "bv*+ba/b", "--embed-subs", "--merge-output-format", "mkv", "--remux-video", "mkv")
+	}
+	return append(args, "--ffmpeg-location", ffmpeg, "--paths", dir, "--output", "video.%(ext)s",
+		"--progress-template", "download:velo:%(progress)j", "--", raw)
 }
 
 // runPage delegates site-specific extraction to yt-dlp. Its files remain in the
 // normal .parts directory so pause/restart and removal use Velo's existing lifecycle.
 func (e *Engine) runPage(ctx context.Context, d *Download) error {
-	u, err := url.Parse(d.Req.URL)
+	u, ytdlp, ffmpeg, err := checkExtractorTools(d.Req.URL)
+	if err != nil {
+		return err
+	}
+	work, err := e.prepareExtractorTarget(d)
+	if err != nil {
+		return err
+	}
+	args, cleanup, err := e.buildExtractorCmdArgs(u, d, ffmpeg, work)
+	if cleanup != nil {
+		defer cleanup()
+	}
+	if err != nil {
+		return err
+	}
+	if err := runExtractorProcess(ctx, ytdlp, args, d); err != nil {
+		return err
+	}
+	return finalizeExtractorOutput(d, work)
+}
+
+func checkExtractorTools(rawURL string) (*url.URL, string, string, error) {
+	u, err := url.Parse(rawURL)
 	if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
-		return errors.New("video page must be an HTTP or HTTPS URL")
+		return nil, "", "", errors.New("video page must be an HTTP or HTTPS URL")
 	}
 	ytdlp, err := videoTool("yt-dlp")
 	if err != nil {
-		return errors.New("video page downloads need yt-dlp; install yt-dlp and add it to PATH, or place yt-dlp.exe beside Velo")
+		return nil, "", "", errors.New("video page downloads need yt-dlp; open Settings → Video Grabber to install it with one click")
 	}
 	ffmpeg, err := videoTool("ffmpeg")
 	if err != nil {
-		return errors.New("video page downloads need ffmpeg to combine audio and video; add it to PATH or place ffmpeg.exe beside Velo")
+		return nil, "", "", errors.New("video page downloads need ffmpeg; open Settings → Video Grabber to install it with one click")
 	}
-	name := videoName(d.Req) + ".mkv"
+	return u, ytdlp, ffmpeg, nil
+}
+
+func (e *Engine) prepareExtractorTarget(d *Download) (string, error) {
+	ext := extractorExt(d.Req.Format)
+	name := videoName(d.Req) + ext
 	if d.Req.Filename != "" {
-		name = SafeName(strings.TrimSuffix(d.Req.Filename, filepath.Ext(d.Req.Filename))) + ".mkv"
+		name = SafeName(strings.TrimSuffix(d.Req.Filename, filepath.Ext(d.Req.Filename))) + ext
 	}
 	dir := e.targetDir(d.Req, name)
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		return err
+		return "", err
 	}
 	d.mu.Lock()
 	if d.Path == "" {
@@ -92,13 +247,17 @@ func (e *Engine) runPage(ctx context.Context, d *Download) error {
 	d.Total = -1
 	d.mu.Unlock()
 	if err := d.saveState(); err != nil {
-		return err
+		return "", err
 	}
 	work := d.Path + ".parts"
 	if err := os.MkdirAll(work, 0755); err != nil {
-		return err
+		return "", err
 	}
-	args := extractorArgs(d.Req.URL, work, ffmpeg)
+	return work, nil
+}
+
+func (e *Engine) buildExtractorCmdArgs(u *url.URL, d *Download, ffmpeg, work string) ([]string, func(), error) {
+	args := extractorArgsFormat(d.Req.URL, work, ffmpeg, d.Req.Format)
 	// Insert options before the end-of-options marker; URLs never become flags.
 	add := func(values ...string) {
 		args = append(append(args[:len(args)-2:len(args)-2], values...), "--", d.Req.URL)
@@ -118,31 +277,39 @@ func (e *Engine) runPage(ctx context.Context, d *Download) error {
 	req, _ := http.NewRequest("GET", d.Req.URL, nil)
 	proxy, err := e.proxyFor(req)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	proxyURL := ""
 	if proxy != nil {
 		proxyURL = proxy.String()
 	}
 	add("--proxy", proxyURL)
+
+	var cleanup func()
 	// Host-only cookies: do not turn browser cookies into a global HTTP header
 	// that yt-dlp would forward to unrelated media CDNs.
 	if d.Req.Cookies != "" {
 		f, err := os.CreateTemp("", "velo-video-cookies-*.txt")
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
-		defer os.Remove(f.Name())
+		cleanup = func() { os.Remove(f.Name()) }
 		_, err = f.WriteString(extractorCookies(u, d.Req.Cookies))
 		closeErr := f.Close()
 		if err != nil {
-			return err
+			cleanup()
+			return nil, nil, err
 		}
 		if closeErr != nil {
-			return closeErr
+			cleanup()
+			return nil, nil, closeErr
 		}
 		add("--cookies", f.Name())
 	}
+	return args, cleanup, nil
+}
+
+func runExtractorProcess(ctx context.Context, ytdlp string, args []string, d *Download) error {
 	cmd := exec.CommandContext(ctx, ytdlp, args...)
 	hideWindow(cmd)
 	// CommandContext alone kills only yt-dlp, leaving ffmpeg writing the output.
@@ -152,7 +319,7 @@ func (e *Engine) runPage(ctx context.Context, d *Download) error {
 	cmd.Stdout, cmd.Stderr = log, log
 	d.active.Store(1)
 	defer d.active.Store(0)
-	err = cmd.Run()
+	err := cmd.Run()
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -164,7 +331,11 @@ func (e *Engine) runPage(ctx context.Context, d *Download) error {
 		}
 		return fmt.Errorf("video extraction failed: %s (update yt-dlp and its JavaScript runtime if this site changed)", log.lastError)
 	}
-	finished := filepath.Join(work, "video.mkv")
+	return nil
+}
+
+func finalizeExtractorOutput(d *Download, work string) error {
+	finished := filepath.Join(work, "video"+extractorExt(d.Req.Format))
 	st, err := os.Stat(finished)
 	if err != nil || st.Size() == 0 {
 		return errors.New("video extractor did not produce a complete video")

@@ -2,6 +2,85 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.9 — 2026-10-20
+
+### New
+- **Browser extension quality & audio-only selector:** Pick **Best quality**, **1080p Full HD**, **720p HD**, **480p SD**, or **Audio only (MP3)** directly from the browser extension toolbar popup, the on-video **Download with Velo** (`▾`) menu, and the right-click context menu on videos.
+- **YouTube playlist expansion into Batch Download:** Pasting a YouTube playlist URL (`youtube.com/playlist?list=...`) in **Add Download** (or copying it to the clipboard) automatically lists all videos in the playlist inside Velo's **Batch Download** dialog so you can choose which ones to download.
+- **Embedded video subtitles:** Video downloads (`Best quality`, `1080p`, `720p`, `480p`) automatically embed available subtitles/closed captions into the `.mkv` container.
+- **Open when finished:** Right-click any active, queued, or paused download and choose **Open when finished** to launch the file automatically the moment it completes.
+- **Export download links (`.txt`):** Added **Export all links (.txt)…** to the right-click context menu to save your download URLs via the native Windows Save dialog.
+- **CLI (`veloctl`) quality & batch flags:** Added `-format 1080p|720p|480p|audio` and `-i links.txt` to `veloctl get` and `veloctl add`, plus a live terminal progress bar showing transfer speed, size, and ETA.
+
+### Improved
+- **Custom themed UI dropdowns:** Replaced native OS `<select>` menus across Velo and the browser capture dialog with Velo's custom themed dropdown menu.
+
+## 0.8.8 — 2026-10-19
+
+### New
+- **One-click Video Tools Manager:** **Settings → Video Grabber** now shows the live status and path of `yt-dlp`, `ffmpeg`, and `deno`, with a one-click **Install / Update video tools** button (and a **Fix video tools** button directly on failed video cards) that downloads or updates them into Velo's folder.
+- **Video quality and audio-only selector:** Pick **Best quality**, **1080p**, **720p**, **480p**, or **Audio only (MP3)** directly from the browser extension popup, the on-video **Download with Velo** menu, or the Add Download and Browser Capture dialogs for video pages, HLS, and DASH streams. Audio-only downloads extract `.mp3` and categorize under **Music**.
+- **Per-segment progress bar:** Multi-connection downloads now display live IDM-style parallel segment progress chunks inside each download card's progress bar.
+- **Drop a `.txt` link list to batch-download:** Dragging and dropping a `.txt` file (or multiple links) onto the Velo window opens the **Batch Download** dialog with all links pre-selected.
+- **Delete file from disk:** Added **Delete file from disk…** (with confirmation) to the context menu of completed downloads alongside **Remove from list**.
+
+## 0.8.7 — 2026-10-19
+
+### New
+- **Video thumbnails, image previews and native file/app icons:** Download cards, Velo Mini, the browser capture dialog and the batch download dialog now display real previews—instant YouTube/Shorts thumbnails while queued or downloading, extracted frame thumbnails (with a play badge) for completed videos, cropped previews for images, and real Windows file-type and embedded `.exe` application icons. Extracted thumbnails are cached on disk across restarts.
+
+### Improved
+- **Cleaner sidebar navigation:** Merged the separate **Video/Audio** sidebar tab into filter chips on **Home**, **Downloads** and **Completed**, and added a one-click **Clear completed** button directly on the **Completed** page.
+
+## 0.8.6 — 2026-10-19
+
+### Fixed
+- **Video tools (`ffmpeg`, `yt-dlp`, `deno`) are found reliably even when missing from the process `PATH`:** Velo now reads the live Windows Registry `Path` (`HKCU` and `HKLM`) and checks standard package-manager directories (WinGet Links and Packages, Scoop, Chocolatey, Homebrew, `~/.local/bin`, `~/.deno/bin`, Snap) for both video page downloads and HLS/DASH streams. Tools installed while Velo is already running work immediately without restarting Velo or rebooting.
+- **Prevent Windows from dropping the User `PATH` when `PATH` exceeds 4,095 characters:** When adding Velo to `PATH` would push `System PATH + User PATH` past Windows's 4,095-character `WM_SETTINGCHANGE` buffer limit, the installer now deduplicates the User `PATH`, removes entries already present in System `PATH`, and compacts `%LOCALAPPDATA%` and `%USERPROFILE%` prefixes.
+
+
+## 0.8.5 — 2026-10-19
+
+### Fixed
+- `go install github.com/Adoxcol/velo/cmd/veloctl@latest` works: the repository no longer contains two folders whose names differ only in capital letters, which Go refuses to download.
+
+
+## 0.8.4 — 2026-10-19
+
+### New
+- **A proper setup wizard.** Installing, updating and uninstalling Velo now happen in one Velo-styled window instead of a series of pop-ups: choose a desktop shortcut and whether to add `veloctl` to PATH, watch the progress, then add the browser extension and open Velo from the last page. Uninstalling asks once, with an option to also delete your settings and history. Automatic updates stay silent.
+- **Install `veloctl` with a package manager:** `brew install adoxcol/tap/veloctl` on macOS and Linux, `scoop install veloctl` on Windows, `.deb` and `.rpm` packages for Debian, Ubuntu and Fedora, `go install github.com/Adoxcol/velo/cmd/veloctl@latest`, or one line: `curl -fsSL https://velo.adoxcol.com/install.sh | sh`.
+- A standalone `veloctl` for Windows (x64 and ARM64), without the desktop app.
+
+### Improved
+- The website's Download buttons start the download straight away and confirm it.
+
+## 0.8.3 — 2026-10-18
+
+### New
+- **The browser extension is on the Chrome Web Store** as **Velo Download Manager**, for Chrome, Edge and Brave. No more Developer mode: add it in one click.
+- Installing Velo now makes Chrome offer the extension by itself ("New extension added"), and the setup's last step opens the store page for Edge and Brave.
+- The Browser Extension page and the welcome guide have an **Add to Chrome** button. Loading the unpacked extension is still there for developers.
+
+### Improved
+- Clearer labels for screen readers on icon buttons, and visible focus outlines when using the keyboard.
+- Faster file-name checks for downloads.
+
+## 0.8.2 — 2026-10-17
+
+### Fixed
+- Updates no longer fail with "context deadline exceeded" on slow or unsteady connections. Velo used to give the whole update download 5 minutes; now it continues a partial download from where it stopped and only gives up if no data arrives for a minute, trying again up to six times.
+
+## 0.8.1 — 2026-10-17
+
+### Security
+- Video page downloads run yt-dlp with `--ignore-config`, `--no-config-locations` and `--no-exec`, so a yt-dlp config file on the computer can't change what Velo runs.
+- Velo's update folder is now private to your user account, and the local connection between the extension and the app has extra tests for its access token.
+
+### Improved
+- Faster handling of long download lists: downloads are looked up by number instead of searching the whole list, settings are cached in memory and the progress loop does less work.
+- Internal clean-up of the download engine, the video page extractor and the tray menu, with more tests for checksums, proxies and pending browser downloads.
+
 ## 0.8.0 — 2026-10-17
 
 ### New

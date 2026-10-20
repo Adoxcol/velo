@@ -19,6 +19,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
+	"time"
 )
 
 // API is the "latest release" endpoint (changed in tests).
@@ -128,39 +130,37 @@ func fetchSum(ctx context.Context, client *http.Client, u string) (string, error
 	return strings.ToLower(f[0]), nil
 }
 
-// Download saves the installer into dir and checks its SHA-256.
+// Download saves the installer into dir and checks its SHA-256. A slow or
+// unsteady connection is fine: each attempt continues the partial file from
+// where the last one stopped, and an attempt only gives up when no data
+// arrives for StallTimeout.
 func Download(ctx context.Context, client *http.Client, rel *Release, dir string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", rel.URL, nil)
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("User-Agent", "Velo-updater")
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("downloading the update: %s", resp.Status)
-	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
 	}
 	dst := filepath.Join(dir, "Velo-Setup-"+rel.Version+".exe")
 	tmp := dst + ".part"
-	f, err := os.Create(tmp)
+	var err error
+	for attempt := 0; attempt < Attempts; attempt++ {
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return "", ctx.Err()
+			case <-time.After(time.Duration(attempt) * 3 * time.Second):
+			}
+		}
+		if err = downloadPart(ctx, client, rel.URL, tmp); err == nil {
+			break
+		}
+		if ctx.Err() != nil || errors.Is(err, errTooLarge) {
+			break
+		}
+	}
 	if err != nil {
 		return "", err
 	}
-	h := sha256.New()
-	n, err := io.Copy(io.MultiWriter(f, h), io.LimitReader(resp.Body, MaxSize+1))
-	if cerr := f.Close(); err == nil {
-		err = cerr
-	}
-	if err == nil && n > MaxSize {
-		err = errors.New("update is unexpectedly large")
-	}
-	if err == nil && hex.EncodeToString(h.Sum(nil)) != rel.SHA256 {
+	sum, err := fileSHA256(tmp)
+	if err == nil && sum != rel.SHA256 {
 		err = errors.New("the downloaded update failed its checksum check, so it wasn't installed")
 	}
 	if err != nil {
@@ -168,6 +168,96 @@ func Download(ctx context.Context, client *http.Client, rel *Release, dir string
 		return "", err
 	}
 	return dst, os.Rename(tmp, dst)
+}
+
+// Attempts and StallTimeout bound an update download.
+var (
+	Attempts     = 6
+	StallTimeout = 60 * time.Second
+)
+
+var errTooLarge = errors.New("update is unexpectedly large")
+
+// downloadPart fetches the rest of url into tmp, continuing what is there.
+func downloadPart(ctx context.Context, client *http.Client, url, tmp string) error {
+	have := int64(0)
+	if fi, err := os.Stat(tmp); err == nil {
+		have = fi.Size()
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("User-Agent", "Velo-updater")
+	if have > 0 {
+		req.Header.Set("Range", fmt.Sprintf("bytes=%d-", have))
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	flag := os.O_CREATE | os.O_WRONLY | os.O_APPEND
+	switch {
+	case resp.StatusCode == http.StatusPartialContent && have > 0:
+	case resp.StatusCode == http.StatusRequestedRangeNotSatisfiable && have > 0:
+		return nil // already complete; the checksum decides
+	case resp.StatusCode == http.StatusOK:
+		flag = os.O_CREATE | os.O_WRONLY | os.O_TRUNC // server sent the whole file
+		have = 0
+	default:
+		return fmt.Errorf("downloading the update: %s", resp.Status)
+	}
+	f, err := os.OpenFile(tmp, flag, 0o600)
+	if err != nil {
+		return err
+	}
+	// Cancel the request if no data arrives for StallTimeout.
+	var stalled atomic.Bool
+	stall := time.AfterFunc(StallTimeout, func() { stalled.Store(true); cancel() })
+	defer stall.Stop()
+	body := &stallReader{r: resp.Body, t: stall}
+	n, err := io.Copy(f, io.LimitReader(body, MaxSize+1-have))
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err == nil && have+n > MaxSize {
+		os.Remove(tmp)
+		return errTooLarge
+	}
+	if err != nil && stalled.Load() {
+		return errors.New("the download stalled; Velo will try again later")
+	}
+	return err
+}
+
+// stallReader restarts the stall timer whenever data arrives.
+type stallReader struct {
+	r io.Reader
+	t *time.Timer
+}
+
+func (s *stallReader) Read(p []byte) (int, error) {
+	n, err := s.r.Read(p)
+	if n > 0 {
+		s.t.Reset(StallTimeout)
+	}
+	return n, err
+}
+
+func fileSHA256(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // Install starts the verified installer silently; it closes Velo, replaces

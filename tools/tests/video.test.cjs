@@ -37,10 +37,11 @@ test('YouTube page extraction replaces intercepted fragments and follows SPA nav
   w.navigate('https://www.youtube.com/shorts/second');
   const stale = await w.message({ type: 'grab', tabId: 1, url: first.items[0].url });
   assert.equal(stale.ok, false);
-  const result = await w.message({ type: 'grab', tabId: 1 });
+  const result = await w.message({ type: 'grab', tabId: 1, format: '720p' });
   assert.equal(result.ok, true);
   assert.equal(w.sent[0].url, 'https://www.youtube.com/shorts/second');
   assert.equal(w.sent[0].kind, 'page');
+  assert.equal(w.sent[0].format, '720p');
 });
 
 test('feed hover selects a same-origin post and rejects unrelated extraction URLs', async () => {

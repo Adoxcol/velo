@@ -54,16 +54,28 @@ try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = br
   const mbps = (bw) => (bw >= 1e6 ? (bw / 1e6).toFixed(1) + " Mbps" : Math.round(bw / 1e3) + " kbps");
   const NOTE = { encrypted: "DRM-protected", live: "Live", unsupported: "Not supported" };
 
-  // Every downloadable choice on the page: HLS qualities, DASH, files.
+  const PAGE_FORMATS = [
+    { format: "", label: "Best quality", meta: "Best audio + video" },
+    { format: "1080p", label: "1080p Full HD", meta: "Video + audio" },
+    { format: "720p", label: "720p HD", meta: "Video + audio" },
+    { format: "480p", label: "480p SD", meta: "Video + audio" },
+    { format: "audio", label: "Audio only (MP3)", meta: "MP3 audio" },
+  ];
+
+  // Every downloadable choice on the page: page/DASH qualities, HLS qualities, files.
   function choices() {
     const out = [];
     for (const it of items) {
       if (it.options?.length && !it.note) {
         for (const o of it.options) out.push({ url: it.url, variant: o.url, label: o.height ? `${o.height}p` : "Video", meta: ["HLS", o.bandwidth ? mbps(o.bandwidth) : ""].filter(Boolean).join(" · ") });
+        out.push({ url: it.url, format: "audio", label: "Audio only (MP3)", meta: "HLS · MP3 audio" });
+      } else if ((it.kind === "page" || it.kind === "dash") && !it.note) {
+        for (const f of PAGE_FORMATS) out.push({ url: it.url, format: f.format, label: f.label, meta: it.kind === "dash" ? `DASH · ${f.meta}` : f.meta });
       } else {
         let name = it.quality || "Video";
         if (it.kind === "file") { try { name = decodeURIComponent(new URL(it.url).pathname.split("/").pop()) || "Video file"; } catch {} }
         out.push({ url: it.url, label: name, meta: it.note ? NOTE[it.note] : [{ hls: "HLS", dash: "DASH", file: "File", page: "Best audio + video" }[it.kind], size(it.size)].filter(Boolean).join(" · "), bad: !!it.note });
+        if (it.kind === "hls" && !it.note) out.push({ url: it.url, format: "audio", label: "Audio only (MP3)", meta: "HLS · MP3 audio" });
       }
     }
     return out;
@@ -119,7 +131,7 @@ try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = br
 
   async function grab(c) {
     let r;
-    try { r = await chrome.runtime.sendMessage(c ? { type: "grab", url: c.url, variant: c.variant } : { type: "grab" }); }
+    try { r = await chrome.runtime.sendMessage(c ? { type: "grab", url: c.url, variant: c.variant, format: c.format } : { type: "grab" }); }
     catch { r = { ok: false, error: "Velo extension was reloaded. Refresh this page." }; }
     $("menu").classList.remove("on");
     say(r.ok ? "Sent to Velo ✓" : r.error, r.ok ? 1800 : 4500);

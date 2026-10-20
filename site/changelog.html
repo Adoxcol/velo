@@ -78,8 +78,126 @@
 </header>
 <main>
   <div class="wrap">
+    <article class="rel" id="v0.8.9">
+      <div class="ver"><b>0.8.9</b><span>2026-10-20</span><br><span class="latest">Latest</span></div>
+      <div class="body">
+        <h3>New</h3>
+        <ul>
+          <li><b>Browser extension quality &amp; audio-only selector:</b> Pick <b>Best quality</b>, <b>1080p Full HD</b>, <b>720p HD</b>, <b>480p SD</b>, or <b>Audio only (MP3)</b> directly from the browser extension toolbar popup, the on-video <b>Download with Velo</b> (<code>▾</code>) menu, and the right-click context menu on videos.</li>
+          <li><b>YouTube playlist expansion into Batch Download:</b> Pasting a YouTube playlist URL (<code>youtube.com/playlist?list=...</code>) in <b>Add Download</b> (or copying it to the clipboard) automatically lists all videos in the playlist inside Velo&#39;s <b>Batch Download</b> dialog so you can choose which ones to download.</li>
+          <li><b>Embedded video subtitles:</b> Video downloads (<code>Best quality</code>, <code>1080p</code>, <code>720p</code>, <code>480p</code>) automatically embed available subtitles/closed captions into the <code>.mkv</code> container.</li>
+          <li><b>Open when finished:</b> Right-click any active, queued, or paused download and choose <b>Open when finished</b> to launch the file automatically the moment it completes.</li>
+          <li><b>Export download links (<code>.txt</code>):</b> Added <b>Export all links (.txt)…</b> to the right-click context menu to save your download URLs via the native Windows Save dialog.</li>
+          <li><b>CLI (<code>veloctl</code>) quality &amp; batch flags:</b> Added <code>-format 1080p|720p|480p|audio</code> and <code>-i links.txt</code> to <code>veloctl get</code> and <code>veloctl add</code>, plus a live terminal progress bar showing transfer speed, size, and ETA.</li>
+        </ul>
+        <h3>Improved</h3>
+        <ul>
+          <li><b>Custom themed UI dropdowns:</b> Replaced native OS <code>&lt;select&gt;</code> menus across Velo and the browser capture dialog with Velo&#39;s custom themed dropdown menu.</li>
+        </ul>
+      </div>
+    </article>
+    <article class="rel" id="v0.8.8">
+      <div class="ver"><b>0.8.8</b><span>2026-10-19</span></div>
+      <div class="body">
+        <h3>New</h3>
+        <ul>
+          <li><b>One-click Video Tools Manager:</b> <b>Settings → Video Grabber</b> now shows the live status and path of <code>yt-dlp</code>, <code>ffmpeg</code>, and <code>deno</code>, with a one-click <b>Install / Update video tools</b> button (and a <b>Fix video tools</b> button directly on failed video cards) that downloads or updates them into Velo&#39;s folder.</li>
+          <li><b>Video quality and audio-only selector:</b> Pick <b>Best quality</b>, <b>1080p</b>, <b>720p</b>, <b>480p</b>, or <b>Audio only (MP3)</b> directly from the browser extension popup, the on-video <b>Download with Velo</b> menu, or the Add Download and Browser Capture dialogs for video pages, HLS, and DASH streams. Audio-only downloads extract <code>.mp3</code> and categorize under <b>Music</b>.</li>
+          <li><b>Per-segment progress bar:</b> Multi-connection downloads now display live IDM-style parallel segment progress chunks inside each download card&#39;s progress bar.</li>
+          <li><b>Drop a <code>.txt</code> link list to batch-download:</b> Dragging and dropping a <code>.txt</code> file (or multiple links) onto the Velo window opens the <b>Batch Download</b> dialog with all links pre-selected.</li>
+          <li><b>Delete file from disk:</b> Added <b>Delete file from disk…</b> (with confirmation) to the context menu of completed downloads alongside <b>Remove from list</b>.</li>
+        </ul>
+      </div>
+    </article>
+    <article class="rel" id="v0.8.7">
+      <div class="ver"><b>0.8.7</b><span>2026-10-19</span></div>
+      <div class="body">
+        <h3>New</h3>
+        <ul>
+          <li><b>Video thumbnails, image previews and native file/app icons:</b> Download cards, Velo Mini, the browser capture dialog and the batch download dialog now display real previews—instant YouTube/Shorts thumbnails while queued or downloading, extracted frame thumbnails (with a play badge) for completed videos, cropped previews for images, and real Windows file-type and embedded <code>.exe</code> application icons. Extracted thumbnails are cached on disk across restarts.</li>
+        </ul>
+        <h3>Improved</h3>
+        <ul>
+          <li><b>Cleaner sidebar navigation:</b> Merged the separate <b>Video/Audio</b> sidebar tab into filter chips on <b>Home</b>, <b>Downloads</b> and <b>Completed</b>, and added a one-click <b>Clear completed</b> button directly on the <b>Completed</b> page.</li>
+        </ul>
+      </div>
+    </article>
+    <article class="rel" id="v0.8.6">
+      <div class="ver"><b>0.8.6</b><span>2026-10-19</span></div>
+      <div class="body">
+        <h3>Fixed</h3>
+        <ul>
+          <li><b>Video tools (<code>ffmpeg</code>, <code>yt-dlp</code>, <code>deno</code>) are found reliably even when missing from the process <code>PATH</code>:</b> Velo now reads the live Windows Registry <code>Path</code> (<code>HKCU</code> and <code>HKLM</code>) and checks standard package-manager directories (WinGet Links and Packages, Scoop, Chocolatey, Homebrew, <code>~/.local/bin</code>, <code>~/.deno/bin</code>, Snap) for both video page downloads and HLS/DASH streams. Tools installed while Velo is already running work immediately without restarting Velo or rebooting.</li>
+          <li><b>Prevent Windows from dropping the User <code>PATH</code> when <code>PATH</code> exceeds 4,095 characters:</b> When adding Velo to <code>PATH</code> would push <code>System PATH + User PATH</code> past Windows&#39;s 4,095-character <code>WM_SETTINGCHANGE</code> buffer limit, the installer now deduplicates the User <code>PATH</code>, removes entries already present in System <code>PATH</code>, and compacts <code>%LOCALAPPDATA%</code> and <code>%USERPROFILE%</code> prefixes.</li>
+        </ul>
+      </div>
+    </article>
+    <article class="rel" id="v0.8.5">
+      <div class="ver"><b>0.8.5</b><span>2026-10-19</span></div>
+      <div class="body">
+        <h3>Fixed</h3>
+        <ul>
+          <li><code>go install github.com/Adoxcol/velo/cmd/veloctl@latest</code> works: the repository no longer contains two folders whose names differ only in capital letters, which Go refuses to download.</li>
+        </ul>
+      </div>
+    </article>
+    <article class="rel" id="v0.8.4">
+      <div class="ver"><b>0.8.4</b><span>2026-10-19</span></div>
+      <div class="body">
+        <h3>New</h3>
+        <ul>
+          <li><b>A proper setup wizard.</b> Installing, updating and uninstalling Velo now happen in one Velo-styled window instead of a series of pop-ups: choose a desktop shortcut and whether to add <code>veloctl</code> to PATH, watch the progress, then add the browser extension and open Velo from the last page. Uninstalling asks once, with an option to also delete your settings and history. Automatic updates stay silent.</li>
+          <li><b>Install <code>veloctl</code> with a package manager:</b> <code>brew install adoxcol/tap/veloctl</code> on macOS and Linux, <code>scoop install veloctl</code> on Windows, <code>.deb</code> and <code>.rpm</code> packages for Debian, Ubuntu and Fedora, <code>go install github.com/Adoxcol/velo/cmd/veloctl@latest</code>, or one line: <code>curl -fsSL https://velo.adoxcol.com/install.sh | sh</code>.</li>
+          <li>A standalone <code>veloctl</code> for Windows (x64 and ARM64), without the desktop app.</li>
+        </ul>
+        <h3>Improved</h3>
+        <ul>
+          <li>The website&#39;s Download buttons start the download straight away and confirm it.</li>
+        </ul>
+      </div>
+    </article>
+    <article class="rel" id="v0.8.3">
+      <div class="ver"><b>0.8.3</b><span>2026-10-18</span></div>
+      <div class="body">
+        <h3>New</h3>
+        <ul>
+          <li><b>The browser extension is on the Chrome Web Store</b> as <b>Velo Download Manager</b>, for Chrome, Edge and Brave. No more Developer mode: add it in one click.</li>
+          <li>Installing Velo now makes Chrome offer the extension by itself (&#34;New extension added&#34;), and the setup&#39;s last step opens the store page for Edge and Brave.</li>
+          <li>The Browser Extension page and the welcome guide have an <b>Add to Chrome</b> button. Loading the unpacked extension is still there for developers.</li>
+        </ul>
+        <h3>Improved</h3>
+        <ul>
+          <li>Clearer labels for screen readers on icon buttons, and visible focus outlines when using the keyboard.</li>
+          <li>Faster file-name checks for downloads.</li>
+        </ul>
+      </div>
+    </article>
+    <article class="rel" id="v0.8.2">
+      <div class="ver"><b>0.8.2</b><span>2026-10-17</span></div>
+      <div class="body">
+        <h3>Fixed</h3>
+        <ul>
+          <li>Updates no longer fail with &#34;context deadline exceeded&#34; on slow or unsteady connections. Velo used to give the whole update download 5 minutes; now it continues a partial download from where it stopped and only gives up if no data arrives for a minute, trying again up to six times.</li>
+        </ul>
+      </div>
+    </article>
+    <article class="rel" id="v0.8.1">
+      <div class="ver"><b>0.8.1</b><span>2026-10-17</span></div>
+      <div class="body">
+        <h3>Security</h3>
+        <ul>
+          <li>Video page downloads run yt-dlp with <code>--ignore-config</code>, <code>--no-config-locations</code> and <code>--no-exec</code>, so a yt-dlp config file on the computer can&#39;t change what Velo runs.</li>
+          <li>Velo&#39;s update folder is now private to your user account, and the local connection between the extension and the app has extra tests for its access token.</li>
+        </ul>
+        <h3>Improved</h3>
+        <ul>
+          <li>Faster handling of long download lists: downloads are looked up by number instead of searching the whole list, settings are cached in memory and the progress loop does less work.</li>
+          <li>Internal clean-up of the download engine, the video page extractor and the tray menu, with more tests for checksums, proxies and pending browser downloads.</li>
+        </ul>
+      </div>
+    </article>
     <article class="rel" id="v0.8.0">
-      <div class="ver"><b>0.8.0</b><span>2026-10-17</span><br><span class="latest">Latest</span></div>
+      <div class="ver"><b>0.8.0</b><span>2026-10-17</span></div>
       <div class="body">
         <h3>New</h3>
         <ul>
@@ -318,7 +436,7 @@
       <a href="https://github.com/Adoxcol/velo/issues">Report a problem</a>
       <a href="https://studio.adoxcol.com">Studio music player</a>
       <a href="https://www.adoxcol.com">adoxcol.com</a>
-      <a href="https://gist.github.com/Adoxcol/ea9009ab50bad69a5067c20ae35edd49">Privacy</a>
+      <a href="https://velo.adoxcol.com/privacy">Privacy policy</a>
     </div>
   </div>
 </footer>

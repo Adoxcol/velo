@@ -24,10 +24,13 @@ var (
 
 	clsidFileOpenDialog = syscall.GUID{Data1: 0xDC1C5A9C, Data2: 0xE88A, Data3: 0x4DDE, Data4: [8]byte{0xA5, 0xA1, 0x60, 0xF8, 0x2A, 0x20, 0xAE, 0xF7}}
 	iidIFileOpenDialog  = syscall.GUID{Data1: 0xD57C7288, Data2: 0xD4AD, Data3: 0x4768, Data4: [8]byte{0xBE, 0x02, 0x9D, 0x96, 0x95, 0x32, 0xD9, 0x60}}
+	clsidFileSaveDialog = syscall.GUID{Data1: 0xC0B4E2F3, Data2: 0xBA21, Data3: 0x4773, Data4: [8]byte{0x8D, 0xBA, 0x33, 0x5E, 0xC9, 0x46, 0xEB, 0x8B}}
+	iidIFileSaveDialog  = syscall.GUID{Data1: 0x84BCCD23, Data2: 0x5FDE, Data3: 0x4CDB, Data4: [8]byte{0xAE, 0xA4, 0xAF, 0x64, 0xB8, 0x3D, 0x78, 0xAB}}
 	iidIShellItem       = syscall.GUID{Data1: 0x43826D1E, Data2: 0xE718, Data3: 0x42EE, Data4: [8]byte{0xBC, 0x55, 0xA1, 0xE2, 0x61, 0xC3, 0x7B, 0xFE}}
 )
 
 const (
+	fosOverwritePrompt  = 0x2
 	fosPickFolders      = 0x20
 	fosForceFileSystem  = 0x40
 	fosPathMustExist    = 0x800
@@ -37,14 +40,16 @@ const (
 	coinitApartmentThrd = 2
 
 	// vtable slots
-	vtRelease    = 2
-	vtShow       = 3
-	vtSetOptions = 9
-	vtGetOptions = 10
-	vtSetFolder  = 12
-	vtSetTitle   = 17
-	vtGetResult  = 20
-	vtGetDisplay = 5 // IShellItem::GetDisplayName
+	vtRelease       = 2
+	vtShow          = 3
+	vtSetOptions    = 9
+	vtGetOptions    = 10
+	vtSetFolder     = 12
+	vtSetFileName   = 15
+	vtSetTitle      = 17
+	vtGetResult     = 20
+	vtSetDefaultExt = 22
+	vtGetDisplay    = 5 // IShellItem::GetDisplayName
 )
 
 // comObject is the layout of any COM interface pointer: a vtable pointer.
@@ -101,6 +106,47 @@ func pickFolder(hwnd uintptr, title, start string) (string, error) {
 	var name *uint16
 	if hr := comCall(item, vtGetDisplay, sigdnFileSysPath, uintptr(unsafe.Pointer(&name))); failed(hr) {
 		return "", errors.New("that location isn't a folder on disk")
+	}
+	defer coTaskMemFree.Call(uintptr(unsafe.Pointer(name)))
+	return windows.UTF16PtrToString(name), nil
+}
+
+func pickSaveFile(hwnd uintptr, title, defaultName string) (string, error) {
+	coInitializeEx.Call(0, coinitApartmentThrd)
+	var dlg unsafe.Pointer
+	if hr, _, _ := coCreateInstance.Call(uintptr(unsafe.Pointer(&clsidFileSaveDialog)), 0, clsctxInprocServer,
+		uintptr(unsafe.Pointer(&iidIFileSaveDialog)), uintptr(unsafe.Pointer(&dlg))); failed(hr) {
+		return "", errors.New("can't open the save dialog")
+	}
+	defer comCall(dlg, vtRelease)
+
+	var opts uintptr
+	comCall(dlg, vtGetOptions, uintptr(unsafe.Pointer(&opts)))
+	comCall(dlg, vtSetOptions, opts|fosOverwritePrompt|fosForceFileSystem|fosPathMustExist)
+	if t, err := syscall.UTF16PtrFromString(title); err == nil {
+		comCall(dlg, vtSetTitle, uintptr(unsafe.Pointer(t)))
+	}
+	if n, err := syscall.UTF16PtrFromString(defaultName); err == nil {
+		comCall(dlg, vtSetFileName, uintptr(unsafe.Pointer(n)))
+	}
+	if ext, err := syscall.UTF16PtrFromString("txt"); err == nil {
+		comCall(dlg, vtSetDefaultExt, uintptr(unsafe.Pointer(ext)))
+	}
+	hr := comCall(dlg, vtShow, hwnd)
+	if uint32(hr) == errCancelled {
+		return "", nil
+	}
+	if failed(hr) {
+		return "", errors.New("save dialog failed")
+	}
+	var item unsafe.Pointer
+	if hr := comCall(dlg, vtGetResult, uintptr(unsafe.Pointer(&item))); failed(hr) {
+		return "", errors.New("no file selected")
+	}
+	defer comCall(item, vtRelease)
+	var name *uint16
+	if hr := comCall(item, vtGetDisplay, sigdnFileSysPath, uintptr(unsafe.Pointer(&name))); failed(hr) {
+		return "", errors.New("that location isn't a file on disk")
 	}
 	defer coTaskMemFree.Call(uintptr(unsafe.Pointer(name)))
 	return windows.UTF16PtrToString(name), nil

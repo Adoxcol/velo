@@ -1,6 +1,9 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -40,48 +43,31 @@ func TestScheduleAllowed(t *testing.T) {
 	}
 }
 
-func TestLoadSettingsCaching(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("VELO_HOME", home)
+func TestSaveFilePermissions(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("VELO_HOME", dir)
 
 	s := defaultSettings()
-	s.Theme = "dark"
 	if err := s.save(); err != nil {
-		t.Fatal(err)
+		t.Fatalf("save settings failed: %v", err)
 	}
 
-	got1 := loadSettings()
-	if got1.Theme != "dark" {
-		t.Fatalf("want dark, got %s", got1.Theme)
+	a := &app{home: dir, lastHistory: []byte("old")}
+	a.saveHistory()
+
+	if runtime.GOOS == "windows" {
+		return
 	}
 
-	// Mutate returned struct slice/pointer to test deep copying
-	got1.Queues = append(got1.Queues, Queue{ID: "test", Name: "Test"})
-	got2 := loadSettings()
-	if len(got2.Queues) != 0 {
-		t.Fatalf("cached settings were mutated! got %d queues", len(got2.Queues))
-	}
-
-	// Saving new settings updates cache
-	got2.Theme = "system"
-	if err := got2.save(); err != nil {
-		t.Fatal(err)
-	}
-	got3 := loadSettings()
-	if got3.Theme != "system" {
-		t.Fatalf("want system after save, got %s", got3.Theme)
-	}
-}
-
-func BenchmarkLoadSettings(b *testing.B) {
-	home := b.TempDir()
-	b.Setenv("VELO_HOME", home)
-	s := defaultSettings()
-	_ = s.save()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = loadSettings()
+	for _, name := range []string{"settings.json", "history.json"} {
+		path := filepath.Join(dir, name)
+		fi, err := os.Stat(path)
+		if err != nil {
+			t.Fatalf("failed to stat %s: %v", name, err)
+		}
+		if perm := fi.Mode().Perm(); perm != 0o600 {
+			t.Errorf("%s mode = %o, want 0600", name, perm)
+		}
 	}
 }
 

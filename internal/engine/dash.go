@@ -297,7 +297,9 @@ func (e *Engine) loadDASH(ctx context.Context, r Request) ([][]string, error) {
 		set *mpdAdaptSet
 		rep *mpdRep
 	}
+	maxH := maxFormatHeight(r.Format)
 	best := map[string]pick{}
+	fit := map[string]pick{}
 	for si := range p.Sets {
 		set := &p.Sets[si]
 		for ri := range set.Reps {
@@ -312,6 +314,19 @@ func (e *Engine) loadDASH(ctx context.Context, r Request) ([][]string, error) {
 			if b, ok := best[k]; !ok || rep.Bandwidth > b.rep.Bandwidth {
 				best[k] = pick{set, rep}
 			}
+			if k == "video" && maxH > 0 && rep.Height > 0 && rep.Height <= maxH {
+				if f, ok := fit[k]; !ok || rep.Bandwidth > f.rep.Bandwidth {
+					fit[k] = pick{set, rep}
+				}
+			}
+		}
+	}
+	if f, ok := fit["video"]; ok {
+		best["video"] = f
+	}
+	if r.Format == "audio" {
+		if _, ok := best["audio"]; ok {
+			delete(best, "video")
 		}
 	}
 	var tracks [][]string

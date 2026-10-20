@@ -5,6 +5,7 @@
 <title>Velo</title>
 <style>
   :root {
+    color-scheme: light;
     --primary: #1677ff; --primary-hover: #0f63dd; --primary-soft: #e8f1ff;
     --ink: #0d1728; --text: #1b2433; --muted: #64748b; --faint: #94a3b8;
     --bg: #f5f8fc; --panel: #ffffff; --panel-2: #f8fafd; --line: #e6ebf2; --line-2: #eef2f7;
@@ -14,6 +15,7 @@
     --radius: 12px;
   }
   html[data-theme="dark"] {
+    color-scheme: dark;
     --primary: #3b8bff; --primary-hover: #5c9eff; --primary-soft: #16294a;
     --ink: #eef3fa; --text: #dbe3ee; --muted: #93a1b5; --faint: #66758b;
     --bg: #0d1728; --panel: #131f33; --panel-2: #172540; --line: #22314a; --line-2: #1b2a42;
@@ -115,8 +117,12 @@
   }
   .card.new { animation: rise .25s ease; }
   @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-  .tile { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; flex: none; }
+  .tile { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; flex: none; overflow: hidden; position: relative; }
   .tile svg.i { width: 23px; height: 23px; stroke-width: 1.8; }
+  .tile img.thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tile img.ficon { width: 28px; height: 28px; object-fit: contain; display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,.12)); }
+  .tile .play-badge { position: absolute; right: 3px; bottom: 3px; width: 16px; height: 16px; border-radius: 50%; background: rgba(13,23,40,.75); color: #fff; display: grid; place-items: center; backdrop-filter: blur(2px); }
+  .tile .play-badge svg { width: 9px; height: 9px; fill: currentColor; stroke: none; }
   .tile { background: color-mix(in srgb, var(--c, #94a3b8) 15%, transparent); color: var(--c, #94a3b8); }
   .t-Video { --c: #3b82f6; }
   .t-Music { --c: #a855f7; }
@@ -134,8 +140,9 @@
   .meta { display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: 12.5px; margin-top: 3px; white-space: nowrap; overflow: hidden; }
   .meta .dot::before { content: "•"; margin-right: 10px; color: var(--faint); }
   .meta .left { margin-left: auto; }
-  .bar { height: 6px; border-radius: 4px; background: var(--line-2); overflow: hidden; margin-top: 9px; }
+  .bar { height: 6px; border-radius: 4px; background: var(--line-2); overflow: hidden; margin-top: 9px; position: relative; }
   .bar > i { display: block; height: 100%; border-radius: 4px; background: var(--primary); transition: width .5s ease; }
+  .bar > b { position: absolute; top: 0; bottom: 0; background: var(--line-2); pointer-events: none; transition: left .4s ease, width .4s ease; }
   .card.done .bar > i { background: var(--ok); }
   .card.paused .bar > i, .card.queued .bar > i { background: var(--warn); }
   .card.error .bar > i { background: var(--err); }
@@ -180,11 +187,29 @@
   .field { display: grid; gap: 6px; margin-bottom: 14px; }
   .field > label, .field > .lbl { font-weight: 600; font-size: 12.5px; color: var(--muted); }
   .inp { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); padding: 0 6px 0 12px; }
-  .inp input, .inp select { flex: 1; min-width: 0; border: 0; outline: 0; background: none; padding: 9px 0; user-select: text; }
+  .inp input, .inp select { flex: 1; min-width: 0; border: 0; outline: 0; background: none; padding: 9px 0; color: var(--ink); user-select: text; }
   .inp .link { border: 0; background: none; color: var(--primary); font-weight: 600; padding: 6px 8px; border-radius: 7px; }
   .inp .link:hover { background: var(--primary-soft); }
   .inp.ro input { color: var(--muted); }
-  select.sel, input.num, input.time { border: 1px solid var(--line); border-radius: 9px; background: var(--panel); padding: 8px 10px; }
+  select {
+    appearance: none; -webkit-appearance: none; cursor: pointer; color: var(--ink);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2393a1b5' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 8px center; padding-right: 28px !important;
+  }
+  select option { background: var(--panel); color: var(--ink); }
+  select.sel, input.num, input.time { border: 1px solid var(--line); border-radius: 9px; background-color: var(--panel); padding: 8px 10px; color: var(--ink); }
+  .dd-menu {
+    position: fixed; z-index: 9999; min-width: 140px; max-height: 240px; overflow-y: auto;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: var(--shadow-lg); padding: 5px; display: none;
+  }
+  .dd-menu button {
+    display: flex; width: 100%; justify-content: space-between; gap: 10px; align-items: center;
+    padding: 8px 10px; border: 0; background: none; border-radius: 7px; text-align: left; color: var(--ink); font-weight: 500;
+  }
+  .dd-menu button:hover { background: var(--panel-2); }
+  .dd-menu button.on { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+  .dd-menu button svg.i { width: 15px; height: 15px; color: var(--primary); }
   .row2 { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .days { display: flex; gap: 6px; flex-wrap: wrap; }
   .days label { padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-size: 12.5px; }
@@ -286,7 +311,7 @@
 <main>
   <div class="topbar">
     <label class="search"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <input id="search" placeholder="Search downloads…" spellcheck="false"><kbd>Ctrl K</kbd></label>
+      <input id="search" placeholder="Search downloads…" spellcheck="false" aria-label="Search downloads"><kbd>Ctrl K</kbd></label>
   </div>
   <div class="content">
 
@@ -302,7 +327,7 @@
         <div class="addbar" id="heroBar">
           <svg class="i" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>
           <input id="heroUrl" placeholder="https://example.com/file.zip" spellcheck="false">
-          <button class="iconbtn" id="pasteBtn" title="Paste link"><svg class="i" viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M16 5h2a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h2"/></svg></button>
+          <button class="iconbtn" id="pasteBtn" title="Paste link" aria-label="Paste link"><svg class="i" viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M16 5h2a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h2"/></svg></button>
           <button class="btn primary big" id="heroGo">Download</button>
         </div>
         <div class="hero-note">Files, HLS and DASH video streams. Protected/DRM content is not supported.</div>
@@ -313,7 +338,6 @@
     <section class="page" data-page="downloads"><h1>Downloads</h1><div data-list="downloads"></div></section>
     <section class="page" data-page="queue"><h1>Queue</h1><div data-list="queue"></div></section>
     <section class="page" data-page="completed"><h1>Completed</h1><div data-list="completed"></div></section>
-    <section class="page" data-page="media"><h1>Video / Audio</h1><div data-list="media"></div></section>
 
     <!-- Scheduler -->
     <section class="page" data-page="scheduler">
@@ -343,10 +367,14 @@
         <h2 style="margin:0 0 6px;font-size:16px;color:var(--ink)">One-click downloads from your browser</h2>
         <p class="hint" style="margin:0 0 16px">The extension hands downloads to Velo, finds videos on pages (HLS, DASH and media files) and adds “Download with Velo” to the right-click menu. It talks to Velo through the browser's native messaging, never an open network port.</p>
         <ol class="steps">
-          <li data-i18n-html>Open <code>chrome://extensions</code> or <code>edge://extensions</code> and turn on <b>Developer mode</b>.</li>
-          <li data-i18n-html>Click <b>Load unpacked</b> and choose the <code>extension</code> folder in Velo's install folder.</li>
-          <li><span data-i18n-html>The extension ID should be:</span> <code id="extId">dmdcijgljocjdmafenflenjhdjhenokc</code></li>
+          <li data-i18n-html>Add <b>Velo Download Manager</b> from the Chrome Web Store. It works in Chrome, Edge and Brave.</li>
+          <li>Open any web page. Velo shows ✓ below when the extension connects.</li>
         </ol>
+        <button class="btn primary" id="getExt" style="margin:4px 0 16px">Add to Chrome</button>
+        <details class="hint" style="margin-bottom:12px"><summary>Developers: load the unpacked extension</summary>
+          <p data-i18n-html>Open <code>chrome://extensions</code> or <code>edge://extensions</code> and turn on <b>Developer mode</b>.</p>
+          <p data-i18n-html>Click <b>Load unpacked</b> and choose the <code>extension</code> folder in Velo's install folder.</p>
+        </details>
         <div id="extStatus"></div>
       </div>
     </section>
@@ -384,7 +412,12 @@
             <p class="hint" data-i18n-html>Downloads of common file types in your browser are handed to Velo automatically. See <b>Browser Extension</b> in the sidebar to set it up.</p>
           </div>
           <div class="sec" data-sec="video"><h2>Video grabber</h2>
-            <p class="hint" data-i18n-html>The extension detects HLS (<code>.m3u8</code>) and DASH (<code>.mpd</code>) streams and media files while a video plays. Velo picks the best quality and merges audio and video with ffmpeg. YouTube, Facebook video pages and X posts use optional yt-dlp, ffmpeg and Deno tools installed on PATH or beside Velo. Page downloads select the best quality automatically. DRM and live streams are not supported.</p>
+            <p class="hint" data-i18n-html>The extension detects HLS (<code>.m3u8</code>) and DASH (<code>.mpd</code>) streams and media files while a video plays. Velo picks the best quality and merges audio and video with ffmpeg. YouTube, Facebook video pages and X posts use optional yt-dlp, ffmpeg and Deno tools installed on PATH or beside Velo. DRM and live streams are not supported.</p>
+            <div id="vtoolsList" style="margin-top:14px;border-top:1px solid var(--line-2)"></div>
+            <div class="opt" style="border-bottom:0;padding-top:14px">
+              <div><div class="t">Video helper tools</div><div class="d" id="vtoolsMsg">Automatically downloads or updates yt-dlp, ffmpeg and Deno into Velo's folder.</div></div>
+              <button class="btn primary" id="vtoolsBtn">Install / Update video tools</button>
+            </div>
           </div>
           <div class="sec" data-sec="appearance"><h2>Appearance</h2>
             <div class="opt"><div><div class="t">Theme</div></div>
@@ -409,22 +442,29 @@
 
 <div class="menu" id="menu"></div>
 <div id="toast"></div>
-<div class="dropzone" id="dropzone">Drop a link to download it</div>
+<div class="dropzone" id="dropzone">Drop a link or .txt link list to download</div>
 
 <dialog id="addDlg">
-  <div class="dh"><span id="aTitle">Add Download</span><button class="iconbtn" data-close title="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="dh"><span id="aTitle">Add Download</span><button class="iconbtn" data-close title="Close" aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="db">
     <div class="inp" style="margin-bottom:10px"><svg class="i" viewBox="0 0 24 24" style="color:var(--faint)"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>
-      <input id="aUrl" placeholder="https://example.com/file.zip" spellcheck="false"><button class="iconbtn" id="aClear" title="Clear"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+      <input id="aUrl" placeholder="https://example.com/file.zip" spellcheck="false"><button class="iconbtn" id="aClear" title="Clear" aria-label="Clear link input"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
     <div class="probe" id="aProbe"></div>
     <div class="formrow"><span>Save to</span><div class="inp ro"><svg class="i" viewBox="0 0 24 24" style="color:var(--faint)"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><input id="aDir" readonly><button class="link" id="aDirChange">Change</button></div></div>
     <div class="formrow"><span>File name</span><div class="inp"><input id="aName" spellcheck="false" placeholder="From the server"></div></div>
+    <div class="formrow" id="aFormatRow" hidden><span>Quality</span><div class="inp"><select id="aFormat">
+      <option value="">Best quality (Video + Audio)</option>
+      <option value="1080p">1080p Full HD</option>
+      <option value="720p">720p HD</option>
+      <option value="480p">480p SD</option>
+      <option value="audio">Audio only (MP3)</option>
+    </select></div></div>
     <div class="formrow" id="aLoginRow" hidden><span>Login</span><div style="display:flex;gap:8px;flex:1">
       <div class="inp" style="flex:1"><input id="aUser" spellcheck="false" autocomplete="off" placeholder="Username"></div>
       <div class="inp" style="flex:1"><input id="aPass" type="password" autocomplete="off" placeholder="Password"></div></div></div>
-    <div class="formrow"><span>Checksum</span><div class="inp"><input id="aSum" spellcheck="false" placeholder="Optional: SHA-256, SHA-1 or MD5 to check the file"></div></div>
+    <div class="formrow" id="aSumRow"><span>Checksum</span><div class="inp"><input id="aSum" spellcheck="false" placeholder="Optional: SHA-256, SHA-1 or MD5 to check the file"></div></div>
     <div class="formrow" id="aQueueRow" hidden><span>Queue</span><div class="inp"><select id="aQueue"></select></div></div>
-    <div class="formrow"><span>Split into</span><div class="inp"><select id="aParts"></select></div></div>
+    <div class="formrow" id="aPartsRow"><span>Split into</span><div class="inp"><select id="aParts"></select></div></div>
     <div style="display:grid;gap:10px;margin:14px 0 4px">
       <label class="check"><input type="radio" name="aStart" value="now" checked> Start download immediately</label>
       <label class="check"><input type="radio" name="aStart" value="queue"> Add to queue (paused)</label>
@@ -440,7 +480,7 @@
 </dialog>
 
 <dialog id="relinkDlg">
-  <div class="dh"><span>Refresh link</span><button class="iconbtn" data-close title="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="dh"><span>Refresh link</span><button class="iconbtn" data-close title="Close" aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="db">
     <p class="hint" style="margin-top:0">If the download link expired, get a fresh one from the website (start the download again in the browser and copy its link) and paste it here. Velo checks it is the same file, then continues where it stopped.</p>
     <div class="hint" id="rlName" style="font-weight:600;color:var(--ink);margin-bottom:8px"></div>
@@ -450,7 +490,7 @@
 </dialog>
 
 <dialog id="batchDlg">
-  <div class="dh"><span id="bTitle">Download links</span><button class="iconbtn" data-close title="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="dh"><span id="bTitle">Download links</span><button class="iconbtn" data-close title="Close" aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="db">
     <div class="hint" id="bPage" style="margin:-6px 0 12px"></div>
     <div class="btools">
@@ -582,7 +622,7 @@ async function act(fn, ...args) {
 // ---------- navigation ----------
 const PAGES = [
   ["home", "Home", I.home], ["downloads", "Downloads", I.dl], ["queue", "Queue", I.queue],
-  ["completed", "Completed", I.check], ["media", "Video/Audio", I.media], ["scheduler", "Scheduler", I.clock],
+  ["completed", "Completed", I.check], ["scheduler", "Scheduler", I.clock],
   ["extension", "Browser Extension", I.puzzle], ["settings", "Settings", I.gear],
 ];
 $("#nav").innerHTML = PAGES.map(([id, label, ic]) =>
@@ -590,7 +630,11 @@ $("#nav").innerHTML = PAGES.map(([id, label, ic]) =>
 let page = "home";
 function go(p) {
   page = p;
-  $$("#nav button").forEach((b) => b.classList.toggle("active", b.dataset.go === p));
+  $$("#nav button").forEach((b) => {
+    const active = b.dataset.go === p;
+    b.classList.toggle("active", active);
+    if (active) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+  });
   $$(".page").forEach((s) => s.classList.toggle("on", s.dataset.page === p));
   if (p === "settings" || p === "scheduler") loadSettings();
   if (p === "extension") extStatusHTML().then((h) => ($("#extStatus").innerHTML = h));
@@ -600,21 +644,53 @@ window.go = go;
 $("#nav").onclick = (e) => { const b = e.target.closest("[data-go]"); if (b) go(b.dataset.go); };
 
 // ---------- list ----------
-let data = [], filter = "all", query = "", selected = null, qFilter = "*";
+let data = [], filter = "all", cFilter = "all", query = "", selected = null, qFilter = "*";
 const queueName = (id) => (S?.queues || []).find((q) => q.id === id)?.name || "";
 const seenIds = new Set(); // cards already shown (only new ones animate in)
-const FILTERS = [["all", "All"], ["downloading", "Downloading"], ["completed", "Completed"], ["paused", "Paused"], ["scheduled", "Scheduled"]];
+const previews = new Map(), pendingPreviews = new Set();
+const FILTERS = [["all", "All"], ["downloading", "Downloading"], ["completed", "Completed"], ["paused", "Paused"], ["scheduled", "Scheduled"], ["media", "Video/Audio"]];
 const statusOf = (r) => r.status === "done" ? "completed" : r.status === "queued" ? "scheduled" : r.status === "error" ? "paused" : r.status;
+const isMedia = (r) => r.category === "Video" || r.category === "Music";
 function rowsFor(view) {
   let rows = data.slice().reverse();
   if (query) rows = rows.filter((r) => (r.file + " " + r.url).toLowerCase().includes(query));
   switch (view) {
     case "queue": return rows.reverse().filter((r) => ["queued", "paused", "error"].includes(r.status) && (qFilter === "*" || (r.queue || "") === qFilter)); // in the order they will run
-    case "completed": return rows.filter((r) => r.status === "done").sort((a, b) => b.finished - a.finished);
-    case "media": return rows.filter((r) => r.category === "Video" || r.category === "Music");
+    case "completed":
+      rows = rows.filter((r) => r.status === "done").sort((a, b) => b.finished - a.finished);
+      return cFilter === "media" ? rows.filter(isMedia) : rows;
   }
+  if (filter === "media") return rows.filter(isMedia);
   return filter === "all" ? rows : rows.filter((r) => statusOf(r) === filter);
 }
+
+function tileHTML(r, cat) {
+  const key = `${r.id}:${r.status === "done" ? 1 : 0}:${r.file || ""}`;
+  const pv = previews.get(key);
+  if (!pv && !pendingPreviews.has(key) && typeof itemPreview === "function") {
+    pendingPreviews.add(key);
+    itemPreview(r.id).then((res) => {
+      pendingPreviews.delete(key);
+      previews.set(key, res || {});
+      if (res && res.src) render();
+    }).catch(() => pendingPreviews.delete(key));
+  }
+  if (pv && pv.src) {
+    const cls = pv.mode === "cover" ? "thumb" : "ficon";
+    const play = pv.mode === "cover" && cat === "Video"
+      ? `<span class="play-badge"><svg viewBox="0 0 24 24"><path d="m8 5 12 7-12 7z"/></svg></span>` : "";
+    return `<img class="${cls}" src="${escapeHtml(pv.src)}" alt="" data-fallback="${escapeHtml(cat)}">${play}`;
+  }
+  return icon(I[cat] || I.Other);
+}
+document.addEventListener("error", (e) => {
+  const img = e.target;
+  if (img && img.tagName === "IMG" && img.dataset.fallback) {
+    const cat = img.dataset.fallback;
+    const p = img.parentElement;
+    if (p) p.innerHTML = icon(I[cat] || I.Other);
+  }
+}, true);
 
 function card(r) {
   const cat = r.category || "Other";
@@ -626,33 +702,39 @@ function card(r) {
       (known || r.kind ? `<span class="dot">${pct.toFixed(0)}%</span>` : "") +
       `<span class="dot">${size(r.speed)}/s</span>` + (r.connections > 1 ? `<span class="dot">${r.connections} connections</span>` : "");
     if (known && r.speed > 0) right = `<span class="left">${eta((r.total - r.done) / r.speed)} left</span>`;
-    acts = `<button class="iconbtn" data-act="pause" title="Pause">${icon(I.pause)}</button>`;
+    acts = `<button class="iconbtn" data-act="pause" title="Pause" aria-label="Pause">${icon(I.pause)}</button>`;
   } else if (r.status === "done") {
     const bytes = r.total > 0 ? r.total : r.done;
     meta = `<span>${bytes > 0 ? size(bytes) : "Size unknown"}</span><span class="dot">${r.finished ? ago(r.finished) : "Done"}</span>`;
     // The badge sits with the buttons so they share one centred row.
     acts = `<span class="badge ok done-badge"${r.verified ? ' title="Checksum verified"' : ""}>${icon(I.check)}${r.verified ? "Verified" : "Completed"}</span>` +
-      `<button class="iconbtn" data-act="folder" title="Show in folder">${icon(I.folder)}</button>`;
+      `<button class="iconbtn" data-act="folder" title="Show in folder" aria-label="Show in folder">${icon(I.folder)}</button>`;
   } else if (r.status === "error") {
     meta = `<span class="badge err" title="${escapeHtml(r.error || "")}">${escapeHtml(shorten(r.error || "Failed", 80))}</span>`;
-    acts = `<button class="iconbtn" data-act="resume" title="Retry">${icon(I.retry)}</button>`;
+    if (/yt-dlp|ffmpeg|video extraction failed/i.test(r.error || "")) {
+      acts = `<button class="btn" style="padding:5px 10px;font-size:12px" data-act="vtools" title="Install or update yt-dlp, ffmpeg and Deno">Fix video tools</button>`;
+    }
+    acts += `<button class="iconbtn" data-act="resume" title="Retry" aria-label="Retry">${icon(I.retry)}</button>`;
   } else {
     const label = r.status === "verifying" ? "Checking checksum…" : r.retrying ? (r.retryIn > 0 ? "Connection lost · retrying in " + r.retryIn + "s" : "Reconnecting…")
       : r.status === "queued" ? "Waiting in queue" : "Paused";
     meta = `<span>${known ? size(r.done) + " / " + size(r.total) : r.done ? size(r.done) : "Not started"}</span>` +
       (pct > 0 ? `<span class="dot">${pct.toFixed(0)}%</span>` : "") + `<span class="dot badge warn" title="${escapeHtml(r.retrying ? r.error || "" : "")}">${label}</span>`;
-    acts = r.status === "paused" ? `<button class="iconbtn" data-act="resume" title="Resume">${icon(I.play)}</button>`
-                                 : `<button class="iconbtn" data-act="pause" title="Hold">${icon(I.pause)}</button>`;
+    acts = r.status === "paused" ? `<button class="iconbtn" data-act="resume" title="Resume" aria-label="Resume">${icon(I.play)}</button>`
+                                 : `<button class="iconbtn" data-act="pause" title="Hold" aria-label="Pause">${icon(I.pause)}</button>`;
   }
-  acts += r.status === "done" ? `<button class="iconbtn" data-act="more" title="More">${icon(I.more)}</button>`
-                              : `<button class="iconbtn" data-act="cancel" title="Cancel">${icon(I.x)}</button>`;
+  acts += r.status === "done" ? `<button class="iconbtn" data-act="more" title="More" aria-label="More options">${icon(I.more)}</button>`
+                              : `<button class="iconbtn" data-act="cancel" title="Cancel" aria-label="Cancel download">${icon(I.x)}</button>`;
   const fresh = !seenIds.has(r.id);
   seenIds.add(r.id);
+  const barHTML = r.status === "done" ? "" : r.gaps?.length
+    ? `<div class="bar"><i style="width:100%;transition:none"></i>${r.gaps.map(([l, w]) => `<b style="left:${l}%;width:${w}%"></b>`).join("")}</div>`
+    : `<div class="bar"><i style="width:${pct}%"></i></div>`;
   return `<div class="card ${r.status}${r.id === selected ? " selected" : ""}${fresh ? " new" : ""}" data-id="${r.id}">
-    <div class="tile t-${cat.replace(/\W/g, "")}">${icon(I[cat] || I.Other)}</div>
-    <div class="info"><div class="name" title="${escapeHtml(r.url)}">${escapeHtml(r.file || "Starting…")}${r.queue && r.status !== "done" && queueName(r.queue) ? ` <span class="qbadge">${escapeHtml(queueName(r.queue))}</span>` : ""}</div>
+    <div class="tile t-${cat.replace(/\W/g, "")}">${tileHTML(r, cat)}</div>
+    <div class="info"><div class="name" title="${escapeHtml(r.url)}">${escapeHtml(r.file || "Starting…")}${r.queue && r.status !== "done" && queueName(r.queue) ? ` <span class="qbadge">${escapeHtml(queueName(r.queue))}</span>` : ""}${r.openOnDone && r.status !== "done" ? ` <span class="qbadge">Open when done</span>` : ""}</div>
       <div class="meta">${meta}${right}</div>
-      ${r.status === "done" ? "" : `<div class="bar"><i style="width:${pct}%"></i></div>`}</div>
+      ${barHTML}</div>
     <div class="actions">${acts}</div></div>`;
 }
 const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -663,11 +745,12 @@ function emptyFor(view) {
     home: ["No downloads yet", "Paste a link above, drop one onto the window, or download a file in your browser."],
     downloads: ["No downloads", "Everything you download shows up here."],
     queue: ["The queue is empty", "Paused, waiting and failed downloads appear here."],
-    completed: ["Nothing completed yet", "Finished downloads are listed here, newest first."],
-    media: ["No video or audio yet", "Play a video in your browser and use the Velo extension to grab it."],
+    completed: cFilter === "media"
+      ? ["No video or audio yet", "Play a video in your browser and use the Velo extension to grab it."]
+      : ["Nothing completed yet", "Finished downloads are listed here, newest first."],
   }[view];
   if (query) return `<div class="empty"><div class="ill">${icon(I.dl)}</div><b>No matches</b>Nothing matches “${escapeHtml(query)}”.</div>`;
-  return `<div class="empty"><div class="ill">${icon(view === "completed" ? I.check : view === "media" ? I.media : I.dl)}</div><b>${m[0]}</b>${m[1]}</div>`;
+  return `<div class="empty"><div class="ill">${icon(view === "completed" ? (cFilter === "media" ? I.media : I.check) : I.dl)}</div><b>${m[0]}</b>${m[1]}</div>`;
 }
 
 function render() {
@@ -677,23 +760,27 @@ function render() {
     const showChips = page === "home" || page === "downloads";
     const qChips = page === "queue" && S?.queues?.length
       ? `<div class="chips">${[["*", "All queues"], ["", "Main"], ...S.queues.map((q) => [q.id, q.name])].map(([id, n]) => `<button class="chip${qFilter === id ? " on" : ""}" data-qfilter="${escapeHtml(id)}">${escapeHtml(n)}</button>`).join("")}</div>` : "";
-    const counts = Object.fromEntries(FILTERS.map(([f]) => [f, f === "all" ? data.length : data.filter((r) => statusOf(r) === f).length]));
+    const doneRows = data.filter((r) => r.status === "done");
+    const cChips = page === "completed"
+      ? `<div class="chips" style="align-items:center"><button class="chip${cFilter === "all" ? " on" : ""}" data-cfilter="all">All (${doneRows.length})</button><button class="chip${cFilter === "media" ? " on" : ""}" data-cfilter="media">Video/Audio (${doneRows.filter(isMedia).length})</button>${doneRows.length ? `<button class="iconbtn" style="margin-left:auto" data-bulk="clear" title="Clear completed" aria-label="Clear completed downloads">${icon(I.trash)}</button>` : ""}</div>` : "";
+    const counts = Object.fromEntries(FILTERS.map(([f]) => [f, f === "all" ? data.length : f === "media" ? data.filter(isMedia).length : data.filter((r) => statusOf(r) === f).length]));
     host.innerHTML = (page === "home" ? `<div class="listhead"><h3>Downloads (${data.length})</h3><div class="acts">
         <button class="btn" data-bulk="add">${icon(I.plus)}Add</button>
-        <button class="iconbtn" data-bulk="resumeAll" title="Resume all">${icon(I.play)}</button>
-        <button class="iconbtn" data-bulk="pauseAll" title="Pause all">${icon(I.pause)}</button>
-        <button class="iconbtn" data-bulk="clear" title="Clear completed">${icon(I.trash)}</button></div></div>` : "") +
-      qChips + (showChips ? `<div class="chips">${FILTERS.map(([f, l]) => `<button class="chip${filter === f ? " on" : ""}" data-filter="${f}">${l} (${counts[f]})</button>`).join("")}</div>` : "") +
+        <button class="iconbtn" data-bulk="resumeAll" title="Resume all" aria-label="Resume all">${icon(I.play)}</button>
+        <button class="iconbtn" data-bulk="pauseAll" title="Pause all" aria-label="Pause all">${icon(I.pause)}</button>
+        <button class="iconbtn" data-bulk="clear" title="Clear completed" aria-label="Clear completed downloads">${icon(I.trash)}</button></div></div>` : "") +
+      qChips + cChips + (showChips ? `<div class="chips">${FILTERS.map(([f, l]) => `<button class="chip${filter === f ? " on" : ""}" data-filter="${f}">${l} (${counts[f]})</button>`).join("")}</div>` : "") +
       (rows.length ? `<div class="list">${rows.map(card).join("")}</div>` : emptyFor(page));
   }
   const active = data.filter((r) => r.status === "downloading").length;
-  const setCount = (id, n) => { const el = $(`[data-count="${id}"]`); el.hidden = !n; el.textContent = n; };
+  const setCount = (id, n) => { const el = $(`[data-count="${id}"]`); if (el) { el.hidden = !n; el.textContent = n; } };
   setCount("downloads", active);
   setCount("queue", data.filter((r) => ["queued", "paused", "error"].includes(r.status)).length);
 }
 
 document.addEventListener("click", (e) => {
   const f = e.target.closest("[data-filter]"); if (f) { filter = f.dataset.filter; render(); return; }
+  const cf = e.target.closest("[data-cfilter]"); if (cf) { cFilter = cf.dataset.cfilter; render(); return; }
   const qf = e.target.closest("[data-qfilter]"); if (qf) { qFilter = qf.dataset.qfilter; render(); return; }
   const b = e.target.closest("[data-bulk]");
   if (b) {
@@ -709,6 +796,7 @@ document.addEventListener("click", (e) => {
     case "pause": return act(pause, id);
     case "resume": return act(resume, id);
     case "folder": return act(showInFolder, id);
+    case "vtools": go("settings"); showSec("video"); startVideoToolsInstall(); return;
     case "cancel":
       ask(`Cancel “${r.file || r.url}” and delete the partial file?`, "Cancel download").then((ok) => ok && act(remove, id));
       return;
@@ -729,7 +817,8 @@ function openMenu(anchor, r) {
   const m = $("#menu");
   const items = [];
   if (r.status === "done") items.push(["open", I.open, "Open"]);
-  items.push(["folder", I.folder, "Show in folder"], ["copy", I.copy, "Copy link"]);
+  else items.push(["openOnDone", r.openOnDone ? I.check : I.open, r.openOnDone ? "Open when finished ✓" : "Open when finished"]);
+  items.push(["folder", I.folder, "Show in folder"], ["copy", I.copy, "Copy link"], ["export", I.dl, "Export all links (.txt)…"]);
   if (r.status === "downloading" || r.status === "queued") items.push(["pause", I.pause, "Pause"]);
   if (r.status === "paused" || r.status === "error") items.push(["resume", I.play, "Resume"]);
   if ((r.status === "paused" || r.status === "error") && !r.kind) items.push(["relink", I.retry, "Refresh link…"]);
@@ -742,7 +831,11 @@ function openMenu(anchor, r) {
     if (i > 0) items.push(["up", I.up, "Move up"]);
     if (i >= 0 && i < q.length - 1) items.push(["down", I.down, "Move down"]);
   }
-  items.push(["hr"], ["remove", I.trash, r.status === "done" ? "Remove from list" : "Cancel and delete", "danger"]);
+  if (r.status === "done") {
+    items.push(["hr"], ["remove", I.x, "Remove from list"], ["deleteFile", I.trash, "Delete file from disk…", "danger"]);
+  } else {
+    items.push(["hr"], ["remove", I.trash, "Cancel and delete", "danger"]);
+  }
   m.innerHTML = items.map(([k, ic, l, cls]) => k === "hr" ? "<hr>" : `<button data-m="${k}" class="${cls || ""}">${icon(ic)}${l}</button>`).join("");
   const rect = anchor.getBoundingClientRect();
   m.style.display = "block";
@@ -752,11 +845,16 @@ function openMenu(anchor, r) {
     const k = e.target.closest("[data-m]")?.dataset.m; if (!k) return;
     m.style.display = "none";
     if (k === "open") act(openFile, r.id);
+    if (k === "openOnDone") toggleOpenOnDone(r.id).then((on) => { toast(on ? "Will open when finished" : "Auto-open turned off"); refresh(); }, (err) => toast(String(err), true));
     if (k === "folder") act(showInFolder, r.id);
     if (k === "copy") { copyText(r.url).then(() => toast("Link copied"), () => toast("Couldn't copy", true)); }
+    if (k === "export") { exportLinks([]).then((p) => p && toast("Exported links to " + p.split(/[\\/]/).pop()), (err) => toast(String(err), true)); }
     if (k === "pause") act(pause, r.id);
     if (k === "resume") act(resume, r.id);
     if (k === "remove") act(remove, r.id);
+    if (k === "deleteFile") {
+      ask(`Permanently delete “${r.file || r.url}” from your computer?`, "Delete file", "Keep file").then((ok) => ok && act(deleteFile, r.id));
+    }
     if (k === "relink") openRelink(r);
     if (k.startsWith("q:")) act(setQueue, r.id, k.slice(2));
     if (["now", "next", "up", "down"].includes(k)) act(reorder, r.id, k);
@@ -785,7 +883,7 @@ async function refresh() {
 // ---------- search ----------
 $("#search").oninput = (e) => {
   query = e.target.value.trim().toLowerCase();
-  if (query && !["home", "downloads", "queue", "completed", "media"].includes(page)) go("downloads"); else render();
+  if (query && !["home", "downloads", "queue", "completed"].includes(page)) go("downloads"); else render();
 };
 document.addEventListener("keydown", (e) => {
   if (e.ctrlKey && e.key.toLowerCase() === "k") { e.preventDefault(); $("#search").focus(); $("#search").select(); }
@@ -829,6 +927,11 @@ function partsOptions(def) {
   $("#aParts").innerHTML = [1, 2, 4, 8, 16, 32].map((n) =>
     `<option value="${n}"${n === def ? " selected" : ""}>${n} part${n > 1 ? "s" : ""}${n === def ? " (Recommended)" : ""}</option>`).join("");
 }
+function setVideoMode(isVideo) {
+  $("#aFormatRow").hidden = !isVideo;
+  $("#aPartsRow").hidden = !!isVideo;
+  $("#aSumRow").hidden = !!isVideo;
+}
 async function showAddDir() { $("#aDir").value = addDir || (await downloadDir()); }
 let pendingId = 0; // a browser download being confirmed in the dialog
 async function openAdd(url = "") {
@@ -839,6 +942,8 @@ async function openAdd(url = "") {
   addDir = "";
   defConn = await connections();
   partsOptions(defConn);
+  $("#aFormat").value = "";
+  setVideoMode(false);
   $("#aUrl").value = url; $("#aName").value = ""; $("#aSum").value = ""; fillQueuePicker(); $("#aUser").value = ""; $("#aPass").value = ""; $("#aLoginRow").hidden = true; $("#aProbe").textContent = ""; $("#aProbe").className = "probe";
   $$('input[name="aStart"]')[0].checked = true;
   await showAddDir();
@@ -860,6 +965,7 @@ async function openPending() {
   $("#aClear").hidden = true;
   $("#aName").value = v.filename || "";
   $("#aName").dataset.auto = "0";
+  setVideoMode(!!v.kind);
   const cat = (v.filename.match(/\.([a-z0-9]+)$/i) || [])[1];
   $("#aProbe").className = "probe";
   $("#aProbe").textContent = [v.size > 0 ? size(v.size) : "Size unknown", cat ? cat.toUpperCase() + " file" : null, "from your browser"].filter(Boolean).join(" · ");
@@ -870,21 +976,29 @@ $("#addDlg").addEventListener("close", () => {
   if (pendingId) { dropPending(pendingId); pendingId = 0; } // closed without downloading
   setTimeout(openPending, 150); // next captured download, if any
 });
+const isPlaylistUrl = (u) => /^https?:\/\/([a-z0-9-]+\.)?youtube(-nocookie)?\.com\/playlist\?(.*&)?list=[^&]+/i.test(u);
 let probeTimer;
 async function runProbe() {
   const url = $("#aUrl").value.trim(), seq = ++probeSeq, p = $("#aProbe");
-  if (!/^https?:\/\//i.test(url)) { p.textContent = url ? "Enter a link starting with http:// or https://" : ""; p.className = "probe" + (url ? " err" : ""); return; }
+  if (!/^https?:\/\//i.test(url)) { p.textContent = url ? "Enter a link starting with http:// or https://" : ""; p.className = "probe" + (url ? " err" : ""); setVideoMode(false); return; }
+  if (isPlaylistUrl(url)) {
+    p.className = "probe";
+    p.textContent = "YouTube Playlist · click Download to select videos from the playlist";
+    setVideoMode(false);
+    return;
+  }
   p.className = "probe"; p.textContent = "Checking link…";
   try {
     const info = await probe(url, $("#aUser").value, $("#aPass").value);
     if (seq !== probeSeq) return;
+    setVideoMode(!!info.kind);
     if (!$("#aName").value || $("#aName").dataset.auto === "1") { $("#aName").value = info.kind ? "" : info.name; $("#aName").dataset.auto = "1"; }
-    p.textContent = info.kind ? `Video stream (${info.kind.toUpperCase()}) · best quality is picked automatically`
+    p.textContent = info.kind ? `Video (${info.kind.toUpperCase()}) · choose quality or audio-only below`
       : [info.size > 0 ? size(info.size) : "Size unknown", info.category || null, info.resumable ? "Resumable" : "Can't resume (server doesn't support it)"].filter(Boolean).join(" · ");
   } catch (e) {
     if (seq !== probeSeq) return;
     p.className = "probe err";
-    if (/401/.test(String(e))) { // the site asks for a username and password
+    if (/ 401 /.test(String(e))) { // the site asks for a username and password
       p.textContent = $("#aUser").value ? "Wrong username or password." : "This site needs a username and password.";
       $("#aLoginRow").hidden = false;
       if (!$("#aUser").value) $("#aUser").focus();
@@ -894,15 +1008,36 @@ async function runProbe() {
 $("#aUrl").oninput = () => { clearTimeout(probeTimer); probeTimer = setTimeout(runProbe, 450); };
 $("#aName").oninput = () => ($("#aName").dataset.auto = "0");
 $("#aPass").onchange = runProbe;
-$("#aClear").onclick = () => { $("#aUrl").value = ""; $("#aName").value = ""; $("#aProbe").textContent = ""; $("#aUrl").focus(); };
+$("#aClear").onclick = () => { $("#aUrl").value = ""; $("#aName").value = ""; $("#aProbe").textContent = ""; setVideoMode(false); $("#aUrl").focus(); };
 $("#aDirChange").onclick = async () => {
   try { const p = await pickFolder(addDir || (await downloadDir())); if (p) { addDir = p; showAddDir(); } } catch (e) { toast(String(e), true); }
 };
 $("#aGo").onclick = async () => {
+  const url = $("#aUrl").value.trim();
+  if (isPlaylistUrl(url) && typeof expandPlaylist === "function") {
+    $("#aProbe").className = "probe";
+    $("#aProbe").textContent = "Loading playlist videos…";
+    $("#aGo").disabled = true;
+    try {
+      const n = await expandPlaylist(url);
+      $("#aGo").disabled = false;
+      if (n > 0) {
+        $("#addDlg").close();
+        $("#heroUrl").value = "";
+        return openBatch();
+      }
+    } catch (e) {
+      $("#aGo").disabled = false;
+      $("#aProbe").className = "probe err";
+      $("#aProbe").textContent = String(e);
+      return;
+    }
+  }
   const start = $('input[name="aStart"]:checked').value === "now";
   const parts = +$("#aParts").value;
+  const format = $("#aFormatRow").hidden ? "" : $("#aFormat").value;
   try {
-    await addDownload({ pendingId, url: $("#aUrl").value.trim(), filename: $("#aName").value.trim(), dir: addDir, segments: parts === defConn ? 0 : parts, start, queue: $("#aQueue").value, checksum: $("#aSum").value.trim(), user: $("#aUser").value, pass: $("#aPass").value });
+    await addDownload({ pendingId, url, filename: $("#aName").value.trim(), dir: addDir, segments: parts === defConn ? 0 : parts, start, queue: $("#aQueue").value, format, checksum: $("#aSum").value.trim(), user: $("#aUser").value, pass: $("#aPass").value });
     pendingId = 0;
     $("#addDlg").close();
     toast(start ? "Download started" : "Added to the queue");
@@ -915,15 +1050,36 @@ $("#heroGo").onclick = () => openAdd($("#heroUrl").value.trim());
 $("#heroUrl").onkeydown = (e) => { if (e.key === "Enter") openAdd($("#heroUrl").value.trim()); };
 $("#pasteBtn").onclick = async () => { const t = await pasteText(); if (t) { $("#heroUrl").value = t; } else toast("The clipboard is empty"); };
 
-// drag & drop links
+// drag & drop links or .txt link lists
 let dragDepth = 0;
 document.addEventListener("dragenter", (e) => { e.preventDefault(); if (++dragDepth === 1) $("#dropzone").classList.add("on"); });
 document.addEventListener("dragleave", () => { if (--dragDepth === 0) $("#dropzone").classList.remove("on"); });
 document.addEventListener("dragover", (e) => e.preventDefault());
-document.addEventListener("drop", (e) => {
+async function handleDroppedText(text, source) {
+  const urls = (text || "").split(/\s+/).map((x) => x.trim()).filter((x) => /^https?:\/\/\S+$/i.test(x));
+  if (urls.length > 1 && typeof loadBatchLinks === "function") {
+    const n = await loadBatchLinks(urls, source);
+    if (n > 0) return openBatch();
+  }
+  if (urls.length >= 1) return openAdd(urls[0]);
+  toast("No web links (http:// or https://) found", true);
+}
+document.addEventListener("drop", async (e) => {
   e.preventDefault(); dragDepth = 0; $("#dropzone").classList.remove("on");
-  const t = (e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain") || "").split(/\s+/).find((x) => /^https?:\/\//i.test(x));
-  if (t) openAdd(t); else toast("Drop a web link (http:// or https://)", true);
+  const files = e.dataTransfer?.files;
+  if (files && files.length > 0) {
+    const f = files[0];
+    if (/\.txt$|\.urls?$|\.lst$/i.test(f.name) || f.type.startsWith("text/")) {
+      try {
+        const text = await f.text();
+        return handleDroppedText(text, f.name);
+      } catch (err) {
+        return toast(String(err), true);
+      }
+    }
+  }
+  const raw = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain") || "";
+  handleDroppedText(raw, "dropped links");
 });
 
 // ---------- settings ----------
@@ -931,9 +1087,46 @@ const SECS = [["general", "General", I.sliders], ["downloads", "Downloads", I.dl
   ["speed", "Speed Limit", I.gauge], ["browser", "Browser Integration", I.globe], ["video", "Video Grabber", I.media],
   ["appearance", "Appearance", I.palette], ["advanced", "Advanced", I.wrench]];
 $("#snav").innerHTML = SECS.map(([id, l, ic]) => `<button data-sec-go="${id}">${icon(ic)}${l}</button>`).join("");
+let vtTimer = null;
+async function loadVideoTools() {
+  if (typeof videoToolsStatus !== "function") return;
+  const st = await videoToolsStatus();
+  const list = $("#vtoolsList");
+  if (list && st.tools) {
+    list.innerHTML = st.tools.map((t) => `<div class="opt" style="padding:10px 0">
+      <div><div class="t"><code>${escapeHtml(t.name)}</code></div><div class="d">${escapeHtml(t.path || t.role)}</div></div>
+      <span class="badge ${t.installed ? "ok" : "warn"}">${t.installed ? icon(I.check) + "Installed" : "Not installed"}</span>
+    </div>`).join("");
+  }
+  const btn = $("#vtoolsBtn"), msg = $("#vtoolsMsg");
+  if (btn && msg) {
+    btn.disabled = !!st.installing;
+    const allOk = st.tools && st.tools.every((t) => t.installed);
+    btn.textContent = st.installing ? "Installing…" : allOk ? "Update video tools" : "Install video tools";
+    if (st.error) {
+      msg.textContent = st.error;
+      msg.style.color = "var(--err)";
+    } else if (st.step) {
+      msg.textContent = st.step;
+      msg.style.color = st.installing ? "var(--primary)" : "var(--ok)";
+    } else {
+      msg.textContent = "Automatically downloads or updates yt-dlp, ffmpeg and Deno into Velo's folder.";
+      msg.style.color = "";
+    }
+  }
+  clearTimeout(vtTimer);
+  if (st.installing) vtTimer = setTimeout(loadVideoTools, 700);
+}
+async function startVideoToolsInstall() {
+  if (typeof installVideoTools !== "function") return;
+  await installVideoTools();
+  loadVideoTools();
+}
+$("#vtoolsBtn").onclick = startVideoToolsInstall;
 function showSec(id) {
   $$("#snav button").forEach((b) => b.classList.toggle("on", b.dataset.secGo === id));
   $$(".sec").forEach((s) => s.classList.toggle("on", s.dataset.sec === id));
+  if (id === "video") loadVideoTools();
 }
 $("#snav").onclick = (e) => { const b = e.target.closest("[data-sec-go]"); if (b) showSec(b.dataset.secGo); };
 showSec("general");
@@ -953,8 +1146,8 @@ function renderQueues() {
   const qs = S.queues || [];
   if ($("#qList").contains(document.activeElement) && document.activeElement.dataset.qf === "name") return; // don't redraw while renaming
   $("#qList").innerHTML = qs.length ? qs.map((q, i) => `<div class="panel qpanel" data-qi="${i}">
-    <div class="qtop"><input data-qf="name" value="${escapeHtml(q.name)}" maxlength="40" title="Rename">
-      <button class="iconbtn" data-qdel="${i}" title="Delete queue">${icon(I.trash)}</button></div>
+    <div class="qtop"><input data-qf="name" value="${escapeHtml(q.name)}" maxlength="40" title="Rename" aria-label="Queue name">
+      <button class="iconbtn" data-qdel="${i}" title="Delete queue" aria-label="Delete queue">${icon(I.trash)}</button></div>
     <div class="opt"><div><div class="t">Only download during set hours</div></div>
       <span class="switch"><input type="checkbox" data-qf="enabled"${q.schedule.enabled ? " checked" : ""}><i></i></span></div>
     <div style="padding-top:12px" class="${q.schedule.enabled ? "" : "off"}">
@@ -1078,6 +1271,22 @@ function bVisible() {
   const m = bMatcher();
   return batch.links.filter((l) => bInCat(l, bCat) && m(l));
 }
+const extIcons = new Map();
+function extIconHTML(name, cat) {
+  const m = (name || "").match(/\.([a-z0-9]{1,8})$/i);
+  if (!m) return icon(I[cat] || I.Other);
+  const ext = "." + m[1].toLowerCase();
+  const pv = extIcons.get(ext);
+  if (pv === undefined && typeof fileTypeIcon === "function") {
+    extIcons.set(ext, null);
+    fileTypeIcon("file" + ext).then((res) => {
+      extIcons.set(ext, res || {});
+      if (res && res.src && $("#batchDlg").open) bRender();
+    }).catch(() => {});
+  }
+  if (pv && pv.src) return `<img class="ficon" style="width:20px;height:20px" src="${escapeHtml(pv.src)}" alt="" data-fallback="${escapeHtml(cat)}">`;
+  return icon(I[cat] || I.Other);
+}
 function bRender() {
   const rows = bVisible();
   $("#bChips").innerHTML = BCHIPS.filter(([k]) => k === "files" || k === "all" || batch.links.some((l) => l.category === k))
@@ -1085,7 +1294,7 @@ function bRender() {
   $("#bList").innerHTML = rows.length ? rows.map((l) => {
     const cat = l.category || "Other";
     return `<label class="brow" title="${escapeHtml(l.url)}"><input type="checkbox" data-u="${escapeHtml(l.url)}"${bSel.has(l.url) ? " checked" : ""}>
-      <div class="tile t-${cat.replace(/\W/g, "")}">${icon(I[cat] || I.Other)}</div>
+      <div class="tile t-${cat.replace(/\W/g, "")}">${extIconHTML(l.name, cat)}</div>
       <div><div class="n">${escapeHtml(l.file ? l.name : (l.text || l.name))}</div><div class="u">${escapeHtml(l.url)}</div></div></label>`;
   }).join("") : `<div class="empty" style="border:0">No links match.</div>`;
   $("#bCount").textContent = `${bSel.size} selected of ${batch.links.length}`;
@@ -1122,6 +1331,7 @@ $("#bGo").onclick = async () => {
 };
 
 // ---------- extension status ----------
+document.addEventListener("click", (e) => { if (e.target.closest("#getExt, #obGetExt")) openStore(); });
 async function extStatusHTML() {
   const seen = await extensionSeen();
   return seen ? `<div class="status ok">${icon(I.check)}Connected — the extension talked to Velo ${ago(seen)}.</div>`
@@ -1140,9 +1350,9 @@ const OB = [
     <div class="opt"><div><div class="t">Sort into folders by type</div><div class="d">Video, Music, Images, Documents, E-books, Compressed, Disk images, Programs, Torrents and Fonts.</div></div><span class="switch"><input type="checkbox" id="obSort"${S.sortByType ? " checked" : ""}><i></i></span></div>
     <div class="opt"><div><div class="t">Start Velo with Windows</div><div class="d">So browser downloads and schedules always work.</div></div><span class="switch"><input type="checkbox" id="obAuto"${S.autostart ? " checked" : ""}><i></i></span></div></div>`,
   async () => `<div class="ob"><h2>Connect your browser</h2><p>The Velo extension sends downloads and videos from your browser to Velo.</p>
-    <ol class="steps"><li data-i18n-html>Open <code>chrome://extensions</code> or <code>edge://extensions</code> and turn on <b>Developer mode</b>.</li>
-    <li data-i18n-html>Click <b>Load unpacked</b> and choose the <code>extension</code> folder in Velo's install folder.</li>
+    <ol class="steps"><li data-i18n-html>Add <b>Velo Download Manager</b> from the Chrome Web Store. It works in Chrome, Edge and Brave.</li>
     <li>Open any web page. Velo shows ✓ below when the extension connects.</li></ol>
+    <button class="btn primary" id="obGetExt" style="margin-bottom:12px">Add to Chrome</button>
     <div id="obStatus">${await extStatusHTML()}</div></div>`,
   () => `<div class="ob"><div class="big" style="background:var(--ok)">${icon(I.check)}</div><h2>You're all set</h2><p>A few tips:</p>
     <ul><li>${icon(I.plus)}<span><b>Ctrl+N</b> adds a download; you can also drop a link onto the window.</span></li>
@@ -1177,6 +1387,67 @@ $("#onboard").addEventListener("cancel", (e) => e.preventDefault()); // finish i
 async function maybeOnboard() {
   if (S && !S.onboarded) { obStep = 0; await obShow(); $("#onboard").showModal(); }
 }
+
+// ---------- custom UI dropdown for <select> ----------
+let ddEl = null, ddSel = null;
+function closeDD() {
+  if (ddEl) ddEl.style.display = "none";
+  ddSel = null;
+}
+function openDD(sel) {
+  if (ddSel === sel && ddEl && ddEl.style.display === "block") return closeDD();
+  ddSel = sel;
+  const host = sel.closest("dialog") || document.body;
+  if (!ddEl) {
+    ddEl = document.createElement("div");
+    ddEl.className = "dd-menu";
+  }
+  if (ddEl.parentElement !== host) host.appendChild(ddEl);
+  const cur = sel.value;
+  ddEl.innerHTML = [...sel.options].map((o, i) => {
+    const on = o.value === cur;
+    return `<button type="button" data-ddi="${i}" class="${on ? "on" : ""}"><span>${escapeHtml(o.textContent)}</span>${on ? icon(I.check) : ""}</button>`;
+  }).join("");
+  const box = sel.closest(".inp") || sel;
+  const r = box.getBoundingClientRect();
+  ddEl.style.minWidth = Math.max(r.width, 140) + "px";
+  ddEl.style.display = "block";
+  const mh = ddEl.offsetHeight, mw = ddEl.offsetWidth;
+  let top = r.bottom + 4;
+  if (top + mh > innerHeight - 8 && r.top - mh - 4 >= 8) top = r.top - mh - 4;
+  ddEl.style.left = Math.min(Math.max(r.left, 8), innerWidth - mw - 8) + "px";
+  ddEl.style.top = top + "px";
+  ddEl.onclick = (e) => {
+    const b = e.target.closest("[data-ddi]");
+    if (!b) return;
+    const opt = sel.options[+b.dataset.ddi];
+    if (opt && sel.value !== opt.value) {
+      sel.value = opt.value;
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    closeDD();
+  };
+}
+document.addEventListener("mousedown", (e) => {
+  if (e.target.closest(".dd-menu")) return;
+  const sel = e.target.closest("select");
+  if (sel && !sel.disabled) {
+    e.preventDefault();
+    sel.focus();
+    openDD(sel);
+    return;
+  }
+  closeDD();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && ddSel) { e.stopPropagation(); closeDD(); return; }
+  if (document.activeElement?.tagName === "SELECT" && (e.key === " " || e.key === "Enter")) {
+    e.preventDefault();
+    openDD(document.activeElement);
+  }
+}, true);
+window.addEventListener("resize", closeDD);
+document.addEventListener("scroll", (e) => { if (ddEl && e.target !== ddEl) closeDD(); }, true);
 
 // ---------- start ----------
 loadSettings().then(() => { go("home"); maybeOnboard(); openBatch(); });

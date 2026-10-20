@@ -48,3 +48,15 @@ func TestStreamKind(t *testing.T) {
 		}
 	}
 }
+
+func TestParseFlagsAndURLFile(t *testing.T) {
+	tmp := filepath.Join(t.TempDir(), "links.txt")
+	content := "# comment\n\nhttps://example.com/a.zip\nhttps://youtube.com/watch?v=abc\n"
+	if err := os.WriteFile(tmp, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	urls, dir, format := parseFlags([]string{"-format", "720p", "-i", tmp, "/tmp/out"})
+	if len(urls) != 2 || urls[0] != "https://example.com/a.zip" || dir != "/tmp/out" || format != "720p" {
+		t.Fatalf("unexpected parseFlags result: urls=%v dir=%q format=%q", urls, dir, format)
+	}
+}

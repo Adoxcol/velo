@@ -200,7 +200,7 @@ var page = template.Must(template.New("page").Parse(`<!doctype html>
       <a href="https://github.com/Adoxcol/velo/issues">Report a problem</a>
       <a href="https://studio.adoxcol.com">Studio music player</a>
       <a href="https://www.adoxcol.com">adoxcol.com</a>
-      <a href="https://gist.github.com/Adoxcol/ea9009ab50bad69a5067c20ae35edd49">Privacy</a>
+      <a href="https://velo.adoxcol.com/privacy">Privacy policy</a>
     </div>
   </div>
 </footer>

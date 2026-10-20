@@ -10,7 +10,7 @@ import (
 
 	"golang.org/x/sys/windows/registry"
 
-	"velo/internal/ipc"
+	"github.com/Adoxcol/velo/internal/ipc"
 )
 
 // migrateFromMyDM carries settings and history over from the app's old name
@@ -31,7 +31,7 @@ func migrateFromMyDM() {
 	os.MkdirAll(ipc.Dir(), 0o700)
 	for _, name := range []string{"settings.json", "history.json"} {
 		if b, err := os.ReadFile(filepath.Join(oldDir, name)); err == nil {
-			os.WriteFile(filepath.Join(ipc.Dir(), name), b, 0o644)
+			os.WriteFile(filepath.Join(ipc.Dir(), name), b, 0o600)
 		}
 	}
 	// Keep using the old default folder if the user never chose one.
@@ -54,7 +54,7 @@ func migrateFromMyDM() {
 		k.Close()
 	}
 	if b, err := json.MarshalIndent(s, "", "  "); err == nil {
-		os.WriteFile(settingsPath(), b, 0o644)
+		os.WriteFile(settingsPath(), b, 0o600)
 	}
 	log.Printf("migrated settings and history from %s", oldDir)
 }

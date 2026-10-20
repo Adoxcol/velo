@@ -11,9 +11,9 @@ import (
 
 	webview2 "github.com/jchv/go-webview2"
 
-	"velo/internal/engine"
-	"velo/internal/i18n"
-	"velo/internal/ipc"
+	"github.com/Adoxcol/velo/internal/engine"
+	"github.com/Adoxcol/velo/internal/i18n"
+	"github.com/Adoxcol/velo/internal/ipc"
 )
 
 // The download dialog: a small window of its own, like IDM's "Download
@@ -30,7 +30,7 @@ var (
 	capOpening bool
 )
 
-const capW, capH = 700, 262
+const capW, capH = 700, 292
 
 // showCapture opens the download dialog, or brings it to the front and
 // tells it a new download is waiting.
@@ -83,6 +83,7 @@ func showCapture(a *app) {
 		w.Bind("addDownload", func(o addOptions) (int, error) { return a.addWith(o) })
 		w.Bind("folderFor", func(name string) string { return a.eng.FolderFor(engine.SafeName(name)) })
 		w.Bind("categoryOf", func(name string) string { return engine.CategoryOf(name) })
+		w.Bind("fileTypeIcon", func(name string) thumbResult { return a.fileTypeIcon(name) })
 		w.Bind("getSettings", func() Settings { return a.getSettings() })
 		w.Bind("openMain", func() { go a.show() })
 		w.Bind("closeDialog", func() { go closeCapture() })

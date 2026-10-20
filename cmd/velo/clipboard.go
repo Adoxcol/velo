@@ -9,7 +9,7 @@ import (
 	"time"
 	"unsafe"
 
-	"velo/internal/engine"
+	"github.com/Adoxcol/velo/internal/engine"
 )
 
 // Clipboard monitor: when a link to a downloadable file is
@@ -83,6 +83,12 @@ func (a *app) watchClipboard() {
 		offered = url
 		log.Printf("clipboard: offering %s", url)
 		toast.Show(a.tr("Download copied link?"), linkName(url)+"\n"+a.tr("Click to download with Velo."), func() {
+			if kind == "playlist" {
+				if n, err := a.expandPlaylistToBatch(url); err == nil && n > 0 && a.showBatch != nil {
+					a.showBatch()
+				}
+				return
+			}
 			a.add(engine.Request{URL: url, Kind: kind})
 			a.show()
 		})

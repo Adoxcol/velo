@@ -18,9 +18,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"velo/internal/engine"
-	"velo/internal/hostreg"
-	"velo/internal/ipc"
+	"github.com/Adoxcol/velo/internal/engine"
+	"github.com/Adoxcol/velo/internal/hostreg"
+	"github.com/Adoxcol/velo/internal/ipc"
 )
 
 func main() {
@@ -46,7 +46,7 @@ func main() {
 		migrateFromMyDM()
 	}
 	os.MkdirAll(ipc.Dir(), 0o700)
-	if f, err := os.OpenFile(filepath.Join(ipc.Dir(), "velo.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644); err == nil {
+	if f, err := os.OpenFile(filepath.Join(ipc.Dir(), "velo.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600); err == nil {
 		log.SetOutput(f)
 	}
 	// A portable copy connects the browser extension to itself when run.

@@ -84,20 +84,28 @@ func parseProxyServer(s string) map[string]string {
 
 // wildcardMatch matches Windows bypass entries like "*.corp.com" or "10.*".
 func wildcardMatch(pattern, host string) bool {
-	parts := strings.Split(pattern, "*")
-	if len(parts) == 1 {
+	firstStar := strings.IndexByte(pattern, '*')
+	if firstStar == -1 {
 		return pattern == host
 	}
-	if !strings.HasPrefix(host, parts[0]) {
+	prefix := pattern[:firstStar]
+	if !strings.HasPrefix(host, prefix) {
 		return false
 	}
-	host = host[len(parts[0]):]
-	for _, p := range parts[1 : len(parts)-1] {
-		i := strings.Index(host, p)
-		if i < 0 {
+	host = host[len(prefix):]
+	pattern = pattern[firstStar+1:]
+
+	for {
+		nextStar := strings.IndexByte(pattern, '*')
+		if nextStar == -1 {
+			return strings.HasSuffix(host, pattern)
+		}
+		sub := pattern[:nextStar]
+		idx := strings.Index(host, sub)
+		if idx < 0 {
 			return false
 		}
-		host = host[i+len(p):]
+		host = host[idx+len(sub):]
+		pattern = pattern[nextStar+1:]
 	}
-	return strings.HasSuffix(host, parts[len(parts)-1])
 }

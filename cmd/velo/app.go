@@ -2,37 +2,33 @@ package main
 
 import (
 	"context"
-	"crypto/subtle"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"velo/internal/engine"
-	"velo/internal/i18n"
-	"velo/internal/ipc"
-	"velo/internal/version"
+	"github.com/Adoxcol/velo/internal/engine"
+	"github.com/Adoxcol/velo/internal/i18n"
+	"github.com/Adoxcol/velo/internal/ipc"
 )
 
 type item struct {
-	d        *engine.Download
-	cancel   context.CancelFunc // set while running
-	running  bool
-	requeue  bool // stopped by the schedule: go back to the queue, not "paused"
-	lastDone int64
-	speed    float64   // bytes/s, updated every second
-	added    time.Time // when it was added
-	finished time.Time // when it completed (zero until then)
+	d          *engine.Download
+	cancel     context.CancelFunc // set while running
+	running    bool
+	requeue    bool // stopped by the schedule: go back to the queue, not "paused"
+	openOnDone bool // automatically open the file when the download finishes
+	lastDone   int64
+	speed      float64   // bytes/s, updated every second
+	added      time.Time // when it was added
+	finished   time.Time // when it completed (zero until then)
 
 	addedMs    int64
 	finishedMs int64
@@ -40,6 +36,8 @@ type item struct {
 	cachedPath     string
 	cachedURL      string
 	cachedFilename string
+	cachedTitle    string
+	cachedFormat   string
 	cachedName     string
 	cachedCat      string
 	cachedFolder   string
@@ -76,13 +74,14 @@ type app struct {
 	changed   func() // settings changed (updates the tray menu)
 	onTick    func() // every second (taskbar progress)
 
-	lastHistory   []byte      // last saved history.json contents
-	speedHist     []float64   // total speed per second, last minute
-	extSeen       time.Time   // last message from the browser extension
-	batch         *batchReq   // links waiting in the batch dialog
-	miniDismissed bool        // Velo Mini closed by the user until downloads stop
-	upd           updater     // GitHub Releases updates
-	pending       []pendingDL // browser downloads waiting for the download dialog
+	lastHistory   []byte            // last saved history.json contents
+	speedHist     []float64         // total speed per second, last minute
+	extSeen       time.Time         // last message from the browser extension
+	batch         *batchReq         // links waiting in the batch dialog
+	miniDismissed bool              // Velo Mini closed by the user until downloads stop
+	upd           updater           // GitHub Releases updates
+	pending       map[int]pendingDL // browser downloads waiting for the download dialog
+	pendingOrder  []int
 	nextPending   int
 	showPending   func() // opens the download dialog for pending downloads
 	defaultDir    string // download folder when the setting is empty
@@ -90,7 +89,7 @@ type app struct {
 }
 
 func newApp(eng *engine.Engine) *app {
-	a := &app{eng: eng, token: ipc.NewToken(), wake: make(chan struct{}, 1), settings: loadSettings(), defaultDir: eng.Dir(), home: ipc.Dir()}
+	a := &app{eng: eng, token: ipc.NewToken(), wake: make(chan struct{}, 1), settings: loadSettings(), defaultDir: eng.Dir(), home: ipc.Dir(), pending: make(map[int]pendingDL)}
 	eng.Limit.SetRate(int64(a.settings.SpeedLimitKB) * 1024)
 	if a.settings.DownloadDir != "" {
 		eng.SetDir(a.settings.DownloadDir)
@@ -131,105 +130,14 @@ func (a *app) register(d *engine.Download) *item {
 	return it
 }
 
-// batchReq is a list of links sent by "Download all with Velo".
-type batchReq struct {
-	Page      string `json:"page"`
-	Referrer  string `json:"referrer"`
-	Cookies   string `json:"cookies"`
-	UserAgent string `json:"userAgent"`
-	Links     []struct {
-		URL  string `json:"url"`
-		Text string `json:"text"`
-	} `json:"links"`
-}
-
-// batchLink is one row in the batch dialog.
-type batchLink struct {
-	URL      string `json:"url"`
-	Text     string `json:"text"`
-	Name     string `json:"name"`
-	Category string `json:"category"` // "" for pages and unknown types
-	File     bool   `json:"file"`     // a downloadable file type (pre-selected)
-}
-
-type batchView struct {
-	Page  string      `json:"page"`
-	Links []batchLink `json:"links"`
-}
-
-// takeBatch hands the pending batch to the window (once), labelling each
-// link with its file name and type.
-func (a *app) takeBatch() *batchView {
-	a.mu.Lock()
-	b := a.batch
-	a.mu.Unlock()
-	if b == nil {
-		return nil
-	}
-	v := &batchView{Page: b.Page}
-	for _, l := range b.Links {
-		ok, kind := engine.Downloadable(l.URL)
-		name := linkName(l.URL)
-		cat := engine.CategoryOf(name)
-		if kind != "" {
-			cat = "Video"
-		}
-		v.Links = append(v.Links, batchLink{URL: l.URL, Text: l.Text, Name: name, Category: cat, File: ok})
-	}
-	return v
-}
-
-// finishBatch queues the chosen links and clears the pending batch.
-func (a *app) finishBatch(urls []string, start bool) int {
-	a.mu.Lock()
-	b := a.batch
-	a.batch = nil
-	a.mu.Unlock()
-	if b == nil {
-		return 0
-	}
-	// Only links that were in the batch can be added.
-	allowed := map[string]bool{}
-	for _, l := range b.Links {
-		allowed[l.URL] = true
-	}
-	var chosen []string
-	for _, u := range urls {
-		if allowed[u] {
-			chosen = append(chosen, u)
-		}
-	}
-	return a.addBatch(*b, chosen, start)
-}
-
-// addBatch queues the chosen links from the batch dialog.
-func (a *app) addBatch(b batchReq, urls []string, start bool) int {
-	n := 0
-	for _, u := range urls {
-		ok, kind := engine.Downloadable(u)
-		if !ok && !strings.HasPrefix(strings.ToLower(u), "http") {
-			continue
-		}
-		r := engine.Request{URL: u, Referrer: b.Referrer, UserAgent: b.UserAgent, Kind: kind}
-		if sameHost(u, b.Page) { // never send the page's cookies to other sites
-			r.Cookies = b.Cookies
-		}
-		if start {
-			a.add(r)
-		} else {
-			a.register(&engine.Download{Req: r, Status: "paused"})
-		}
-		n++
-	}
-	a.kick()
-	return n
-}
-
 // copiedLink returns the URL in text if it's a single downloadable link.
 func copiedLink(text string) (url, kind string, ok bool) {
 	text = strings.TrimSpace(text)
 	if text == "" || len(text) > 2048 || strings.ContainsAny(text, " \t\r\n") {
 		return "", "", false
+	}
+	if engine.IsPlaylistURL(text) {
+		return text, "playlist", true
 	}
 	if ok, kind := engine.Downloadable(text); ok {
 		return text, kind, true
@@ -245,76 +153,6 @@ func linkName(u string) string {
 	return name
 }
 
-func sameHost(a, b string) bool {
-	ua, err1 := url.Parse(a)
-	ub, err2 := url.Parse(b)
-	return err1 == nil && err2 == nil && ua.Host != "" && strings.EqualFold(ua.Host, ub.Host)
-}
-
-// extensionSeen is when the browser extension last talked to Velo (unix ms, 0 = never this session).
-func (a *app) extensionSeen() int64 {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	if a.extSeen.IsZero() {
-		return 0
-	}
-	return a.extSeen.UnixMilli()
-}
-
-// pendingDL is a browser download waiting for the user in the download dialog.
-type pendingDL struct {
-	ID   int            `json:"id"`
-	Req  engine.Request `json:"-"`
-	Size int64          `json:"size"`
-}
-
-// pendingView is what the dialog shows for a pending download.
-type pendingView struct {
-	ID       int    `json:"id"`
-	URL      string `json:"url"`
-	Filename string `json:"filename"`
-	Size     int64  `json:"size"`
-	Site     string `json:"site"`
-	Kind     string `json:"kind"`
-}
-
-// clearPending drops every browser download waiting for the dialog.
-func (a *app) clearPending() {
-	a.mu.Lock()
-	a.pending = nil
-	a.mu.Unlock()
-}
-
-// nextPendingDL returns the oldest pending browser download, or nil.
-func (a *app) nextPendingDL() *pendingView {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	if len(a.pending) == 0 {
-		return nil
-	}
-	p := a.pending[0]
-	v := &pendingView{ID: p.ID, URL: p.Req.URL, Filename: p.Req.Filename, Size: p.Size, Kind: p.Req.Kind}
-	if u, err := url.Parse(p.Req.Referrer); err == nil && u.Host != "" {
-		v.Site = u.Host
-	} else if u, err := url.Parse(p.Req.URL); err == nil {
-		v.Site = u.Host
-	}
-	return v
-}
-
-// takePending removes a pending download and returns its request.
-func (a *app) takePending(id int) (engine.Request, bool) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	for i, p := range a.pending {
-		if p.ID == id {
-			a.pending = append(a.pending[:i], a.pending[i+1:]...)
-			return p.Req, true
-		}
-	}
-	return engine.Request{}, false
-}
-
 // addOptions come from the Add Download dialog.
 type addOptions struct {
 	PendingID int    `json:"pendingId"` // a browser download being confirmed
@@ -325,6 +163,7 @@ type addOptions struct {
 	Start     bool   `json:"start"`    // false = add paused
 	Checksum  string `json:"checksum"` // optional, verified when done
 	Queue     string `json:"queue"`    // named queue ID, "" = main
+	Format    string `json:"format"`   // video quality: "" (best), "1080p", "720p", "480p", "audio"
 	User      string `json:"user"`     // optional HTTP login
 	Pass      string `json:"pass"`
 }
@@ -346,7 +185,7 @@ func (a *app) addWith(o addOptions) (int, error) {
 		if name := strings.TrimSpace(o.Filename); name != "" {
 			base.Filename = name // otherwise keep the browser's suggested name
 		}
-		base.Dir, base.Segments, base.Checksum, base.Queue = o.Dir, o.Segments, sum, o.Queue
+		base.Dir, base.Segments, base.Checksum, base.Queue, base.Format = o.Dir, o.Segments, sum, o.Queue, o.Format
 		if o.User != "" {
 			base.User, base.Pass = o.User, o.Pass
 		}
@@ -368,7 +207,7 @@ func (a *app) addWith(o addOptions) (int, error) {
 	if o.Dir != "" && !filepath.IsAbs(o.Dir) {
 		return 0, errors.New("choose a full folder path")
 	}
-	r := engine.Request{URL: o.URL, Filename: strings.TrimSpace(o.Filename), Dir: o.Dir, Segments: o.Segments, Kind: kind, Checksum: sum, User: o.User, Pass: o.Pass, Queue: o.Queue}
+	r := engine.Request{URL: o.URL, Filename: strings.TrimSpace(o.Filename), Dir: o.Dir, Segments: o.Segments, Kind: kind, Format: o.Format, Checksum: sum, User: o.User, Pass: o.Pass, Queue: o.Queue}
 	if !o.Start {
 		it := a.register(&engine.Download{Req: r, Status: "paused"})
 		a.kick()
@@ -471,8 +310,6 @@ func (a *app) dispatch(now time.Time) {
 func (a *app) launch(it *item) {
 	ctx, cancel := context.WithCancel(context.Background())
 	it.cancel, it.running, it.requeue = cancel, true, false
-	it.lastDone = it.d.Done.Load()
-	it.speed = 0
 	a.running++
 	d := it.d
 	go func() {
@@ -518,9 +355,14 @@ func (a *app) launch(it *item) {
 			a.mu.Lock()
 			it.finished = time.Now()
 			it.finishedMs = it.finished.UnixMilli()
+			openNow := it.openOnDone
+			it.openOnDone = false
 			a.mu.Unlock()
 			p, _ := d.Info()
 			log.Printf("#%d done %s (%.1f MB in %.1fs)", d.ID, p, float64(d.Done.Load())/1e6, time.Since(t).Seconds())
+			if openNow {
+				go a.openFile(d.ID, false)
+			}
 			if a.onDone != nil {
 				a.onDone(d)
 			}
@@ -768,6 +610,65 @@ func (a *app) remove(id int) error {
 	return nil
 }
 
+// deleteFile removes a download from the list and deletes its completed file
+// from disk.
+func (a *app) deleteFile(id int) error {
+	it := a.get(id)
+	if it == nil {
+		return errors.New("no such download")
+	}
+	p, _ := it.d.Info()
+	if err := a.remove(id); err != nil {
+		return err
+	}
+	if p != "" {
+		if err := os.Remove(p); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+	return nil
+}
+
+// toggleOpenOnDone flips whether an unfinished download opens automatically
+// once it completes.
+func (a *app) toggleOpenOnDone(id int) (bool, error) {
+	it := a.get(id)
+	if it == nil {
+		return false, errors.New("no such download")
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	it.openOnDone = !it.openOnDone
+	return it.openOnDone, nil
+}
+
+// exportLinks returns newline-separated URLs for the specified download IDs
+// (or all downloads if ids is empty).
+func (a *app) exportLinks(ids []int) string {
+	want := map[int]bool{}
+	for _, id := range ids {
+		want[id] = true
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	var lines []string
+	seen := map[string]bool{}
+	for _, it := range a.items {
+		if len(want) > 0 && !want[it.d.ID] {
+			continue
+		}
+		u := strings.TrimSpace(it.d.Req.URL)
+		if u != "" && !seen[u] {
+			seen[u] = true
+			lines = append(lines, u)
+		}
+	}
+	if len(lines) == 0 {
+		return ""
+	}
+	return strings.Join(lines, "\r\n") + "\r\n"
+}
+
 func (a *app) getSettings() Settings {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -856,57 +757,53 @@ func (a *app) openDir() error {
 // sleeping while anything downloads.
 func (a *app) measure() {
 	for range time.Tick(time.Second) {
-		a.stepMeasure()
-	}
-}
-
-func (a *app) stepMeasure() {
-	a.mu.Lock()
-	total := 0.0
-	for _, it := range a.items {
-		if !it.running {
-			it.speed = 0
-			continue
+		a.mu.Lock()
+		total := 0.0
+		for _, it := range a.items {
+			n := it.d.Done.Load()
+			it.speed = 0.6*float64(n-it.lastDone) + 0.4*it.speed // smoothed
+			it.lastDone = n
+			if it.running {
+				total += it.speed
+			}
 		}
-		n := it.d.Done.Load()
-		it.speed = 0.6*float64(n-it.lastDone) + 0.4*it.speed // smoothed
-		it.lastDone = n
-		total += it.speed
-	}
-	a.speedHist = append(a.speedHist, total)
-	if len(a.speedHist) > 60 {
-		a.speedHist = a.speedHist[len(a.speedHist)-60:]
-	}
-	busy := a.running > 0
-	a.mu.Unlock()
-	keepAwake(busy)
-	if a.onTick != nil {
-		a.onTick()
+		a.speedHist = append(a.speedHist, total)
+		if len(a.speedHist) > 60 {
+			a.speedHist = a.speedHist[len(a.speedHist)-60:]
+		}
+		busy := a.running > 0
+		a.mu.Unlock()
+		keepAwake(busy)
+		if a.onTick != nil {
+			a.onTick()
+		}
 	}
 }
 
 func pct(d *engine.Download) float64 { return d.Progress() }
 
 type row struct {
-	ID          int     `json:"id"`
-	Status      string  `json:"status"`
-	Percent     float64 `json:"percent"`
-	Done        int64   `json:"done"`
-	Total       int64   `json:"total"`
-	Speed       float64 `json:"speed"`
-	Connections int     `json:"connections"`
-	File        string  `json:"file"`
-	URL         string  `json:"url"`
-	Kind        string  `json:"kind,omitempty"`
-	Category    string  `json:"category"` // Video, Music, Images, ... or ""
-	Folder      string  `json:"folder"`
-	Added       int64   `json:"added"`    // unix ms
-	Finished    int64   `json:"finished"` // unix ms, 0 until done
-	Error       string  `json:"error,omitempty"`
-	Queue       string  `json:"queue,omitempty"`    // named queue ID
-	Verified    bool    `json:"verified,omitempty"` // matched the checksum given when added
-	Retrying    bool    `json:"retrying,omitempty"` // waiting after a network drop
-	RetryIn     int     `json:"retryIn,omitempty"`  // seconds until the next try
+	ID          int          `json:"id"`
+	Status      string       `json:"status"`
+	Percent     float64      `json:"percent"`
+	Done        int64        `json:"done"`
+	Total       int64        `json:"total"`
+	Speed       float64      `json:"speed"`
+	Connections int          `json:"connections"`
+	File        string       `json:"file"`
+	URL         string       `json:"url"`
+	Kind        string       `json:"kind,omitempty"`
+	Category    string       `json:"category"` // Video, Music, Images, ... or ""
+	Folder      string       `json:"folder"`
+	Added       int64        `json:"added"`    // unix ms
+	Finished    int64        `json:"finished"` // unix ms, 0 until done
+	Error       string       `json:"error,omitempty"`
+	Queue       string       `json:"queue,omitempty"`      // named queue ID
+	Verified    bool         `json:"verified,omitempty"`   // matched the checksum given when added
+	Retrying    bool         `json:"retrying,omitempty"`   // waiting after a network drop
+	RetryIn     int          `json:"retryIn,omitempty"`    // seconds until the next try
+	OpenOnDone  bool         `json:"openOnDone,omitempty"` // open automatically when finished
+	Gaps        [][2]float64 `json:"gaps,omitempty"`       // unfetched [startPct, widthPct] segment gaps
 }
 
 func (a *app) rows() []row {
@@ -919,10 +816,12 @@ func (a *app) rows() []row {
 		name := it.cachedName
 		category := it.cachedCat
 		folder := it.cachedFolder
-		if p != it.cachedPath || d.Req.URL != it.cachedURL || d.Req.Filename != it.cachedFilename || name == "" {
+		if p != it.cachedPath || d.Req.URL != it.cachedURL || d.Req.Filename != it.cachedFilename || d.Req.Title != it.cachedTitle || d.Req.Format != it.cachedFormat || name == "" {
 			it.cachedPath = p
 			it.cachedURL = d.Req.URL
 			it.cachedFilename = d.Req.Filename
+			it.cachedTitle = d.Req.Title
+			it.cachedFormat = d.Req.Format
 			if p != "" {
 				name = filepath.Base(p)
 				folder = filepath.Dir(p)
@@ -942,7 +841,11 @@ func (a *app) rows() []row {
 			}
 			category = engine.CategoryOf(name)
 			if d.Req.Kind != "" {
-				category = "Video"
+				if d.Req.Format == "audio" {
+					category = "Music"
+				} else {
+					category = "Video"
+				}
 			}
 			it.cachedName = name
 			it.cachedCat = category
@@ -965,6 +868,10 @@ func (a *app) rows() []row {
 			Finished:    it.finishedMs,
 			Verified:    d.Verified,
 			Queue:       queueID,
+			OpenOnDone:  it.openOnDone,
+		}
+		if status != "done" {
+			r.Gaps = d.RemainingGaps()
 		}
 		if status == "downloading" {
 			r.Speed = it.speed
@@ -997,121 +904,6 @@ func (a *app) status() status {
 	a.mu.Unlock()
 	return status{Rows: a.rows(), Summary: s.describe(now), Waiting: !s.Schedule.allowed(now), Speed: hist}
 }
-
-// handle serves the token-protected API used by velo-host and veloctl.
-func (a *app) handle(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" || subtle.ConstantTimeCompare([]byte(r.Header.Get(ipc.TokenHeader)), []byte(a.token)) != 1 {
-		http.Error(w, "forbidden", http.StatusForbidden)
-		return
-	}
-	enc := json.NewEncoder(w)
-	reply := func(id int, err error) {
-		if err != nil {
-			enc.Encode(ipc.Reply{Error: err.Error(), Ext: extensionVersion()})
-		} else {
-			enc.Encode(ipc.Reply{OK: true, ID: id, Ext: extensionVersion()})
-		}
-	}
-	id, _ := strconv.Atoi(r.URL.Query().Get("id"))
-	if r.Header.Get("Content-Type") == "application/json" { // from velo-host, i.e. the extension
-		a.mu.Lock()
-		a.extSeen = time.Now()
-		a.mu.Unlock()
-	}
-	switch r.URL.Path {
-	case "/ping":
-		reply(0, nil)
-	case "/batch":
-		var b batchReq
-		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<20)).Decode(&b); err != nil || len(b.Links) == 0 {
-			reply(0, fmt.Errorf("no links"))
-			return
-		}
-		if len(b.Links) > 2000 {
-			b.Links = b.Links[:2000]
-		}
-		a.mu.Lock()
-		a.batch = &b
-		a.mu.Unlock()
-		if a.showBatch != nil {
-			a.showBatch()
-		}
-		reply(len(b.Links), nil)
-	case "/add":
-		var j ipc.Job
-		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&j); err != nil || j.URL == "" {
-			reply(0, fmt.Errorf("bad job"))
-			return
-		}
-		if j.Kind != "" && j.Kind != "hls" && j.Kind != "dash" && j.Kind != "page" {
-			reply(0, fmt.Errorf("unknown kind %q", j.Kind))
-			return
-		}
-		r := engine.Request{URL: j.URL, Referrer: j.Referrer, Cookies: j.Cookies,
-			UserAgent: j.UserAgent, Filename: j.Filename, Kind: j.Kind, Title: j.Title}
-		// Like IDM: a download the browser started opens Velo's download
-		// dialog (unless turned off); the browser's own download is stopped.
-		if j.Source == "capture" && a.getSettings().AskOnCapture && a.showPending != nil {
-			a.mu.Lock()
-			if len(a.pending) >= 50 { // a page firing downloads in a loop
-				a.mu.Unlock()
-				reply(0, fmt.Errorf("too many downloads waiting for the download dialog"))
-				return
-			}
-			a.nextPending++
-			a.pending = append(a.pending, pendingDL{ID: a.nextPending, Req: r, Size: j.Size})
-			a.mu.Unlock()
-			go a.showPending()
-			reply(0, nil)
-			return
-		}
-		reply(a.add(r), nil)
-	case "/list":
-		enc.Encode(a.rows())
-	case "/pause":
-		reply(id, a.pause(id))
-	case "/resume":
-		reply(id, a.resume(id))
-	case "/remove":
-		reply(id, a.remove(id))
-	case "/limit": // id = KB/s, 0 = unlimited
-		reply(id, a.setSpeedLimit(id))
-	case "/quit": // used by the installer before replacing files
-		reply(0, nil)
-		if a.quit != nil {
-			go a.quit()
-		}
-	case "/version":
-		enc.Encode(map[string]string{"version": version.Version})
-	case "/show":
-		if a.show != nil {
-			a.show()
-		}
-		reply(0, nil)
-	default:
-		http.NotFound(w, r)
-	}
-}
-
-var extVersionOnce = sync.OnceValue(func() string {
-	exe, err := os.Executable()
-	if err != nil {
-		return ""
-	}
-	b, err := os.ReadFile(filepath.Join(filepath.Dir(exe), "extension", "manifest.json"))
-	if err != nil {
-		return "" // source builds run from bin\ without a bundled extension
-	}
-	var m struct {
-		Version string `json:"version"`
-	}
-	json.Unmarshal(b, &m)
-	return m.Version
-})
-
-// extensionVersion is the version of the extension installed with Velo, so
-// an unpacked copy can tell it's out of date and reload itself.
-func extensionVersion() string { return extVersionOnce() }
 
 // lang is the interface language in use.
 func (a *app) lang() string { return i18n.Resolve(a.getSettings().Language) }

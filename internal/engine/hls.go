@@ -81,8 +81,9 @@ func attrs(s string) map[string]string {
 }
 
 // loadPlaylist fetches u; if it's a master playlist it follows the variant
-// with the highest bandwidth.
+// with the highest bandwidth (or the highest within r.Format's height cap).
 func (e *Engine) loadPlaylist(ctx context.Context, r Request, u string) (*hlsPlaylist, error) {
+	maxH := maxFormatHeight(r.Format)
 	for depth := 0; depth < 3; depth++ {
 		text, err := e.fetchText(ctx, r, u)
 		if err != nil {
@@ -93,21 +94,34 @@ func (e *Engine) loadPlaylist(ctx context.Context, r Request, u string) (*hlsPla
 		}
 		if strings.Contains(text, "#EXT-X-STREAM-INF") {
 			best, bestBW := "", int64(-1)
+			fit, fitBW := "", int64(-1)
 			sc := bufio.NewScanner(strings.NewReader(text))
 			for sc.Scan() {
 				line := strings.TrimSpace(sc.Text())
 				if !strings.HasPrefix(line, "#EXT-X-STREAM-INF:") {
 					continue
 				}
-				bw, _ := strconv.ParseInt(attrs(line)["BANDWIDTH"], 10, 64)
+				at := attrs(line)
+				bw, _ := strconv.ParseInt(at["BANDWIDTH"], 10, 64)
+				h := 0
+				if _, hs, ok := strings.Cut(at["RESOLUTION"], "x"); ok {
+					h, _ = strconv.Atoi(hs)
+				}
 				for sc.Scan() { // the URI is the next non-comment line
 					if next := strings.TrimSpace(sc.Text()); next != "" && !strings.HasPrefix(next, "#") {
+						target := resolve(u, next)
 						if bw > bestBW {
-							best, bestBW = resolve(u, next), bw
+							best, bestBW = target, bw
+						}
+						if maxH > 0 && h > 0 && h <= maxH && bw > fitBW {
+							fit, fitBW = target, bw
 						}
 						break
 					}
 				}
+			}
+			if fit != "" {
+				best = fit
 			}
 			if best == "" {
 				return nil, errors.New("master playlist has no variants")
@@ -202,7 +216,7 @@ func (e *Engine) runHLS(ctx context.Context, d *Download) error {
 // first part is its init segment, if it has one.
 func (e *Engine) runStream(ctx context.Context, d *Download, tracks [][]string, ext string) error {
 	if len(tracks) > 1 {
-		if _, err := exec.LookPath("ffmpeg"); err != nil {
+		if _, err := videoTool("ffmpeg"); err != nil {
 			return errors.New("ffmpeg is needed to merge this video's separate audio and video tracks; install it and add it to PATH")
 		}
 	}
@@ -384,7 +398,7 @@ func concat(dst string, n int, partFile func(int) string) error {
 
 // muxTracks joins each track, then merges them with ffmpeg into one MP4.
 func (e *Engine) muxTracks(d *Download, tracks [][]string, partFile func(t, i int) string) error {
-	ff, err := exec.LookPath("ffmpeg")
+	ff, err := videoTool("ffmpeg")
 	if err != nil {
 		return errors.New("ffmpeg is needed to merge audio and video")
 	}
@@ -426,7 +440,7 @@ func (e *Engine) joinParts(d *Download, n int, partFile func(int) string) error 
 	}
 	final := d.Path
 	if strings.HasSuffix(final, ".ts") {
-		if ff, err := exec.LookPath("ffmpeg"); err == nil {
+		if ff, err := videoTool("ffmpeg"); err == nil {
 			mp4 := uniquePath(filepath.Dir(final), strings.TrimSuffix(filepath.Base(final), ".ts")+".mp4")
 			cmd := exec.Command(ff, "-v", "error", "-y", "-f", "mpegts", "-i", d.Path+".part",
 				"-c", "copy", "-bsf:a", "aac_adtstoasc", mp4)

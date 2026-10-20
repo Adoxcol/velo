@@ -40,6 +40,23 @@ func TestVideoPage(t *testing.T) {
 	}
 }
 
+func TestExtractorArgsSecurity(t *testing.T) {
+	args := extractorArgs("https://example.com/video", "/tmp/dir", "/usr/bin/ffmpeg")
+	hasArg := func(target string) bool {
+		for _, arg := range args {
+			if arg == target {
+				return true
+			}
+		}
+		return false
+	}
+	for _, flag := range []string{"--ignore-config", "--no-config-locations", "--no-exec"} {
+		if !hasArg(flag) {
+			t.Errorf("extractorArgs missing security flag %q", flag)
+		}
+	}
+}
+
 func TestExtractorCookies(t *testing.T) {
 	u, _ := url.Parse("https://www.facebook.com/watch?v=1")
 	got := extractorCookies(u, "session=secret=value; bad=one\ntwo; other=ok")
@@ -103,5 +120,67 @@ func TestExtractorLocalIntegration(t *testing.T) {
 	}
 	if _, err := os.Stat(statePath(p)); !os.IsNotExist(err) {
 		t.Fatal("state file remains")
+	}
+}
+
+func TestVideoToolFallbackDiscovery(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
+
+	binDir := filepath.Join(home, ".local", "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	fakeTool := "velo-fake-tool-test"
+	fileName := fakeTool
+	if filepath.Separator == '\\' {
+		fileName += ".exe"
+	}
+	want := filepath.Join(binDir, fileName)
+	if err := os.WriteFile(want, []byte("fake"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Non-empty PATH that does not contain binDir: fallback discovery finds it.
+	t.Setenv("PATH", t.TempDir())
+	got, err := videoTool(fakeTool)
+	if err != nil || got != want {
+		t.Fatalf("videoTool(%q) = %q, %v; want %q", fakeTool, got, err, want)
+	}
+
+	// Explicitly empty PATH (used by isolated tests): fallback is skipped.
+	t.Setenv("PATH", "")
+	if _, err := videoTool(fakeTool); err == nil {
+		t.Fatal("expected error when PATH is explicitly empty")
+	}
+}
+
+func TestExtractorArgsFormatsAndRemainingGaps(t *testing.T) {
+	if extractorExt("audio") != ".mp3" || extractorExt("1080p") != ".mkv" || extractorExt("") != ".mkv" {
+		t.Fatal("unexpected extractorExt")
+	}
+	audioArgs := strings.Join(extractorArgsFormat("https://example.com/v", "/tmp", "ffmpeg", "audio"), " ")
+	if !strings.Contains(audioArgs, "--extract-audio") || !strings.Contains(audioArgs, "--audio-format mp3") {
+		t.Fatalf("audio args missing extract flags: %s", audioArgs)
+	}
+	hdArgs := strings.Join(extractorArgsFormat("https://example.com/v", "/tmp", "ffmpeg", "720p"), " ")
+	if !strings.Contains(hdArgs, "height<=720") {
+		t.Fatalf("720p args missing height cap: %s", hdArgs)
+	}
+
+	d := &Download{
+		Total:  1000,
+		Ranged: true,
+		segs: []*Segment{
+			{Pos: 100, End: 499},
+			{Pos: 600, End: 999},
+		},
+	}
+	d.Done.Store(200)
+	gaps := d.RemainingGaps()
+	if len(gaps) != 2 || gaps[0][0] != 10 || gaps[0][1] != 40 || gaps[1][0] != 60 || gaps[1][1] != 40 {
+		t.Fatalf("unexpected RemainingGaps: %+v", gaps)
 	}
 }

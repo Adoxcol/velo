@@ -9,7 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"velo/internal/hostreg"
+	"github.com/Adoxcol/velo/internal/hostreg"
 )
 
 func main() {

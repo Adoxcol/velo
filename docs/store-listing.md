@@ -3,7 +3,7 @@
 Upload `dist/velo-extension-<version>.zip` (built by `tools/release.ps1`).
 
 ## Name
-Velo — Download Manager
+Velo Download Manager
 
 ## Short description (max 132 characters)
 Send downloads and videos to Velo for faster, resumable downloads. Grab HLS/DASH videos and download all links on a page.
@@ -50,8 +50,8 @@ user's computer.
 - Does not sell or transfer user data to third parties.
 - Does not use data for purposes unrelated to the single purpose.
 - Does not use data for credit or lending.
-- Privacy policy URL: https://gist.github.com/Adoxcol/ea9009ab50bad69a5067c20ae35edd49
-  (a public copy of [privacy.md](privacy.md); update both together)
+- Privacy policy URL: https://velo.adoxcol.com/privacy
+  (built from [site/privacy.html](../site/privacy.html) and [privacy.md](privacy.md))
 
 ## Images
 - Icon: `extension/icons/icon128.png`

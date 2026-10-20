@@ -15,7 +15,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,9 +25,9 @@ import (
 
 	"golang.org/x/sys/windows/registry"
 
-	"velo/internal/hostreg"
-	"velo/internal/ipc"
-	"velo/internal/version"
+	"github.com/Adoxcol/velo/internal/hostreg"
+	"github.com/Adoxcol/velo/internal/ipc"
+	"github.com/Adoxcol/velo/internal/version"
 )
 
 //go:embed all:payload
@@ -80,93 +79,6 @@ func installDir() string {
 
 func startMenuShortcut() string {
 	return filepath.Join(os.Getenv("APPDATA"), `Microsoft\Windows\Start Menu\Programs`, appName+".lnk")
-}
-
-// ---------------------------------------------------------------- install
-
-func install() error {
-	if _, err := fs.Stat(payload, "payload/velo.exe"); err != nil {
-		return errors.New("this setup was built without Velo's files (run tools/release.ps1)")
-	}
-	dir := installDir()
-	if !silent && !confirm(appName+" Setup", fmt.Sprintf(
-		"Install %s %s?\n\nIt will be installed for your user account in:\n%s\n\nNo administrator rights are needed.",
-		appName, version.Version, dir)) {
-		return errCancelled
-	}
-	quitRunningVelo()
-
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
-	var size int64
-	err := fs.WalkDir(payload, "payload", func(p string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() || p == "payload/README.md" {
-			return err
-		}
-		rel := strings.TrimPrefix(p, "payload/")
-		n, err := writeFile(filepath.Join(dir, filepath.FromSlash(rel)), func() (io.ReadCloser, error) { return payload.Open(p) })
-		size += n
-		return err
-	})
-	if err != nil {
-		return err
-	}
-	// Keep a copy of this program as the uninstaller.
-	self, _ := os.Executable()
-	uninstaller := filepath.Join(dir, "velo-setup.exe")
-	if !strings.EqualFold(filepath.Clean(self), filepath.Clean(uninstaller)) {
-		if _, err := writeFile(uninstaller, func() (io.ReadCloser, error) { return os.Open(self) }); err != nil {
-			return err
-		}
-	}
-
-	if err := registerHost(dir); err != nil {
-		return fmt.Errorf("registering the browser connection: %w", err)
-	}
-	registerStoreExtensions()
-	if err := createShortcut(startMenuShortcut(), filepath.Join(dir, "velo.exe")); err != nil {
-		return fmt.Errorf("creating the Start menu shortcut: %w", err)
-	}
-	if err := registerUninstall(dir, size); err != nil {
-		return fmt.Errorf("registering the uninstaller: %w", err)
-	}
-	refreshAutostart(dir)
-
-	// Command line: offer to put veloctl on PATH. Silent installs and updates
-	// leave the user's earlier choice alone.
-	if !silent && !onPath(dir) && confirm(appName+" Setup",
-		"Add Velo to PATH?\n\n"+
-			"This lets you use the veloctl command-line tool from any terminal, for example:\n"+
-			"   veloctl add https://example.com/file.zip\n"+
-			"   veloctl list\n\n"+
-			"Choose No if you don't use the command line. You can still run veloctl from:\n"+dir) {
-		if err := setOnPath(dir, true); err != nil {
-			message(appName+" Setup", "Couldn't add Velo to PATH: "+err.Error(), mbIconInfo)
-		}
-	}
-
-	if silent { // updates and scripted installs: back to the tray, no window
-		exec.Command(filepath.Join(dir, "velo.exe"), "-background").Start()
-	} else {
-		exec.Command(filepath.Join(dir, "velo.exe")).Start()
-	}
-	if !silent {
-		ext := filepath.Join(dir, "extension")
-		msg := fmt.Sprintf("%s %s is installed and running in the system tray.\n\n", appName, version.Version)
-		if chromeStoreID == "" && edgeStoreID == "" {
-			msg += "To connect your browser:\n" +
-				"1. Open chrome://extensions (or edge://extensions) and turn on Developer mode.\n" +
-				"2. Click \"Load unpacked\" and choose:\n   " + ext + "\n\n" +
-				"Open that folder now?"
-			if confirm(appName+" Setup", msg) {
-				exec.Command("explorer", ext).Start()
-			}
-		} else {
-			message(appName+" Setup", msg+"Restart your browser and accept \"New extension added\" to connect it.", mbIconInfo)
-		}
-	}
-	return nil
 }
 
 // writeFile replaces dst, retrying while a just-closed Velo still holds it.
@@ -297,76 +209,6 @@ func createShortcut(lnk, target string) error {
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("%v: %s", err, strings.TrimSpace(string(out)))
-	}
-	return nil
-}
-
-// ---------------------------------------------------------------- uninstall
-
-func uninstall(confirmed bool) error {
-	dir := installDir()
-	self, _ := os.Executable()
-	if !confirmed {
-		if !silent && !confirm(appName+" Setup", "Uninstall "+appName+"?\n\nDownloaded files are not touched.") {
-			return errCancelled
-		}
-		// Windows can't delete a running program, so run the uninstall from a
-		// temporary copy when started from the install folder.
-		if strings.HasPrefix(strings.ToLower(filepath.Clean(self)), strings.ToLower(dir)+`\`) {
-			tmp := filepath.Join(os.TempDir(), fmt.Sprintf("velo-uninstall-%d.exe", time.Now().UnixNano()))
-			if _, err := writeFile(tmp, func() (io.ReadCloser, error) { return os.Open(self) }); err != nil {
-				return err
-			}
-			args := []string{"/uninstall", "/confirmed"}
-			if silent {
-				args = append(args, "/S")
-			}
-			return exec.Command(tmp, args...).Start()
-		}
-	}
-
-	quitRunningVelo()
-	hostreg.Unregister()
-	if chromeStoreID != "" {
-		registry.DeleteKey(registry.CURRENT_USER, `Software\Google\Chrome\Extensions\`+chromeStoreID)
-	}
-	if edgeStoreID != "" {
-		registry.DeleteKey(registry.CURRENT_USER, `Software\Microsoft\Edge\Extensions\`+edgeStoreID)
-	}
-	if k, err := registry.OpenKey(registry.CURRENT_USER, runKey, registry.SET_VALUE); err == nil {
-		k.DeleteValue(appName)
-		k.Close()
-	}
-	registry.DeleteKey(registry.CURRENT_USER, uninstallKey)
-	os.Remove(startMenuShortcut())
-	if onPath(dir) {
-		setOnPath(dir, false)
-	}
-
-	var err error
-	for i := 0; i < 20; i++ {
-		if err = os.RemoveAll(dir); err == nil {
-			break
-		}
-		time.Sleep(250 * time.Millisecond)
-	}
-
-	if !silent && confirm(appName+" Setup", appName+" was removed.\n\nAlso delete your Velo settings and download history?\n(Downloaded files are kept either way.)") {
-		os.RemoveAll(ipc.Dir())
-	}
-	// A temporary uninstaller removes itself once it has exited.
-	if strings.HasPrefix(filepath.Base(self), "velo-uninstall-") {
-		// Pass the command line verbatim: Go's argument quoting would break cmd's.
-		cmd := exec.Command(filepath.Join(os.Getenv("SystemRoot"), "System32", "cmd.exe"))
-		cmd.SysProcAttr = &syscall.SysProcAttr{
-			CmdLine:       `cmd.exe /c ping -n 3 127.0.0.1 >nul & del /f /q "` + self + `"`,
-			HideWindow:    true,
-			CreationFlags: 0x08000000,
-		}
-		cmd.Start()
-	}
-	if err != nil {
-		return fmt.Errorf("some files in %s couldn't be removed: %w", dir, err)
 	}
 	return nil
 }

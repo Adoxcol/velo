@@ -14,8 +14,8 @@ import (
 
 	webview2 "github.com/jchv/go-webview2"
 
-	"velo/internal/i18n"
-	"velo/internal/ipc"
+	"github.com/Adoxcol/velo/internal/i18n"
+	"github.com/Adoxcol/velo/internal/ipc"
 )
 
 // Velo Mini: a small always-on-top window in the bottom-right corner that
@@ -117,6 +117,7 @@ func showMini(a *app) {
 
 		w.Bind("appStatus", func() status { return a.status() })
 		w.Bind("getSettings", func() Settings { return a.getSettings() })
+		w.Bind("itemPreview", func(id int) thumbResult { return a.itemPreview(id) })
 		w.Bind("pause", func(id int) error { return a.pause(id) })
 		w.Bind("resume", func(id int) error { return a.resume(id) })
 		w.Bind("openMain", func() { go a.show() })

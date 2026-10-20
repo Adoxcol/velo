@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"velo/internal/engine"
+	"github.com/Adoxcol/velo/internal/engine"
 )
 
 func BenchmarkRows(b *testing.B) {

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Velo privacy policy</title>
+<meta name="description" content="Privacy policy for Velo, the free and open-source download manager for Windows and companion browser extension.">
+<meta name="theme-color" content="#0d1728">
+<link rel="icon" href="favicon.ico" sizes="any">
+<style>
+  :root { --primary: #1677ff; --navy: #0d1728; --bg: #ffffff; --surface: #ffffff; --ink: #0d1728; --muted: #64748b; --line: #e6ebf2; --soft: #eef5ff; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0a1120; --surface: #111b2e; --ink: #edf2f9; --muted: #97a6ba; --line: #1d2a41; --soft: #12233f; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.65 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+  header { background: var(--navy); color: #fff; position: relative; overflow: hidden; }
+  header::before { content: ""; position: absolute; inset: 0; background: radial-gradient(60% 90% at 50% 0%, rgba(22, 119, 255, .4), transparent 70%); }
+  header .wrap { position: relative; }
+  nav { display: flex; align-items: center; gap: 26px; height: 72px; }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 21px; text-decoration: none; color: #fff; }
+  .brand svg { width: 22px; height: 22px; }
+  nav .links { display: flex; gap: 26px; margin-left: auto; font-size: 15px; align-items: center; }
+  nav .links a { text-decoration: none; color: #b8c4d6; }
+  nav .links a:hover { color: #fff; }
+  .btn { display: inline-flex; padding: 9px 16px; border-radius: 11px; background: var(--primary); color: #fff !important; font-weight: 600; font-size: 14.5px; text-decoration: none; }
+  .intro { padding: 56px 0 64px; }
+  h1 { font-size: clamp(36px, 6vw, 56px); line-height: 1.05; letter-spacing: -.03em; margin: 0 0 12px; }
+  .intro p { color: #aebbd0; font-size: 18px; margin: 0; max-width: 560px; }
+  main { padding: 56px 0 64px; }
+  .prose { max-width: 760px; }
+  h2 { font-size: 22px; letter-spacing: -.01em; margin: 36px 0 12px; }
+  h2:first-child { margin-top: 0; }
+  p { margin: 0 0 16px; color: var(--muted); }
+  ul { margin: 0 0 20px; padding: 0; list-style: none; display: grid; gap: 12px; }
+  li { position: relative; padding-left: 20px; color: var(--muted); }
+  li::before { content: ""; position: absolute; left: 2px; top: .7em; width: 6px; height: 6px; border-radius: 50%; background: var(--primary); opacity: .7; }
+  li b { color: var(--ink); font-weight: 600; }
+  code { font: 13.5px ui-monospace, "Cascadia Code", Consolas, monospace; background: var(--soft); padding: 1px 6px; border-radius: 5px; color: var(--ink); }
+  footer { border-top: 1px solid var(--line); padding: 36px 0 56px; color: var(--muted); font-size: 14px; }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 16px 28px; }
+  footer .links { display: flex; gap: 22px; margin-left: auto; flex-wrap: wrap; }
+  footer a { text-decoration: none; }
+  footer a:hover { color: var(--ink); }
+  @media (max-width: 760px) {
+    .wrap { padding: 0 16px; }
+    nav .links a:not(.btn) { display: none; }
+    footer .links { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <nav>
+      <a class="brand" href="/"><svg viewBox="0 0 24 24"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z" fill="#1677ff"/></svg>velo.</a>
+      <div class="links">
+        <a href="/#features">Features</a>
+        <a href="/#cli">Linux &amp; macOS CLI</a>
+        <a href="/changelog">Changelog</a>
+        <a href="https://github.com/Adoxcol/velo">GitHub</a>
+        <a class="btn" href="/#download">Download</a>
+      </div>
+    </nav>
+    <div class="intro">
+      <h1>Privacy Policy</h1>
+      <p>Last updated: 19 October 2026</p>
+    </div>
+  </div>
+</header>
+<main>
+  <div class="wrap">
+    <div class="prose">
+      <p>Velo is an open-source download manager for Windows and a companion browser extension for Chrome, Edge, Brave and Firefox. This policy covers both.</p>
+
+      <h2>The short version</h2>
+      <p>Velo does not collect, sell or send your data anywhere. There are no accounts, analytics, ads or trackers. Everything stays on your computer.</p>
+
+      <h2>What the extension reads, and why</h2>
+      <ul>
+        <li><b>Downloads you start in the browser</b>: the link, file name, referring page and your browser's user agent are passed to the Velo app on your computer so it can download the file instead of the browser.</li>
+        <li><b>Cookies for the site of a download</b>: sent to the Velo app with that download only, so files that need you to be signed in (for example on a course or file-hosting site) still download. For "Download all links", cookies are only attached to links on the same site as the page.</li>
+        <li><b>Network requests of the tab you're on</b>: the extension looks at response headers (content type and size) to spot video streams and media files, so it can offer to download them. It reads playlist files (<code>.m3u8</code>, <code>.mpd</code>) for those streams to list the available qualities.</li>
+        <li><b>Links on a page</b>: only when you choose "Download all links with Velo", so you can pick which to download.</li>
+      </ul>
+
+      <h2>Where it goes</h2>
+      <p>All of this is sent only to the Velo app on the same computer, through the browser's native messaging (a local channel between the browser and an installed program). Velo then downloads the files you asked for directly from the websites that host them. Nothing is sent to the Velo developers or any third party.</p>
+      <p>The only other connection Velo makes is to GitHub (<code>api.github.com</code> and <code>github.com</code>) when checking for and downloading new versions of Velo or optional video tools. It sends nothing about you or your downloads. You can turn automatic updates off in Settings.</p>
+
+      <h2>What the app stores</h2>
+      <p>The Velo app keeps your settings and download history in <code>%APPDATA%\Velo</code> on your computer. You can clear finished downloads from the list at any time; uninstalling Velo offers to delete this folder.</p>
+
+      <h2>Contact</h2>
+      <p>Questions or concerns: open an issue at <a href="https://github.com/Adoxcol/velo/issues">github.com/Adoxcol/velo/issues</a>.</p>
+    </div>
+  </div>
+</main>
+<footer>
+  <div class="wrap">
+    <span>Velo · Open source · MIT license · Made by <a href="https://www.adoxcol.com">Adoxcol</a></span>
+    <div class="links">
+      <a href="/changelog">Changelog</a>
+      <a href="https://github.com/Adoxcol/velo">GitHub</a>
+      <a href="https://github.com/Adoxcol/velo/issues">Report a problem</a>
+      <a href="https://studio.adoxcol.com">Studio music player</a>
+      <a href="https://www.adoxcol.com">adoxcol.com</a>
+      <a href="https://velo.adoxcol.com/privacy">Privacy policy</a>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

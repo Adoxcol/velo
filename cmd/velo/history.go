@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"velo/internal/engine"
+	"github.com/Adoxcol/velo/internal/engine"
 )
 
 // The download list is saved to %APPDATA%\velo\history.json so finished,
@@ -78,7 +78,7 @@ func (a *app) saveHistory() {
 		return
 	}
 	tmp := a.historyPath() + ".tmp"
-	if err := os.WriteFile(tmp, b, 0o644); err == nil {
+	if err := os.WriteFile(tmp, b, 0o600); err == nil {
 		os.Rename(tmp, a.historyPath())
 	}
 }
