@@ -271,7 +271,11 @@ func (a *app) takePending(id int) (engine.Request, bool) {
 
 // handle serves the token-protected API used by velo-host and veloctl.
 func (a *app) handle(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" || subtle.ConstantTimeCompare([]byte(r.Header.Get(ipc.TokenHeader)), []byte(a.token)) != 1 {
+	token := r.Header.Get(ipc.TokenHeader)
+	// Security: Ensure both incoming token and app token are non-empty before
+	// ConstantTimeCompare, as subtle.ConstantTimeCompare([], []) returns 1,
+	// which would allow unauthenticated access if either token is empty.
+	if r.Method != "POST" || token == "" || a.token == "" || subtle.ConstantTimeCompare([]byte(token), []byte(a.token)) != 1 {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
