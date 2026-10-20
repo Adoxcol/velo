@@ -129,7 +129,14 @@ func (d *Download) isStream() bool {
 
 // Progress returns percent complete (0 if unknown, 100 once done).
 func (d *Download) Progress() float64 {
-	if s, _ := d.State(); s == "done" {
+	s, _ := d.State()
+	_, total := d.Info()
+	return d.ProgressWith(s, total)
+}
+
+// ProgressWith returns percent complete given an already fetched status and total size.
+func (d *Download) ProgressWith(status string, total int64) float64 {
+	if status == "done" {
 		return 100
 	}
 	if n := d.parts.Load(); n > 0 {
@@ -144,7 +151,6 @@ func (d *Download) Progress() float64 {
 		est := float64(d.partBytes.Load()) / float64(done) * float64(n)
 		return min(99.9, 100*float64(d.Done.Load())/est)
 	}
-	_, total := d.Info()
 	if total <= 0 {
 		return 0
 	}
@@ -163,6 +169,13 @@ func (d *Download) Info() (path string, total int64) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	return d.Path, d.Total
+}
+
+// StateInfoQueue returns status, last error, path, total size, and queue ID in a single lock acquisition.
+func (d *Download) StateInfoQueue() (status string, err error, path string, total int64, queueID string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.Status, d.Err, d.Path, d.Total, d.Req.Queue
 }
 
 // SetStatus sets the status of a download that isn't running (e.g. queued).

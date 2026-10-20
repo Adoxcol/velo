@@ -1,3 +1,5 @@
+//go:build windows
+
 package main
 
 import (
@@ -150,6 +152,12 @@ func showMini(a *app) {
 		mini = nil
 		miniMu.Unlock()
 	}()
+}
+
+func hasMiniWindow() bool {
+	miniMu.Lock()
+	defer miniMu.Unlock()
+	return mini != nil
 }
 
 func closeMini() {

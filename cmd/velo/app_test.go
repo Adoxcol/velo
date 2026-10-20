@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -291,6 +292,9 @@ func TestRetriesAfterNetworkDrop(t *testing.T) {
 }
 
 func TestDebugInfoHidesSecrets(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows only")
+	}
 	a := testApp(t, defaultSettings())
 	home, _ := os.UserHomeDir()
 	log := "2026/10/15 #1 queued https://cdn.example.com/f.zip?token=SECRET&sig=abc\n" +
@@ -541,6 +545,9 @@ func BenchmarkTakePending(b *testing.B) {
 }
 
 func TestClipboardRoundTrip(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows only")
+	}
 	old, hadText := clipboardText()
 	defer func() {
 		if hadText {
@@ -557,6 +564,9 @@ func TestClipboardRoundTrip(t *testing.T) {
 }
 
 func TestItemPreviewAndShellIcon(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows only")
+	}
 	if got := youtubeThumbURL("https://www.youtube.com/watch?v=dQw4w9WgXcQ"); got != "https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg" {
 		t.Fatalf("youtubeThumbURL = %q", got)
 	}

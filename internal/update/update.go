@@ -16,12 +16,10 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync/atomic"
-	"syscall"
 	"time"
 )
 
@@ -265,9 +263,7 @@ func fileSHA256(path string) (string, error) {
 // Install starts the verified installer silently; it closes Velo, replaces
 // it and starts the new version.
 func Install(path string) error {
-	cmd := exec.Command(path, "/S", "/update")
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	return cmd.Start()
+	return runInstaller(path)
 }
 
 // Newer reports whether version a is newer than b ("dev" is never newer

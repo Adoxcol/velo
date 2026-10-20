@@ -9,8 +9,6 @@ import (
 	"encoding/json"
 	"strings"
 	"sync"
-
-	"golang.org/x/sys/windows"
 )
 
 //go:embed locales/app/*.json
@@ -47,7 +45,7 @@ func Resolve(setting string) string {
 	if setting != "" && supported(setting) {
 		return setting
 	}
-	langs, _ := windows.GetUserPreferredUILanguages(windows.MUI_LANGUAGE_NAME)
+	langs := systemLanguages()
 	for _, l := range langs {
 		if c := match(l); c != "" {
 			return c
