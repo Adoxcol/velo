@@ -165,6 +165,7 @@ chrome.runtime.onInstalled.addListener(() => {
     chrome.contextMenus.create({ id: "velo-video", title: tr("Download with Velo"), contexts: ["video", "audio"] });
     for (const [id, label] of [
       ["velo-fmt-best", "Best quality"],
+      ["velo-fmt-mp4", "MP4 video"],
       ["velo-fmt-1080p", "1080p Full HD"],
       ["velo-fmt-720p", "720p HD"],
       ["velo-fmt-480p", "480p SD"],
@@ -193,7 +194,7 @@ async function menuDownload(info, tab) {
   let reply;
   const page = videoPage(info.linkUrl) || ((info.mediaType === "video" || id.startsWith("velo-fmt-")) && videoPage(info.frameUrl || tab?.url));
   if (page) {
-    reply = await handOff({ url: page, kind: "page", format, title: tab?.title, referrer: tab?.url });
+    reply = await handOff({ url: page, kind: "page", format, referrer: tab?.url, source: "capture" });
   } else if (url && /^https?:/i.test(url)) {
     reply = await handOff({ url, referrer: info.frameUrl || tab?.url, filename: "", source: "capture" });
   } else if (info.mediaType === "video" || info.mediaType === "audio") {
@@ -434,14 +435,15 @@ async function grab(tabId, entry, format) {
   if (entry.note === "live") return { ok: false, error: "Live streams aren't supported." };
   if (entry.note === "unsupported") return { ok: false, error: "This video's format (multi-part DASH) isn't supported yet." };
   const stream = entry.kind !== "file";
-  const fmt = stream && ["1080p", "720p", "480p", "audio"].includes(format) ? format : "";
+  const fmt = stream && ["1080p", "720p", "480p", "audio", ...(entry.kind === "page" ? ["mp4"] : [])].includes(format) ? format : "";
   return handOff({
     url: entry.url,
     referrer: tab.url,
     kind: stream ? entry.kind : "",
     format: fmt,
-    title: stream ? tab.title : "",
+    title: stream && entry.kind !== "page" ? tab.title : "",
     filename: "",
+    source: "capture",
   });
 }
 

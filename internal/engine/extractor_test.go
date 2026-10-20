@@ -107,6 +107,10 @@ func TestExtractorLocalIntegration(t *testing.T) {
 	defer srv.Close()
 	e := New(filepath.Join(dir, "output"))
 	e.SetProxy("none")
+	name, err := e.VideoFilename(ctx, Request{URL: srv.URL + "/fixture.mp4", Kind: "page", Title: "Wrong search query", Format: "mp4"})
+	if err != nil || name != "fixture.mp4" {
+		t.Fatalf("metadata filename = %q, %v", name, err)
+	}
 	d := &Download{Req: Request{URL: srv.URL + "/fixture.mp4", Kind: "page", Title: "Local video"}}
 	if err := e.Run(ctx, d); err != nil {
 		t.Fatal(err)
@@ -120,6 +124,25 @@ func TestExtractorLocalIntegration(t *testing.T) {
 	}
 	if _, err := os.Stat(statePath(p)); !os.IsNotExist(err) {
 		t.Fatal("state file remains")
+	}
+	for _, filename := range []string{"", "My chosen name.mkv"} {
+		d := &Download{Req: Request{URL: srv.URL + "/fixture.mp4", Kind: "page", Title: "Wrong search query", Format: "mp4", Filename: filename}}
+		if err := e.Run(ctx, d); err != nil {
+			t.Fatal(err)
+		}
+		p, total := d.Info()
+		want := "fixture.mp4"
+		if filename != "" {
+			want = "My chosen name.mp4"
+		}
+		if filepath.Base(p) != want || total <= 0 {
+			t.Fatalf("MP4 output = %q (%d bytes), want %q", p, total, want)
+		}
+		probe := exec.CommandContext(ctx, ffmpeg, "-v", "error", "-i", p, "-f", "null", "-")
+		hideWindow(probe)
+		if out, err := probe.CombinedOutput(); err != nil {
+			t.Fatalf("MP4 does not decode: %v: %s", err, out)
+		}
 	}
 }
 
@@ -158,6 +181,10 @@ func TestVideoToolFallbackDiscovery(t *testing.T) {
 }
 
 func TestExtractorArgsFormatsAndRemainingGaps(t *testing.T) {
+	mp4Args := strings.Join(extractorArgsFormat("https://example.com/v", "/tmp", "ffmpeg", "mp4"), " ")
+	if extractorExt("mp4") != ".mp4" || !strings.Contains(mp4Args, "--merge-output-format mp4") || !strings.Contains(mp4Args, "--recode-video mp4") {
+		t.Fatalf("missing MP4 conversion: %s", mp4Args)
+	}
 	if extractorExt("audio") != ".mp3" || extractorExt("1080p") != ".mkv" || extractorExt("") != ".mkv" {
 		t.Fatal("unexpected extractorExt")
 	}

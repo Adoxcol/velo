@@ -53,6 +53,7 @@ function choicesFor(items) {
       }
       out.push({ item, format: "audio", label: "Audio only (MP3)", meta: `${KIND[item.kind]} · MP3 audio` });
     } else if ((item.kind === "page" || item.kind === "dash") && !item.note) {
+      if (item.kind === "page") out.push({ item, format: "mp4", label: "MP4 video", meta: "Video + audio" });
       for (const f of PAGE_FORMATS) {
         out.push({ item, format: f.format, label: f.label, meta: item.kind === "dash" ? `${KIND.dash} · ${f.meta}` : f.meta });
       }

@@ -152,6 +152,9 @@ func videoTool(name string) (string, error) {
 }
 
 func extractorExt(format string) string {
+	if format == "mp4" {
+		return ".mp4"
+	}
 	if format == "audio" {
 		return ".mp3"
 	}
@@ -178,6 +181,8 @@ func extractorArgsFormat(raw, dir, ffmpeg, format string) []string {
 	args := []string{"--ignore-config", "--no-config-locations", "--no-exec", "--no-playlist", "--max-downloads", "1", "--no-warnings", "--newline", "--progress", "--no-colors",
 		"--no-overwrites", "--continue", "--no-mtime", "--match-filter", "!is_live & !is_upcoming & !has_drm"}
 	switch format {
+	case "mp4":
+		args = append(args, "--format", "bv*[ext=mp4][vcodec^=avc]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b", "--merge-output-format", "mp4", "--recode-video", "mp4")
 	case "audio":
 		args = append(args, "--format", "ba/b", "--extract-audio", "--audio-format", "mp3", "--audio-quality", "0")
 	case "1080p", "720p", "480p":
@@ -197,6 +202,13 @@ func (e *Engine) runPage(ctx context.Context, d *Download) error {
 	if err != nil {
 		return err
 	}
+	if d.Path == "" && d.Req.Filename == "" {
+		if name, err := e.VideoFilename(ctx, d.Req); err == nil {
+			d.mu.Lock()
+			d.Req.Title = strings.TrimSuffix(name, extractorExt(d.Req.Format))
+			d.mu.Unlock()
+		}
+	}
 	work, err := e.prepareExtractorTarget(d)
 	if err != nil {
 		return err
@@ -212,6 +224,50 @@ func (e *Engine) runPage(ctx context.Context, d *Download) error {
 		return err
 	}
 	return finalizeExtractorOutput(d, work)
+}
+
+// VideoFilename resolves the selected video's metadata using the same credentials
+// and proxy as the download. Browser tab titles may describe a search or feed.
+func (e *Engine) VideoFilename(ctx context.Context, r Request) (string, error) {
+	u, ytdlp, ffmpeg, err := checkExtractorTools(r.URL)
+	if err != nil {
+		return "", err
+	}
+	args, cleanup, err := e.buildExtractorCmdArgs(u, &Download{Req: r}, ffmpeg, os.TempDir())
+	if cleanup != nil {
+		defer cleanup()
+	}
+	if err != nil {
+		return "", err
+	}
+	// --max-downloads exits before --dump-single-json can print metadata.
+	for i := 0; i+1 < len(args); i++ {
+		if args[i] == "--max-downloads" {
+			args = append(args[:i], args[i+2:]...)
+			break
+		}
+	}
+	args = append(append(args[:len(args)-2:len(args)-2], "--skip-download", "--dump-single-json"), "--", r.URL)
+	ctx, cancel := context.WithTimeout(ctx, 25*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, ytdlp, args...)
+	hideWindow(cmd)
+	cmd.Cancel = func() error { return killProcessTree(cmd) }
+	cmd.WaitDelay = 5 * time.Second
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	var metadata struct {
+		Title string `json:"title"`
+	}
+	if err := json.Unmarshal(out, &metadata); err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(metadata.Title) == "" {
+		return "", errors.New("video metadata has no title")
+	}
+	return videoName(Request{Title: metadata.Title}) + extractorExt(r.Format), nil
 }
 
 func checkExtractorTools(rawURL string) (*url.URL, string, string, error) {

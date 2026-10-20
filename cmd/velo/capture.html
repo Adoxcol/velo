@@ -94,6 +94,7 @@
     <div class="field" id="fmtRow" hidden>
       <select id="format" aria-label="Quality">
         <option value="">Best quality (Video + Audio)</option>
+        <option value="mp4">MP4 video (Video + Audio)</option>
         <option value="1080p">1080p Full HD</option>
         <option value="720p">720p HD</option>
         <option value="480p">480p SD</option>
@@ -159,10 +160,12 @@ async function load() {
   done++;
   total = done - 1 + await pendingCount();
   $("count").textContent = total > 1 ? `${done} of ${total}` : "";
-  $("name").value = cur.filename || cur.url.split(/[?#]/)[0].split("/").pop() || "download";
+  $("name").value = cur.filename || (cur.kind === "page" ? "" : cur.url.split(/[?#]/)[0].split("/").pop()) || "";
+  $("name").placeholder = cur.kind === "page" ? "Automatic video title (or enter a name)" : "File name";
   $("url").textContent = cur.url;
   $("url").parentElement.title = cur.url;
-  $("format").value = "";
+  $("format").querySelector('[value="mp4"]').hidden = cur.kind !== "page";
+  $("format").value = cur.format || "";
   $("fmtLbl").hidden = $("fmtRow").hidden = !cur.kind;
   $("err").textContent = "";
   await Promise.all([showFolder(), showKind()]);
@@ -170,6 +173,11 @@ async function load() {
 }
 // More downloads arrived while the dialog was open.
 window.refreshPending = async () => { total = done - 1 + await pendingCount(); $("count").textContent = total > 1 ? `${done} of ${total}` : ""; };
+$("format").onchange = () => {
+  if (cur?.kind !== "page" || !$("name").value.trim()) return;
+  const ext = $("format").value === "audio" ? ".mp3" : $("format").value === "mp4" ? ".mp4" : ".mkv";
+  $("name").value = $("name").value.replace(/\.(mkv|mp4|mp3)$/i, "") + ext;
+};
 
 async function finish(start) {
   if (busy || !cur) return;
@@ -205,6 +213,7 @@ function openDD(sel) {
   if (!ddEl) { ddEl = document.createElement("div"); ddEl.className = "dd-menu"; document.body.appendChild(ddEl); }
   const cur = sel.value;
   ddEl.innerHTML = [...sel.options].map((o, i) => {
+    if (o.hidden || o.disabled) return "";
     const on = o.value === cur;
     return `<button type="button" data-ddi="${i}" class="${on ? "on" : ""}"><span>${escapeHtml(o.textContent)}</span>${on ? svg('<path d="m5 12 5 5 9-10"/>') : ""}</button>`;
   }).join("");

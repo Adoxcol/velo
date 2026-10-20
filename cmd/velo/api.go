@@ -222,6 +222,7 @@ type pendingView struct {
 	Size     int64  `json:"size"`
 	Site     string `json:"site"`
 	Kind     string `json:"kind"`
+	Format   string `json:"format"`
 }
 
 // clearPending drops every browser download waiting for the dialog.
@@ -243,7 +244,7 @@ func (a *app) nextPendingDL() *pendingView {
 			a.pendingOrder = a.pendingOrder[1:]
 			continue
 		}
-		v := &pendingView{ID: p.ID, URL: p.Req.URL, Filename: p.Req.Filename, Size: p.Size, Kind: p.Req.Kind}
+		v := &pendingView{ID: p.ID, URL: p.Req.URL, Filename: p.Req.Filename, Size: p.Size, Kind: p.Req.Kind, Format: p.Req.Format}
 		if u, err := url.Parse(p.Req.Referrer); err == nil && u.Host != "" {
 			v.Site = u.Host
 		} else if u, err := url.Parse(p.Req.URL); err == nil {
@@ -341,7 +342,19 @@ func (a *app) handle(w http.ResponseWriter, r *http.Request) {
 			a.pending[p.ID] = p
 			a.pendingOrder = append(a.pendingOrder, p.ID)
 			a.mu.Unlock()
-			go a.showPending()
+			go func() {
+				if r.Kind == "page" && r.Filename == "" {
+					if name, err := a.eng.VideoFilename(context.Background(), r); err == nil {
+						a.mu.Lock()
+						if pending, ok := a.pending[p.ID]; ok {
+							pending.Req.Filename = name
+							a.pending[p.ID] = pending
+						}
+						a.mu.Unlock()
+					}
+				}
+				a.showPending()
+			}()
 			reply(0, nil)
 			return
 		}
