@@ -6,9 +6,9 @@ import "errors"
 
 type notifier struct{}
 
-func startNotifier() *notifier { return &notifier{} }
+func startNotifier() *notifier                             { return &notifier{} }
 func (n *notifier) Show(title, msg string, onClick func()) {}
-func (n *notifier) Close() {}
+func (n *notifier) Close()                                 {}
 
 var toast *notifier
 
@@ -20,20 +20,20 @@ func (a *app) debugInfo() string { return "debug info stub" }
 func pickFolder(hwnd uintptr, title, start string) (string, error) {
 	return "", errors.New("not supported")
 }
-func migrateFromIDM()  {}
-func migrateFromMyDM() {}
-func runTray(a *app, openWindow bool) {}
-func showMain(a *app) {}
-func evalMain(js string) {}
-func closeMain() {}
-func mainVisible() bool { return false }
-func reloadWindows(a *app) {}
-func (a *app) updateTaskbar() {}
-func clipboardText() (string, bool) { return "", false }
+func migrateFromIDM()                    {}
+func migrateFromMyDM()                   {}
+func runTray(a *app, openWindow bool)    {}
+func showMain(a *app)                    {}
+func evalMain(js string)                 {}
+func closeMain()                         {}
+func mainVisible() bool                  { return false }
+func reloadWindows(a *app)               {}
+func (a *app) updateTaskbar()            {}
+func clipboardText() (string, bool)      { return "", false }
 func setClipboardText(text string) error { return nil }
-func showCapture(a *app) {}
-func (a *app) runMini() {}
-func hasMiniWindow() bool { return false }
-func closeMini() {}
-func appIcon() []byte { return nil }
-func setWindowIcon(hwnd uintptr) {}
+func showCapture(a *app)                 {}
+func (a *app) runMini()                  {}
+func hasMiniWindow() bool                { return false }
+func closeMini()                         {}
+func appIcon() []byte                    { return nil }
+func setWindowIcon(hwnd uintptr)         {}

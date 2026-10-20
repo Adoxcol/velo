@@ -76,4 +76,3 @@ func main() {
 	runTray(a, !*background) // blocks until Exit
 	ipc.RemoveEndpoint()
 }
-

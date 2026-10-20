@@ -58,8 +58,6 @@ func clipboardText() (string, bool) {
 	return syscall.UTF16ToString(buf[:n]), true
 }
 
-
-
 // watchClipboard polls the clipboard's change counter (cheap) and only reads
 // the text when something new was copied. Runs until the app exits.
 func (a *app) watchClipboard() {
