@@ -92,8 +92,14 @@ func wildcardMatch(pattern, host string) bool {
 	if !strings.HasPrefix(host, prefix) {
 		return false
 	}
+	suffix := pattern[firstStar+1:]
+	// Fast path for single wildcard patterns (e.g., "*.corp.com", "10.*", "foo*bar").
+	if strings.IndexByte(suffix, '*') == -1 {
+		return len(host) >= len(prefix)+len(suffix) && strings.HasSuffix(host, suffix)
+	}
+
 	host = host[len(prefix):]
-	pattern = pattern[firstStar+1:]
+	pattern = suffix
 
 	for {
 		nextStar := strings.IndexByte(pattern, '*')
