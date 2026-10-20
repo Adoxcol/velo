@@ -42,6 +42,17 @@ test('YouTube page extraction replaces intercepted fragments and follows SPA nav
   assert.equal(w.sent[0].url, 'https://www.youtube.com/shorts/second');
   assert.equal(w.sent[0].kind, 'page');
   assert.equal(w.sent[0].format, '720p');
+  assert.equal(w.sent[0].source, 'capture');
+  assert.equal(w.sent[0].title, '');
+});
+
+test('MP4 selection reaches the desktop rename dialog without a stale tab title', async () => {
+  const w = worker();
+  assert.equal((await w.message({ type: 'grab', tabId: 1, format: 'mp4' })).ok, true);
+  assert.equal(w.sent[0].format, 'mp4');
+  assert.equal(w.sent[0].source, 'capture');
+  assert.equal(w.sent[0].filename, '');
+  assert.equal(w.sent[0].title, '');
 });
 
 test('feed hover selects a same-origin post and rejects unrelated extraction URLs', async () => {

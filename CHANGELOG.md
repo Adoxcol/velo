@@ -2,6 +2,15 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.10 — 2026-10-20
+
+### Fixed
+- **Rename videos before downloading:** Extension video downloads now open the browser capture dialog when “Ask on capture” is enabled, preserving the selected quality or format.
+- **Correct video filenames:** Video page downloads resolve the actual video title instead of using a stale browser tab or search title. Custom filenames remain supported.
+
+### New
+- **MP4 video downloads:** Choose **MP4 video** in the extension popup, on-video menu, right-click menu, or browser capture dialog. Velo prefers MP4 sources and converts other sources when needed.
+
 ## 0.8.9 — 2026-10-20
 
 ### New

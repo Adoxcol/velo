@@ -3,10 +3,34 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/Adoxcol/velo/internal/ipc"
 )
+
+func TestVideoCaptureOpensRenameDialog(t *testing.T) {
+	shown := make(chan struct{}, 1)
+	a := &app{
+		token:       "test-token",
+		settings:    Settings{AskOnCapture: true},
+		showPending: func() { shown <- struct{}{} },
+	}
+	req := httptest.NewRequest("POST", "/add", strings.NewReader(`{"url":"https://www.youtube.com/watch?v=test","kind":"page","format":"mp4","filename":"Actual video.mp4","source":"capture"}`))
+	req.Header.Set(ipc.TokenHeader, a.token)
+	res := httptest.NewRecorder()
+	a.handle(res, req)
+	select {
+	case <-shown:
+	case <-time.After(time.Second):
+		t.Fatal("video capture did not open rename dialog")
+	}
+	p := a.nextPendingDL()
+	if p == nil || p.Filename != "Actual video.mp4" || p.Format != "mp4" || len(a.items) != 0 {
+		t.Fatalf("video must wait for confirmation with its name and format: %+v", p)
+	}
+}
 
 func TestAPIAuthorization(t *testing.T) {
 	validToken := "secret-token-12345"

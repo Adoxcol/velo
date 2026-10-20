@@ -70,6 +70,7 @@ try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = br
         for (const o of it.options) out.push({ url: it.url, variant: o.url, label: o.height ? `${o.height}p` : "Video", meta: ["HLS", o.bandwidth ? mbps(o.bandwidth) : ""].filter(Boolean).join(" · ") });
         out.push({ url: it.url, format: "audio", label: "Audio only (MP3)", meta: "HLS · MP3 audio" });
       } else if ((it.kind === "page" || it.kind === "dash") && !it.note) {
+        if (it.kind === "page") out.push({ url: it.url, format: "mp4", label: "MP4 video", meta: "Video + audio" });
         for (const f of PAGE_FORMATS) out.push({ url: it.url, format: f.format, label: f.label, meta: it.kind === "dash" ? `DASH · ${f.meta}` : f.meta });
       } else {
         let name = it.quality || "Video";

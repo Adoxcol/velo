@@ -494,7 +494,7 @@ func TestPendingDownloads(t *testing.T) {
 	a.mu.Lock()
 	a.pending[1] = pendingDL{ID: 1, Req: engine.Request{URL: "https://example.com/1.zip", Filename: "1.zip"}}
 	a.pendingOrder = append(a.pendingOrder, 1)
-	a.pending[2] = pendingDL{ID: 2, Req: engine.Request{URL: "https://example.com/2.zip", Filename: "2.zip"}}
+	a.pending[2] = pendingDL{ID: 2, Req: engine.Request{URL: "https://example.com/2.zip", Filename: "2.zip", Format: "mp4"}}
 	a.pendingOrder = append(a.pendingOrder, 2)
 	a.mu.Unlock()
 
@@ -509,7 +509,7 @@ func TestPendingDownloads(t *testing.T) {
 	}
 
 	p2 := a.nextPendingDL()
-	if p2 == nil || p2.ID != 2 || p2.Filename != "2.zip" {
+	if p2 == nil || p2.ID != 2 || p2.Filename != "2.zip" || p2.Format != "mp4" {
 		t.Fatalf("expected pending ID 2, got %+v", p2)
 	}
 
