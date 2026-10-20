@@ -2,6 +2,19 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.9 — 2026-10-20
+
+### New
+- **Browser extension quality & audio-only selector:** Pick **Best quality**, **1080p Full HD**, **720p HD**, **480p SD**, or **Audio only (MP3)** directly from the browser extension toolbar popup, the on-video **Download with Velo** (`▾`) menu, and the right-click context menu on videos.
+- **YouTube playlist expansion into Batch Download:** Pasting a YouTube playlist URL (`youtube.com/playlist?list=...`) in **Add Download** (or copying it to the clipboard) automatically lists all videos in the playlist inside Velo's **Batch Download** dialog so you can choose which ones to download.
+- **Embedded video subtitles:** Video downloads (`Best quality`, `1080p`, `720p`, `480p`) automatically embed available subtitles/closed captions into the `.mkv` container.
+- **Open when finished:** Right-click any active, queued, or paused download and choose **Open when finished** to launch the file automatically the moment it completes.
+- **Export download links (`.txt`):** Added **Export all links (.txt)…** to the right-click context menu to save your download URLs via the native Windows Save dialog.
+- **CLI (`veloctl`) quality & batch flags:** Added `-format 1080p|720p|480p|audio` and `-i links.txt` to `veloctl get` and `veloctl add`, plus a live terminal progress bar showing transfer speed, size, and ETA.
+
+### Improved
+- **Custom themed UI dropdowns:** Replaced native OS `<select>` menus across Velo and the browser capture dialog with Velo's custom themed dropdown menu.
+
 ## 0.8.8 — 2026-10-19
 
 ### New
