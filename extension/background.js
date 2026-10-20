@@ -161,7 +161,17 @@ if (onDeterminingFilename) {
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll().then(() => {
-    chrome.contextMenus.create({ id: "velo-link", title: tr("Download with Velo"), contexts: ["link", "video", "audio", "image"] });
+    chrome.contextMenus.create({ id: "velo-link", title: tr("Download with Velo"), contexts: ["link", "image"] });
+    chrome.contextMenus.create({ id: "velo-video", title: tr("Download with Velo"), contexts: ["video", "audio"] });
+    for (const [id, label] of [
+      ["velo-fmt-best", "Best quality"],
+      ["velo-fmt-1080p", "1080p Full HD"],
+      ["velo-fmt-720p", "720p HD"],
+      ["velo-fmt-480p", "480p SD"],
+      ["velo-fmt-audio", "Audio only (MP3)"],
+    ]) {
+      chrome.contextMenus.create({ id, parentId: "velo-video", title: tr(label), contexts: ["video", "audio"] });
+    }
     chrome.contextMenus.create({ id: "velo-all", title: tr("Download all links with Velo"), contexts: ["page"] });
     chrome.contextMenus.create({ id: "velo-selection", title: tr("Download selected links with Velo"), contexts: ["selection"] });
   });
@@ -177,11 +187,13 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 // "Download with Velo" on a link, image, video or audio. Velo shows its
 // download dialog, as for a captured download.
 async function menuDownload(info, tab) {
+  const id = String(info.menuItemId || "");
+  const format = id.startsWith("velo-fmt-") ? id.slice("velo-fmt-".length).replace(/^best$/, "") : "";
   let url = info.mediaType === "video" || info.mediaType === "audio" ? info.srcUrl || info.linkUrl : info.linkUrl || info.srcUrl;
   let reply;
-  const page = videoPage(info.linkUrl) || ((info.mediaType === "video") && videoPage(info.frameUrl || tab?.url));
+  const page = videoPage(info.linkUrl) || ((info.mediaType === "video" || id.startsWith("velo-fmt-")) && videoPage(info.frameUrl || tab?.url));
   if (page) {
-    reply = await handOff({ url: page, kind: "page", title: tab?.title, referrer: tab?.url });
+    reply = await handOff({ url: page, kind: "page", format, title: tab?.title, referrer: tab?.url });
   } else if (url && /^https?:/i.test(url)) {
     reply = await handOff({ url, referrer: info.frameUrl || tab?.url, filename: "", source: "capture" });
   } else if (info.mediaType === "video" || info.mediaType === "audio") {
@@ -189,7 +201,7 @@ async function menuDownload(info, tab) {
     if (tab && unsupportedSite(tab.url)) return notifyTab(tab.id, "This site uses a protected streaming format that Velo doesn't support.");
     const entry = tab?.id != null && best((await getMedia(tab.id)).items);
     if (!entry) return notifyTab(tab.id, "Velo hasn't found this video's stream yet. Play it for a moment and try again.");
-    reply = await grab(tab.id, entry);
+    reply = await grab(tab.id, entry, format);
   } else {
     return tab?.id != null && notifyTab(tab.id, "Velo can't download this kind of link.");
   }

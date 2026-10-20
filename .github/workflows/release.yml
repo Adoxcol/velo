@@ -19,6 +19,9 @@ on:
 permissions:
   contents: write # create the GitHub release
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
@@ -32,6 +35,7 @@ jobs:
       CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
       CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
       CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID || 'pcpdknogjedamkhakgfbaoieehnheelk' }}
+      CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
     defaults:
       run:
         shell: pwsh
@@ -133,6 +137,18 @@ jobs:
           $headers = @{ Authorization = "Bearer $tok"; "x-goog-api-version" = "2" }
           $up = Invoke-RestMethod -Method Put -Uri "https://www.googleapis.com/upload/chromewebstore/v1.1/items/$id" `
             -Headers $headers -InFile "dist/velo-extension-$v.zip" -ContentType "application/zip"
+          if ($up.uploadState -eq "FAILURE" -and ($up.itemError | ConvertTo-Json -Compress) -match "ITEM_NOT_UPDATABLE") {
+            Write-Host "Item has a pending review; attempting to cancel pending submission and retry..."
+            if ($env:CWS_PUBLISHER_ID) {
+              try {
+                Invoke-RestMethod -Method Post -Uri "https://chromewebstore.googleapis.com/v2/publishers/$($env:CWS_PUBLISHER_ID)/items/${id}:cancelSubmission" `
+                  -Headers @{ Authorization = "Bearer $tok" } -ContentType "application/json" -Body "{}" | Out-Null
+              } catch { Write-Host "v2 cancelSubmission note: $_" }
+            }
+            Start-Sleep -Seconds 5
+            $up = Invoke-RestMethod -Method Put -Uri "https://www.googleapis.com/upload/chromewebstore/v1.1/items/$id" `
+              -Headers $headers -InFile "dist/velo-extension-$v.zip" -ContentType "application/zip"
+          }
           Write-Host "Upload state: $($up.uploadState)"
           $status = if ($up.uploadState -eq "FAILURE") { $up.itemError | ConvertTo-Json -Compress } else {
             $pub = Invoke-RestMethod -Method Post -Uri "https://www.googleapis.com/chromewebstore/v1.1/items/$id/publish" -Headers $headers

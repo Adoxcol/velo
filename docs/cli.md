@@ -77,6 +77,9 @@ installation. Otherwise run `veloctl.exe` from its installed or portable folder.
 ```sh
 veloctl get "https://example.com/file.zip"
 veloctl get "https://example.com/file.zip" "$HOME/Downloads"
+veloctl get -format 720p "https://www.youtube.com/watch?v=..."
+veloctl get -format audio "https://www.youtube.com/watch?v=..."
+veloctl get -i links.txt "$HOME/Downloads"
 ```
 
 The default folder is `~/Downloads/Velo`. Ctrl+C pauses the download. Repeat the
