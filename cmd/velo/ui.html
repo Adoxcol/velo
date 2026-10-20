@@ -732,7 +732,7 @@ function card(r) {
     : `<div class="bar"><i style="width:${pct}%"></i></div>`;
   return `<div class="card ${r.status}${r.id === selected ? " selected" : ""}${fresh ? " new" : ""}" data-id="${r.id}">
     <div class="tile t-${cat.replace(/\W/g, "")}">${tileHTML(r, cat)}</div>
-    <div class="info"><div class="name" title="${escapeHtml(r.url)}">${escapeHtml(r.file || "Starting…")}${r.queue && r.status !== "done" && queueName(r.queue) ? ` <span class="qbadge">${escapeHtml(queueName(r.queue))}</span>` : ""}</div>
+    <div class="info"><div class="name" title="${escapeHtml(r.url)}">${escapeHtml(r.file || "Starting…")}${r.queue && r.status !== "done" && queueName(r.queue) ? ` <span class="qbadge">${escapeHtml(queueName(r.queue))}</span>` : ""}${r.openOnDone && r.status !== "done" ? ` <span class="qbadge">Open when done</span>` : ""}</div>
       <div class="meta">${meta}${right}</div>
       ${barHTML}</div>
     <div class="actions">${acts}</div></div>`;
@@ -817,7 +817,8 @@ function openMenu(anchor, r) {
   const m = $("#menu");
   const items = [];
   if (r.status === "done") items.push(["open", I.open, "Open"]);
-  items.push(["folder", I.folder, "Show in folder"], ["copy", I.copy, "Copy link"]);
+  else items.push(["openOnDone", r.openOnDone ? I.check : I.open, r.openOnDone ? "Open when finished ✓" : "Open when finished"]);
+  items.push(["folder", I.folder, "Show in folder"], ["copy", I.copy, "Copy link"], ["export", I.dl, "Export all links (.txt)…"]);
   if (r.status === "downloading" || r.status === "queued") items.push(["pause", I.pause, "Pause"]);
   if (r.status === "paused" || r.status === "error") items.push(["resume", I.play, "Resume"]);
   if ((r.status === "paused" || r.status === "error") && !r.kind) items.push(["relink", I.retry, "Refresh link…"]);
@@ -844,8 +845,10 @@ function openMenu(anchor, r) {
     const k = e.target.closest("[data-m]")?.dataset.m; if (!k) return;
     m.style.display = "none";
     if (k === "open") act(openFile, r.id);
+    if (k === "openOnDone") toggleOpenOnDone(r.id).then((on) => { toast(on ? "Will open when finished" : "Auto-open turned off"); refresh(); }, (err) => toast(String(err), true));
     if (k === "folder") act(showInFolder, r.id);
     if (k === "copy") { copyText(r.url).then(() => toast("Link copied"), () => toast("Couldn't copy", true)); }
+    if (k === "export") { exportLinks([]).then((p) => p && toast("Exported links to " + p.split(/[\\/]/).pop()), (err) => toast(String(err), true)); }
     if (k === "pause") act(pause, r.id);
     if (k === "resume") act(resume, r.id);
     if (k === "remove") act(remove, r.id);
@@ -973,10 +976,17 @@ $("#addDlg").addEventListener("close", () => {
   if (pendingId) { dropPending(pendingId); pendingId = 0; } // closed without downloading
   setTimeout(openPending, 150); // next captured download, if any
 });
+const isPlaylistUrl = (u) => /^https?:\/\/([a-z0-9-]+\.)?youtube(-nocookie)?\.com\/playlist\?(.*&)?list=[^&]+/i.test(u);
 let probeTimer;
 async function runProbe() {
   const url = $("#aUrl").value.trim(), seq = ++probeSeq, p = $("#aProbe");
   if (!/^https?:\/\//i.test(url)) { p.textContent = url ? "Enter a link starting with http:// or https://" : ""; p.className = "probe" + (url ? " err" : ""); setVideoMode(false); return; }
+  if (isPlaylistUrl(url)) {
+    p.className = "probe";
+    p.textContent = "YouTube Playlist · click Download to select videos from the playlist";
+    setVideoMode(false);
+    return;
+  }
   p.className = "probe"; p.textContent = "Checking link…";
   try {
     const info = await probe(url, $("#aUser").value, $("#aPass").value);
@@ -1003,11 +1013,31 @@ $("#aDirChange").onclick = async () => {
   try { const p = await pickFolder(addDir || (await downloadDir())); if (p) { addDir = p; showAddDir(); } } catch (e) { toast(String(e), true); }
 };
 $("#aGo").onclick = async () => {
+  const url = $("#aUrl").value.trim();
+  if (isPlaylistUrl(url) && typeof expandPlaylist === "function") {
+    $("#aProbe").className = "probe";
+    $("#aProbe").textContent = "Loading playlist videos…";
+    $("#aGo").disabled = true;
+    try {
+      const n = await expandPlaylist(url);
+      $("#aGo").disabled = false;
+      if (n > 0) {
+        $("#addDlg").close();
+        $("#heroUrl").value = "";
+        return openBatch();
+      }
+    } catch (e) {
+      $("#aGo").disabled = false;
+      $("#aProbe").className = "probe err";
+      $("#aProbe").textContent = String(e);
+      return;
+    }
+  }
   const start = $('input[name="aStart"]:checked').value === "now";
   const parts = +$("#aParts").value;
   const format = $("#aFormatRow").hidden ? "" : $("#aFormat").value;
   try {
-    await addDownload({ pendingId, url: $("#aUrl").value.trim(), filename: $("#aName").value.trim(), dir: addDir, segments: parts === defConn ? 0 : parts, start, queue: $("#aQueue").value, format, checksum: $("#aSum").value.trim(), user: $("#aUser").value, pass: $("#aPass").value });
+    await addDownload({ pendingId, url, filename: $("#aName").value.trim(), dir: addDir, segments: parts === defConn ? 0 : parts, start, queue: $("#aQueue").value, format, checksum: $("#aSum").value.trim(), user: $("#aUser").value, pass: $("#aPass").value });
     pendingId = 0;
     $("#addDlg").close();
     toast(start ? "Download started" : "Added to the queue");

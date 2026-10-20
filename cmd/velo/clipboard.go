@@ -64,6 +64,9 @@ func copiedLink(text string) (url, kind string, ok bool) {
 	if text == "" || len(text) > 2048 || strings.ContainsAny(text, " \t\r\n") {
 		return "", "", false
 	}
+	if engine.IsPlaylistURL(text) {
+		return text, "playlist", true
+	}
 	if ok, kind := engine.Downloadable(text); ok {
 		return text, kind, true
 	}
@@ -103,6 +106,12 @@ func (a *app) watchClipboard() {
 		offered = url
 		log.Printf("clipboard: offering %s", url)
 		toast.Show(a.tr("Download copied link?"), linkName(url)+"\n"+a.tr("Click to download with Velo."), func() {
+			if kind == "playlist" {
+				if n, err := a.expandPlaylistToBatch(url); err == nil && n > 0 && a.showBatch != nil {
+					a.showBatch()
+				}
+				return
+			}
 			a.add(engine.Request{URL: url, Kind: kind})
 			a.show()
 		})

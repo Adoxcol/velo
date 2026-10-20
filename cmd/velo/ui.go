@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"log"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -374,6 +375,22 @@ func bind(w webview2.WebView, a *app) {
 	w.Bind("resume", func(id int) error { return a.resume(id) })
 	w.Bind("remove", func(id int) error { return a.remove(id) })
 	w.Bind("deleteFile", func(id int) error { return a.deleteFile(id) })
+	w.Bind("toggleOpenOnDone", func(id int) (bool, error) { return a.toggleOpenOnDone(id) })
+	w.Bind("expandPlaylist", func(url string) (int, error) { return a.expandPlaylistToBatch(url) })
+	w.Bind("exportLinks", func(ids []int) (string, error) {
+		txt := a.exportLinks(ids)
+		if txt == "" {
+			return "", nil
+		}
+		path, err := pickSaveFile(uintptr(w.Window()), "Export download links", "velo-links.txt")
+		if err != nil || path == "" {
+			return "", err
+		}
+		if err := os.WriteFile(path, []byte(txt), 0o644); err != nil {
+			return "", err
+		}
+		return path, nil
+	})
 	w.Bind("loadBatchLinks", func(urls []string, source string) int { return a.loadBatchLinks(urls, source) })
 	w.Bind("videoToolsStatus", func() videoToolsState { return a.videoToolsStatus() })
 	w.Bind("installVideoTools", func() error { return a.installVideoTools() })

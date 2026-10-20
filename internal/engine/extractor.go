@@ -40,6 +40,81 @@ func VideoPage(raw string) bool {
 	return false
 }
 
+// IsPlaylistURL reports whether raw is a YouTube playlist page URL.
+func IsPlaylistURL(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil || (u.Scheme != "https" && u.Scheme != "http") {
+		return false
+	}
+	h := strings.ToLower(u.Hostname())
+	on := func(domain string) bool { return h == domain || strings.HasSuffix(h, "."+domain) }
+	return (on("youtube.com") || on("youtube-nocookie.com")) && u.Path == "/playlist" && u.Query().Get("list") != ""
+}
+
+// PlaylistEntry is one video inside an expanded playlist.
+type PlaylistEntry struct {
+	URL   string `json:"url"`
+	Title string `json:"title"`
+}
+
+// ExpandPlaylist uses yt-dlp --flat-playlist to list the videos in a playlist.
+func ExpandPlaylist(ctx context.Context, rawURL string) (string, []PlaylistEntry, error) {
+	if !IsPlaylistURL(rawURL) {
+		return "", nil, errors.New("not a supported playlist URL")
+	}
+	ytdlp, err := videoTool("yt-dlp")
+	if err != nil {
+		return "", nil, errors.New("playlist expansion needs yt-dlp; open Settings → Video Grabber to install it with one click")
+	}
+	args := []string{"--ignore-config", "--no-config-locations", "--no-exec", "--flat-playlist", "--dump-single-json", "--no-warnings"}
+	if deno, err := videoTool("deno"); err == nil {
+		args = append(args, "--js-runtimes", "deno:"+deno)
+	}
+	args = append(args, "--", rawURL)
+	cmd := exec.CommandContext(ctx, ytdlp, args...)
+	hideWindow(cmd)
+	cmd.Cancel = func() error { return killProcessTree(cmd) }
+	cmd.WaitDelay = 5 * time.Second
+	out, err := cmd.Output()
+	if err != nil {
+		return "", nil, fmt.Errorf("could not read playlist: %w", err)
+	}
+	var data struct {
+		Title   string `json:"title"`
+		Entries []struct {
+			ID         string `json:"id"`
+			URL        string `json:"url"`
+			WebpageURL string `json:"webpage_url"`
+			Title      string `json:"title"`
+		} `json:"entries"`
+	}
+	if err := json.Unmarshal(out, &data); err != nil {
+		return "", nil, fmt.Errorf("invalid playlist data: %w", err)
+	}
+	var entries []PlaylistEntry
+	for _, e := range data.Entries {
+		u := e.WebpageURL
+		if u == "" && strings.HasPrefix(e.URL, "http") {
+			u = e.URL
+		}
+		if u == "" && e.ID != "" {
+			u = "https://www.youtube.com/watch?v=" + e.ID
+		}
+		if u == "" {
+			continue
+		}
+		title := strings.TrimSpace(e.Title)
+		if title == "" {
+			title = u
+		}
+		entries = append(entries, PlaylistEntry{URL: u, Title: title})
+	}
+	if len(entries) == 0 {
+		return "", nil, errors.New("no videos found in playlist")
+	}
+	return data.Title, entries, nil
+}
+
 func isRegularFile(p string) bool {
 	st, err := os.Stat(p)
 	return err == nil && !st.IsDir()
@@ -107,9 +182,9 @@ func extractorArgsFormat(raw, dir, ffmpeg, format string) []string {
 		args = append(args, "--format", "ba/b", "--extract-audio", "--audio-format", "mp3", "--audio-quality", "0")
 	case "1080p", "720p", "480p":
 		h := strings.TrimSuffix(format, "p")
-		args = append(args, "--format", fmt.Sprintf("bv*[height<=%s]+ba/b[height<=%s]/b", h, h), "--merge-output-format", "mkv", "--remux-video", "mkv")
+		args = append(args, "--format", fmt.Sprintf("bv*[height<=%s]+ba/b[height<=%s]/b", h, h), "--embed-subs", "--merge-output-format", "mkv", "--remux-video", "mkv")
 	default:
-		args = append(args, "--format", "bv*+ba/b", "--merge-output-format", "mkv", "--remux-video", "mkv")
+		args = append(args, "--format", "bv*+ba/b", "--embed-subs", "--merge-output-format", "mkv", "--remux-video", "mkv")
 	}
 	return append(args, "--ffmpeg-location", ffmpeg, "--paths", dir, "--output", "video.%(ext)s",
 		"--progress-template", "download:velo:%(progress)j", "--", raw)

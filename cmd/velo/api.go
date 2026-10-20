@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"fmt"
@@ -78,6 +79,35 @@ func (a *app) loadBatchLinks(urls []string, source string) int {
 	return len(b.Links)
 }
 
+// expandPlaylistToBatch resolves a YouTube playlist URL via yt-dlp and populates
+// a pending batch so the user can pick which videos in the playlist to download.
+func (a *app) expandPlaylistToBatch(rawURL string) (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+	title, entries, err := engine.ExpandPlaylist(ctx, strings.TrimSpace(rawURL))
+	if err != nil {
+		return 0, err
+	}
+	pageLabel := title
+	if pageLabel == "" {
+		pageLabel = rawURL
+	}
+	b := &batchReq{Page: pageLabel, Referrer: rawURL, FromList: true}
+	for _, e := range entries {
+		b.Links = append(b.Links, struct {
+			URL  string `json:"url"`
+			Text string `json:"text"`
+		}{URL: e.URL, Text: e.Title})
+		if len(b.Links) >= 2000 {
+			break
+		}
+	}
+	a.mu.Lock()
+	a.batch = b
+	a.mu.Unlock()
+	return len(b.Links), nil
+}
+
 // takeBatch hands the pending batch to the window (once), labelling each
 // link with its file name and type.
 func (a *app) takeBatch() *batchView {
@@ -97,6 +127,9 @@ func (a *app) takeBatch() *batchView {
 		cat := engine.CategoryOf(name)
 		if kind != "" {
 			cat = "Video"
+			if l.Text != "" && l.Text != name {
+				name = l.Text
+			}
 		}
 		v.Links = append(v.Links, batchLink{URL: l.URL, Text: l.Text, Name: name, Category: cat, File: ok})
 	}
@@ -128,6 +161,12 @@ func (a *app) finishBatch(urls []string, start bool) int {
 
 // addBatch queues the chosen links from the batch dialog.
 func (a *app) addBatch(b batchReq, urls []string, start bool) int {
+	titles := map[string]string{}
+	for _, l := range b.Links {
+		if l.Text != "" {
+			titles[l.URL] = l.Text
+		}
+	}
 	n := 0
 	for _, u := range urls {
 		ok, kind := engine.Downloadable(u)
@@ -135,6 +174,9 @@ func (a *app) addBatch(b batchReq, urls []string, start bool) int {
 			continue
 		}
 		r := engine.Request{URL: u, Referrer: b.Referrer, UserAgent: b.UserAgent, Kind: kind}
+		if kind != "" && titles[u] != "" && titles[u] != linkName(u) {
+			r.Title = titles[u]
+		}
 		if sameHost(u, b.Page) { // never send the page's cookies to other sites
 			r.Cookies = b.Cookies
 		}

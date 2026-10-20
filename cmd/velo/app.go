@@ -20,14 +20,15 @@ import (
 )
 
 type item struct {
-	d        *engine.Download
-	cancel   context.CancelFunc // set while running
-	running  bool
-	requeue  bool // stopped by the schedule: go back to the queue, not "paused"
-	lastDone int64
-	speed    float64   // bytes/s, updated every second
-	added    time.Time // when it was added
-	finished time.Time // when it completed (zero until then)
+	d          *engine.Download
+	cancel     context.CancelFunc // set while running
+	running    bool
+	requeue    bool // stopped by the schedule: go back to the queue, not "paused"
+	openOnDone bool // automatically open the file when the download finishes
+	lastDone   int64
+	speed      float64   // bytes/s, updated every second
+	added      time.Time // when it was added
+	finished   time.Time // when it completed (zero until then)
 
 	// Network drops: the download waits in the queue until retryAt.
 	retryAt   time.Time
@@ -317,9 +318,14 @@ func (a *app) launch(it *item) {
 		default:
 			a.mu.Lock()
 			it.finished = time.Now()
+			openNow := it.openOnDone
+			it.openOnDone = false
 			a.mu.Unlock()
 			p, _ := d.Info()
 			log.Printf("#%d done %s (%.1f MB in %.1fs)", d.ID, p, float64(d.Done.Load())/1e6, time.Since(t).Seconds())
+			if openNow {
+				go a.openFile(d.ID, false)
+			}
 			if a.onDone != nil {
 				a.onDone(d)
 			}
@@ -586,6 +592,46 @@ func (a *app) deleteFile(id int) error {
 	return nil
 }
 
+// toggleOpenOnDone flips whether an unfinished download opens automatically
+// once it completes.
+func (a *app) toggleOpenOnDone(id int) (bool, error) {
+	it := a.get(id)
+	if it == nil {
+		return false, errors.New("no such download")
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	it.openOnDone = !it.openOnDone
+	return it.openOnDone, nil
+}
+
+// exportLinks returns newline-separated URLs for the specified download IDs
+// (or all downloads if ids is empty).
+func (a *app) exportLinks(ids []int) string {
+	want := map[int]bool{}
+	for _, id := range ids {
+		want[id] = true
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	var lines []string
+	seen := map[string]bool{}
+	for _, it := range a.items {
+		if len(want) > 0 && !want[it.d.ID] {
+			continue
+		}
+		u := strings.TrimSpace(it.d.Req.URL)
+		if u != "" && !seen[u] {
+			seen[u] = true
+			lines = append(lines, u)
+		}
+	}
+	if len(lines) == 0 {
+		return ""
+	}
+	return strings.Join(lines, "\r\n") + "\r\n"
+}
+
 func (a *app) getSettings() Settings {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -715,11 +761,12 @@ type row struct {
 	Added       int64        `json:"added"`    // unix ms
 	Finished    int64        `json:"finished"` // unix ms, 0 until done
 	Error       string       `json:"error,omitempty"`
-	Queue       string       `json:"queue,omitempty"`    // named queue ID
-	Verified    bool         `json:"verified,omitempty"` // matched the checksum given when added
-	Retrying    bool         `json:"retrying,omitempty"` // waiting after a network drop
-	RetryIn     int          `json:"retryIn,omitempty"`  // seconds until the next try
-	Gaps        [][2]float64 `json:"gaps,omitempty"`     // unfetched [startPct, widthPct] segment gaps
+	Queue       string       `json:"queue,omitempty"`      // named queue ID
+	Verified    bool         `json:"verified,omitempty"`   // matched the checksum given when added
+	Retrying    bool         `json:"retrying,omitempty"`   // waiting after a network drop
+	RetryIn     int          `json:"retryIn,omitempty"`    // seconds until the next try
+	OpenOnDone  bool         `json:"openOnDone,omitempty"` // open automatically when finished
+	Gaps        [][2]float64 `json:"gaps,omitempty"`       // unfetched [startPct, widthPct] segment gaps
 }
 
 func (a *app) rows() []row {
@@ -771,6 +818,7 @@ func (a *app) rows() []row {
 		}
 		r.Verified = d.Verified
 		r.Queue = d.QueueID()
+		r.OpenOnDone = it.openOnDone
 		if status == "queued" && !it.retryAt.IsZero() {
 			r.RetryIn = max(int(time.Until(it.retryAt).Seconds()+0.99), 0)
 			r.Retrying = true
