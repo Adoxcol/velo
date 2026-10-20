@@ -326,7 +326,7 @@
         <p>Paste a link or drag and drop to start.</p>
         <div class="addbar" id="heroBar">
           <svg class="i" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>
-          <input id="heroUrl" placeholder="https://example.com/file.zip" spellcheck="false">
+          <input id="heroUrl" placeholder="https://example.com/file.zip" spellcheck="false" aria-label="Download URL">
           <button class="iconbtn" id="pasteBtn" title="Paste link" aria-label="Paste link"><svg class="i" viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M16 5h2a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h2"/></svg></button>
           <button class="btn primary big" id="heroGo">Download</button>
         </div>
@@ -448,11 +448,11 @@
   <div class="dh"><span id="aTitle">Add Download</span><button class="iconbtn" data-close title="Close" aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="db">
     <div class="inp" style="margin-bottom:10px"><svg class="i" viewBox="0 0 24 24" style="color:var(--faint)"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>
-      <input id="aUrl" placeholder="https://example.com/file.zip" spellcheck="false"><button class="iconbtn" id="aClear" title="Clear" aria-label="Clear link input"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+      <input id="aUrl" placeholder="https://example.com/file.zip" spellcheck="false" aria-label="Download link URL"><button class="iconbtn" id="aClear" title="Clear" aria-label="Clear link input"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
     <div class="probe" id="aProbe"></div>
-    <div class="formrow"><span>Save to</span><div class="inp ro"><svg class="i" viewBox="0 0 24 24" style="color:var(--faint)"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><input id="aDir" readonly><button class="link" id="aDirChange">Change</button></div></div>
-    <div class="formrow"><span>File name</span><div class="inp"><input id="aName" spellcheck="false" placeholder="From the server"></div></div>
-    <div class="formrow" id="aFormatRow" hidden><span>Quality</span><div class="inp"><select id="aFormat">
+    <div class="formrow"><span>Save to</span><div class="inp ro"><svg class="i" viewBox="0 0 24 24" style="color:var(--faint)"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><input id="aDir" readonly aria-label="Save to folder"><button class="link" id="aDirChange">Change</button></div></div>
+    <div class="formrow"><span>File name</span><div class="inp"><input id="aName" spellcheck="false" placeholder="From the server" aria-label="File name"></div></div>
+    <div class="formrow" id="aFormatRow" hidden><span>Quality</span><div class="inp"><select id="aFormat" aria-label="Quality">
       <option value="">Best quality (Video + Audio)</option>
       <option value="1080p">1080p Full HD</option>
       <option value="720p">720p HD</option>
@@ -460,11 +460,11 @@
       <option value="audio">Audio only (MP3)</option>
     </select></div></div>
     <div class="formrow" id="aLoginRow" hidden><span>Login</span><div style="display:flex;gap:8px;flex:1">
-      <div class="inp" style="flex:1"><input id="aUser" spellcheck="false" autocomplete="off" placeholder="Username"></div>
-      <div class="inp" style="flex:1"><input id="aPass" type="password" autocomplete="off" placeholder="Password"></div></div></div>
-    <div class="formrow" id="aSumRow"><span>Checksum</span><div class="inp"><input id="aSum" spellcheck="false" placeholder="Optional: SHA-256, SHA-1 or MD5 to check the file"></div></div>
-    <div class="formrow" id="aQueueRow" hidden><span>Queue</span><div class="inp"><select id="aQueue"></select></div></div>
-    <div class="formrow" id="aPartsRow"><span>Split into</span><div class="inp"><select id="aParts"></select></div></div>
+      <div class="inp" style="flex:1"><input id="aUser" spellcheck="false" autocomplete="off" placeholder="Username" aria-label="Username"></div>
+      <div class="inp" style="flex:1"><input id="aPass" type="password" autocomplete="off" placeholder="Password" aria-label="Password"></div></div></div>
+    <div class="formrow" id="aSumRow"><span>Checksum</span><div class="inp"><input id="aSum" spellcheck="false" placeholder="Optional: SHA-256, SHA-1 or MD5 to check the file" aria-label="Checksum"></div></div>
+    <div class="formrow" id="aQueueRow" hidden><span>Queue</span><div class="inp"><select id="aQueue" aria-label="Queue"></select></div></div>
+    <div class="formrow" id="aPartsRow"><span>Split into</span><div class="inp"><select id="aParts" aria-label="Split into parts"></select></div></div>
     <div style="display:grid;gap:10px;margin:14px 0 4px">
       <label class="check"><input type="radio" name="aStart" value="now" checked> Start download immediately</label>
       <label class="check"><input type="radio" name="aStart" value="queue"> Add to queue (paused)</label>
@@ -484,7 +484,7 @@
   <div class="db">
     <p class="hint" style="margin-top:0">If the download link expired, get a fresh one from the website (start the download again in the browser and copy its link) and paste it here. Velo checks it is the same file, then continues where it stopped.</p>
     <div class="hint" id="rlName" style="font-weight:600;color:var(--ink);margin-bottom:8px"></div>
-    <div class="inp"><input id="rlUrl" spellcheck="false" placeholder="https://…"></div>
+    <div class="inp"><input id="rlUrl" spellcheck="false" placeholder="https://…" aria-label="Fresh download URL"></div>
   </div>
   <div class="df"><button class="btn" data-close>Cancel</button><button class="btn primary" id="rlGo">Continue download</button></div>
 </dialog>
@@ -494,7 +494,7 @@
   <div class="db">
     <div class="hint" id="bPage" style="margin:-6px 0 12px"></div>
     <div class="btools">
-      <div class="inp"><svg class="i" viewBox="0 0 24 24" style="color:var(--faint)"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="bFilter" placeholder="Filter, or extensions like *.pdf *.zip" spellcheck="false"></div>
+      <div class="inp"><svg class="i" viewBox="0 0 24 24" style="color:var(--faint)"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="bFilter" placeholder="Filter, or extensions like *.pdf *.zip" spellcheck="false" aria-label="Filter links"></div>
       <span class="chips" id="bChips" style="margin:0"></span>
     </div>
     <div class="btools"><button class="btn" id="bAll">Select all</button><button class="btn" id="bNone">Select none</button><span class="hint" id="bCount" style="margin-left:auto"></span></div>
