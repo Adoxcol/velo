@@ -213,6 +213,7 @@ function openDD(sel) {
   if (!ddEl) { ddEl = document.createElement("div"); ddEl.className = "dd-menu"; document.body.appendChild(ddEl); }
   const cur = sel.value;
   ddEl.innerHTML = [...sel.options].map((o, i) => {
+    if (o.hidden || o.disabled) return "";
     const on = o.value === cur;
     return `<button type="button" data-ddi="${i}" class="${on ? "on" : ""}"><span>${escapeHtml(o.textContent)}</span>${on ? svg('<path d="m5 12 5 5 9-10"/>') : ""}</button>`;
   }).join("");
