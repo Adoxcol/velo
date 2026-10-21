@@ -311,7 +311,7 @@
 <main>
   <div class="topbar">
     <label class="search"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <input id="search" placeholder="Search downloads…" spellcheck="false" aria-label="Search downloads"><kbd>Ctrl K</kbd></label>
+      <input id="search" placeholder="Search downloads…" spellcheck="false" aria-label="Search downloads"><button class="iconbtn" id="searchClear" title="Clear search" aria-label="Clear search" hidden style="width:24px;height:24px"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button><kbd id="searchKbd">Ctrl K</kbd></label>
   </div>
   <div class="content">
 
@@ -881,14 +881,37 @@ async function refresh() {
 }
 
 // ---------- search ----------
+function clearSearch() {
+  $("#search").value = "";
+  query = "";
+  $("#searchClear").hidden = true;
+  $("#searchKbd").hidden = false;
+  render();
+}
 $("#search").oninput = (e) => {
   query = e.target.value.trim().toLowerCase();
+  const hasText = !!e.target.value;
+  $("#searchClear").hidden = !hasText;
+  $("#searchKbd").hidden = hasText;
   if (query && !["home", "downloads", "queue", "completed"].includes(page)) go("downloads"); else render();
+};
+$("#searchClear").onclick = (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  clearSearch();
+  $("#search").focus();
 };
 document.addEventListener("keydown", (e) => {
   if (e.ctrlKey && e.key.toLowerCase() === "k") { e.preventDefault(); $("#search").focus(); $("#search").select(); }
   if (e.ctrlKey && e.key.toLowerCase() === "n") { e.preventDefault(); openAdd(); }
-  if (e.key === "Escape") $("#menu").style.display = "none";
+  if (e.key === "Escape") {
+    if (document.activeElement === $("#search")) {
+      e.preventDefault();
+      if ($("#search").value) clearSearch(); else $("#search").blur();
+      return;
+    }
+    $("#menu").style.display = "none";
+  }
   // List shortcuts, when not typing and no dialog is open.
   if (e.target.closest("input, textarea, select") || document.querySelector("dialog[open]") || e.altKey) return;
   if (e.ctrlKey && e.key.toLowerCase() === "v") { // paste a link to download it
