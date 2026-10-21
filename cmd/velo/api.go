@@ -319,6 +319,12 @@ func (a *app) handle(w http.ResponseWriter, r *http.Request) {
 			reply(0, fmt.Errorf("bad job"))
 			return
 		}
+		// Security: Input validation to ensure only HTTP/HTTPS URLs are accepted.
+		u := strings.ToLower(j.URL)
+		if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
+			reply(0, fmt.Errorf("invalid URL scheme"))
+			return
+		}
 		if j.Kind != "" && j.Kind != "hls" && j.Kind != "dash" && j.Kind != "page" {
 			reply(0, fmt.Errorf("unknown kind %q", j.Kind))
 			return

@@ -133,3 +133,14 @@ func TestAPIAuthorization(t *testing.T) {
 		}
 	})
 }
+
+func TestAddInvalidScheme(t *testing.T) {
+	a := &app{token: "test-token"}
+	req := httptest.NewRequest("POST", "/add", strings.NewReader(`{"url":"file:///etc/passwd"}`))
+	req.Header.Set(ipc.TokenHeader, a.token)
+	res := httptest.NewRecorder()
+	a.handle(res, req)
+	if !strings.Contains(res.Body.String(), "invalid URL scheme") {
+		t.Fatalf("expected error for non-http URL, got: %s", res.Body.String())
+	}
+}
