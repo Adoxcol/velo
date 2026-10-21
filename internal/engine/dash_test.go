@@ -115,3 +115,64 @@ func TestDASHSingleFile(t *testing.T) {
 		t.Fatalf("got %v", tracks)
 	}
 }
+
+func TestDashTemplateParsingAndEval(t *testing.T) {
+	rep := &mpdRep{ID: "720p", Bandwidth: 2500000}
+
+	tests := []struct {
+		tmpl string
+		num  int64
+		time int64
+		want string
+	}{
+		{
+			tmpl: "$RepresentationID$/seg-$Number%05d$.m4s",
+			num:  42,
+			time: 0,
+			want: "720p/seg-00042.m4s",
+		},
+		{
+			tmpl: "track_$Bandwidth$/$Time$.m4s",
+			num:  0,
+			time: 123456,
+			want: "track_2500000/123456.m4s",
+		},
+		{
+			tmpl: "folder$$test/$Number$.m4s",
+			num:  7,
+			time: 0,
+			want: "folder$test/7.m4s",
+		},
+		{
+			tmpl: "static_file.mp4",
+			num:  1,
+			time: 1,
+			want: "static_file.mp4",
+		},
+	}
+
+	for _, tt := range tests {
+		dt := parseDashTemplate(tt.tmpl)
+		got := dt.eval(rep, tt.num, tt.time)
+		if got != tt.want {
+			t.Errorf("parseDashTemplate(%q).eval(...) = %q, want %q", tt.tmpl, got, tt.want)
+		}
+		// Also test compatibility function
+		gotCompat := fillTemplate(tt.tmpl, rep, tt.num, tt.time)
+		if gotCompat != tt.want {
+			t.Errorf("fillTemplate(%q, ...) = %q, want %q", tt.tmpl, gotCompat, tt.want)
+		}
+	}
+}
+
+func BenchmarkDashTemplateEval(b *testing.B) {
+	rep := &mpdRep{ID: "1080p", Bandwidth: 5000000}
+	tmplStr := "$RepresentationID$/seg-$Number%06d$.m4s"
+	dt := parseDashTemplate(tmplStr)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = dt.eval(rep, int64(i), int64(i*1000))
+	}
+}
