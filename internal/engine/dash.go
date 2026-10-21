@@ -131,31 +131,112 @@ func parseISODuration(s string) (float64, error) {
 	return secs, nil
 }
 
+type dashVarKind int
+
+const (
+	varRepID dashVarKind = iota
+	varNumber
+	varBandwidth
+	varTime
+)
+
+type dashChunk struct {
+	literal string
+	isVar   bool
+	kind    dashVarKind
+	width   int
+}
+
+// dashTemplate represents a pre-parsed DASH URL template.
+// Pre-parsing avoids expensive regular expression matching in high-frequency segment expansion loops.
+type dashTemplate struct {
+	chunks []dashChunk
+}
+
 var tmplVar = regexp.MustCompile(`\$(RepresentationID|Number|Bandwidth|Time)(%0(\d+)d)?\$`)
 
-func fillTemplate(t string, rep *mpdRep, number, time int64) string {
-	t = tmplVar.ReplaceAllStringFunc(t, func(v string) string {
-		m := tmplVar.FindStringSubmatch(v)
-		var val string
-		switch m[1] {
-		case "RepresentationID":
-			return rep.ID
-		case "Number":
-			val = strconv.FormatInt(number, 10)
-		case "Bandwidth":
-			val = strconv.FormatInt(rep.Bandwidth, 10)
-		case "Time":
-			val = strconv.FormatInt(time, 10)
-		}
-		if m[3] != "" {
-			w, _ := strconv.Atoi(m[3])
-			for len(val) < w {
-				val = "0" + val
+func parseDashTemplate(t string) *dashTemplate {
+	matches := tmplVar.FindAllStringSubmatchIndex(t, -1)
+	if len(matches) == 0 {
+		return &dashTemplate{chunks: []dashChunk{{literal: strings.ReplaceAll(t, "$$", "$")}}}
+	}
+	chunks := make([]dashChunk, 0, len(matches)*2+1)
+	lastIdx := 0
+	for _, m := range matches {
+		if m[0] > lastIdx {
+			lit := strings.ReplaceAll(t[lastIdx:m[0]], "$$", "$")
+			if lit != "" {
+				chunks = append(chunks, dashChunk{literal: lit})
 			}
 		}
-		return val
-	})
-	return strings.ReplaceAll(t, "$$", "$")
+		varKindStr := t[m[2]:m[3]]
+		var kind dashVarKind
+		switch varKindStr {
+		case "RepresentationID":
+			kind = varRepID
+		case "Number":
+			kind = varNumber
+		case "Bandwidth":
+			kind = varBandwidth
+		case "Time":
+			kind = varTime
+		}
+		width := 0
+		if m[6] != -1 && m[7] != -1 {
+			width, _ = strconv.Atoi(t[m[6]:m[7]])
+		}
+		chunks = append(chunks, dashChunk{
+			isVar: true,
+			kind:  kind,
+			width: width,
+		})
+		lastIdx = m[1]
+	}
+	if lastIdx < len(t) {
+		lit := strings.ReplaceAll(t[lastIdx:], "$$", "$")
+		if lit != "" {
+			chunks = append(chunks, dashChunk{literal: lit})
+		}
+	}
+	return &dashTemplate{chunks: chunks}
+}
+
+func (dt *dashTemplate) eval(rep *mpdRep, number, time int64) string {
+	var b strings.Builder
+	for _, c := range dt.chunks {
+		if !c.isVar {
+			b.WriteString(c.literal)
+			continue
+		}
+		var val string
+		switch c.kind {
+		case varRepID:
+			if rep != nil {
+				val = rep.ID
+			}
+		case varNumber:
+			val = strconv.FormatInt(number, 10)
+		case varBandwidth:
+			if rep != nil {
+				val = strconv.FormatInt(rep.Bandwidth, 10)
+			} else {
+				val = "0"
+			}
+		case varTime:
+			val = strconv.FormatInt(time, 10)
+		}
+		if c.width > len(val) {
+			for i := 0; i < c.width-len(val); i++ {
+				b.WriteByte('0')
+			}
+		}
+		b.WriteString(val)
+	}
+	return b.String()
+}
+
+func fillTemplate(t string, rep *mpdRep, number, time int64) string {
+	return parseDashTemplate(t).eval(rep, number, time)
 }
 
 // resolveChain applies BaseURL elements from outermost to innermost.
@@ -217,8 +298,10 @@ func segmentURLs(base string, set *mpdAdaptSet, rep *mpdRep, periodSecs float64)
 	}
 	var urls []string
 	if t.Initialization != "" {
-		urls = append(urls, resolve(base, fillTemplate(t.Initialization, rep, 0, 0)))
+		initTpl := parseDashTemplate(t.Initialization)
+		urls = append(urls, resolve(base, initTpl.eval(rep, 0, 0)))
 	}
+	mediaTpl := parseDashTemplate(t.Media)
 	switch {
 	case t.Timeline != nil:
 		n, time := start, int64(0)
@@ -239,7 +322,7 @@ func segmentURLs(base string, set *mpdAdaptSet, rep *mpdRep, periodSecs float64)
 				repeat = (until-time+s.D-1)/s.D - 1
 			}
 			for k := int64(0); k <= repeat; k++ {
-				urls = append(urls, resolve(base, fillTemplate(t.Media, rep, n, time)))
+				urls = append(urls, resolve(base, mediaTpl.eval(rep, n, time)))
 				n++
 				time += s.D
 			}
@@ -251,7 +334,7 @@ func segmentURLs(base string, set *mpdAdaptSet, rep *mpdRep, periodSecs float64)
 		count := int64(math.Ceil(periodSecs * float64(scale) / float64(*t.Duration)))
 		for k := int64(0); k < count; k++ {
 			n := start + k
-			urls = append(urls, resolve(base, fillTemplate(t.Media, rep, n, k**t.Duration)))
+			urls = append(urls, resolve(base, mediaTpl.eval(rep, n, k**t.Duration)))
 		}
 	default:
 		return nil, errors.New("SegmentTemplate without duration or timeline")
