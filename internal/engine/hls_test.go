@@ -147,3 +147,30 @@ func TestHLSRejectsEncryptedAndLive(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkConcat(b *testing.B) {
+	dir := b.TempDir()
+	numParts := 100
+	partSize := 64 * 1024
+	data := bytes.Repeat([]byte("A"), partSize)
+	for i := 0; i < numParts; i++ {
+		path := filepath.Join(dir, fmt.Sprintf("part_%d", i))
+		if err := os.WriteFile(path, data, 0644); err != nil {
+			b.Fatal(err)
+		}
+	}
+	partFile := func(i int) string {
+		return filepath.Join(dir, fmt.Sprintf("part_%d", i))
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		dst := filepath.Join(dir, fmt.Sprintf("out_%d", i))
+		if err := concat(dst, numParts, partFile); err != nil {
+			b.Fatal(err)
+		}
+		os.Remove(dst)
+	}
+}
