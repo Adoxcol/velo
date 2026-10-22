@@ -2,6 +2,13 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.12 — 2026-10-22
+
+### Improved
+- Faster joining of HLS and DASH video segments at the end of a video download.
+- Clearer labels for screen readers on the Settings switches and icon buttons.
+- Every way of adding a download now accepts only web links (http and https).
+
 ## 0.8.11 — 2026-10-22
 
 ### Changed
