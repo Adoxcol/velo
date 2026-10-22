@@ -1,0 +1,53 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<!-- GitHub social preview, 1280x640. Content stays 80px inside the edges. -->
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1280px; height: 640px; overflow: hidden; }
+  body { font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; color: #fff; background: #0d1728; position: relative; -webkit-font-smoothing: antialiased; }
+  .glow { position: absolute; inset: 0; background: radial-gradient(55% 80% at 20% 0%, rgba(22,119,255,.55), transparent 70%), radial-gradient(45% 70% at 100% 100%, rgba(76,155,255,.22), transparent 70%); }
+  .grid { position: absolute; inset: 0; opacity: .5; background-image: linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px); background-size: 48px 48px; mask-image: radial-gradient(80% 80% at 25% 20%, #000, transparent 80%); }
+  .content { position: absolute; inset: 80px; display: grid; grid-template-columns: 1fr 470px; gap: 50px; align-items: center; }
+  .brand { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 44px; letter-spacing: -.03em; }
+  .brand svg { width: 44px; height: 44px; }
+  h1 { margin-top: 26px; font-size: 64px; line-height: 1.04; letter-spacing: -.035em; font-weight: 700; }
+  h1 span { background: linear-gradient(90deg, #8fc0ff, #1677ff 75%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .sub { margin-top: 20px; color: #aebbd0; font-size: 24px; line-height: 1.4; }
+  .chips { display: flex; gap: 10px; margin-top: 28px; flex-wrap: wrap; }
+  .chips span { border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.06); padding: 7px 14px; border-radius: 99px; font-size: 17px; color: #d6e2f3; }
+  .card { background: #fff; color: #0d1728; border-radius: 22px; padding: 26px 26px 24px; box-shadow: 0 30px 70px -20px rgba(22,119,255,.6), 0 20px 50px rgba(0,0,0,.35); }
+  .speed { font-size: 58px; font-weight: 700; letter-spacing: -.04em; line-height: 1; background: linear-gradient(90deg, #4c9bff, #1677ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .speedsub { color: #64748b; font-size: 17px; margin-top: 6px; }
+  .row { display: flex; gap: 14px; align-items: center; margin-top: 22px; }
+  .tile { width: 48px; height: 48px; border-radius: 13px; display: grid; place-items: center; background: #ede9fe; color: #7c3aed; flex: none; }
+  .tile svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 2; }
+  .name { font-weight: 600; font-size: 19px; }
+  .meta { color: #64748b; font-size: 15px; margin-top: 2px; }
+  .meta b { color: #1677ff; font-weight: 600; }
+  .segs { display: grid; grid-template-columns: repeat(16, 1fr); gap: 4px; margin-top: 16px; }
+  .segs i { height: 9px; border-radius: 9px; background: #e8eef6; overflow: hidden; }
+  .segs i::after { content: ""; display: block; height: 100%; width: var(--p); background: linear-gradient(90deg, #1677ff, #4c9bff); border-radius: 9px; }
+</style></head>
+<body>
+<div class="glow"></div><div class="grid"></div>
+<div class="content">
+  <div>
+    <div class="brand"><svg viewBox="0 0 24 24"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z" fill="#1677ff"/></svg>velo.</div>
+    <h1>Fast downloads.<br><span>A smoother internet.</span></h1>
+    <p class="sub">Free, open-source download manager for Windows, with a Linux &amp; macOS CLI.</p>
+    <div class="chips"><span>Up to 32 connections</span><span>Pause &amp; resume</span><span>Chrome · Edge · Brave · Firefox</span></div>
+  </div>
+  <div class="card">
+    <div class="speed">5.1 MB/s</div>
+    <div class="speedsub">Sixteen connections at once</div>
+    <div class="row">
+      <div class="tile"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg></div>
+      <div><div class="name">ubuntu-24.04-desktop-amd64.iso</div><div class="meta"><b>5.1 MB/s</b> · 2.6 of 5.7 GB · 10 min left</div></div>
+    </div>
+    <div class="segs">
+      <i style="--p:72%"></i><i style="--p:58%"></i><i style="--p:80%"></i><i style="--p:45%"></i><i style="--p:66%"></i><i style="--p:51%"></i><i style="--p:76%"></i><i style="--p:40%"></i>
+      <i style="--p:62%"></i><i style="--p:54%"></i><i style="--p:70%"></i><i style="--p:48%"></i><i style="--p:67%"></i><i style="--p:43%"></i><i style="--p:74%"></i><i style="--p:55%"></i>
+    </div>
+  </div>
+</div>
+</body></html>
