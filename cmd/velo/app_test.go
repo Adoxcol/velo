@@ -631,3 +631,23 @@ func TestDeleteFileAndBatchLinksAndVideoTools(t *testing.T) {
 		t.Fatalf("expected 3 video tools, got %+v", vt.Tools)
 	}
 }
+
+func TestAddURLSchemeValidation(t *testing.T) {
+	a := testApp(t, defaultSettings())
+	for _, badURL := range []string{
+		"file:///etc/passwd",
+		"javascript:alert(1)",
+		"ftp://example.com/file.zip",
+		"invalid-url",
+		"",
+	} {
+		if id := a.add(engine.Request{URL: badURL}); id != 0 {
+			t.Fatalf("a.add(%q) returned ID %d, want 0 (rejected)", badURL, id)
+		}
+	}
+
+	validURL := "https://example.com/file.zip"
+	if id := a.add(engine.Request{URL: validURL}); id == 0 {
+		t.Fatalf("a.add(%q) returned 0, want non-zero ID", validURL)
+	}
+}
