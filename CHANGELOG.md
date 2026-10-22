@@ -2,6 +2,12 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.13 — 2026-10-22
+
+### New
+- A **What's new** dialog shows the installed version's changelog after each update. Notes work offline and appear once per version after dismissal.
+- Release notes wait for other dialogs to close and skip fresh-install onboarding.
+
 ## 0.8.12 — 2026-10-22
 
 ### Improved

@@ -237,6 +237,8 @@
   @keyframes pop { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
   .dh { display: flex; align-items: center; padding: 16px 20px; font-size: 16px; font-weight: 700; color: var(--ink); }
   .dh .iconbtn { margin-left: auto; }
+  #newsDlg { width: 600px; }
+  #newsBody { line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
   .db { padding: 2px 20px 8px; overflow: auto; }
   .df { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px 18px; }
   .probe { min-height: 18px; font-size: 12.5px; color: var(--muted); margin: -6px 0 12px; }
@@ -505,6 +507,12 @@
     </div>
   </div>
   <div class="df"><button class="btn" data-close>Cancel</button><button class="btn primary" id="bGo">Download</button></div>
+</dialog>
+
+<dialog id="newsDlg" aria-labelledby="newsTitle">
+  <div class="dh" id="newsTitle">What's new</div>
+  <div class="db" id="newsBody" tabindex="0" translate="no"></div>
+  <div class="df"><button class="btn primary" id="newsDone">Got it</button></div>
 </dialog>
 
 <dialog id="onboard">
@@ -1473,7 +1481,32 @@ window.addEventListener("resize", closeDD);
 document.addEventListener("scroll", (e) => { if (ddEl && e.target !== ddEl) closeDD(); }, true);
 
 // ---------- start ----------
-loadSettings().then(() => { go("home"); maybeOnboard(); openBatch(); });
+let pendingNews = null;
+async function closeNews() {
+  try {
+    await dismissReleaseNotes();
+    $("#newsDlg").close();
+  } catch (e) { toast("Couldn't save: " + e, true); }
+}
+$("#newsDone").onclick = closeNews;
+$("#newsDlg").addEventListener("cancel", (e) => { e.preventDefault(); closeNews(); });
+function maybeShowNews() {
+  if (!pendingNews || document.querySelector("dialog[open]")) return;
+  $("#newsTitle").textContent = `What's new in Velo ${pendingNews.version}`;
+  // Treat bundled notes as text, never executable HTML.
+  $("#newsBody").textContent = pendingNews.notes.replace(/^### /gm, "").replace(/\*\*(.*?)\*\*/g, "$1").replace(/^- /gm, "• ");
+  $("#newsDlg").showModal();
+  pendingNews = null;
+}
+loadSettings().then(async () => {
+  go("home");
+  try { pendingNews = await pendingReleaseNotes(); }
+  catch (e) { console.error("Release notes:", e); }
+  await maybeOnboard();
+  await openBatch();
+  maybeShowNews();
+});
+setInterval(maybeShowNews, 1500);
 appVersion().then((v) => ($("#verText").textContent = v));
 async function showUpdate() {
   const u = await updateInfo();

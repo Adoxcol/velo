@@ -351,6 +351,8 @@ func bind(w webview2.WebView, a *app) {
 	w.Bind("finishBatch", func(urls []string, start bool) int { return a.finishBatch(urls, start) })
 	w.Bind("extensionSeen", func() int64 { return a.extensionSeen() })
 	w.Bind("appVersion", func() string { return version.Version })
+	w.Bind("pendingReleaseNotes", a.pendingReleaseNotes)
+	w.Bind("dismissReleaseNotes", dismissReleaseNotes)
 	w.Bind("updateInfo", func() updateInfo { return a.upd.info() })
 	w.Bind("debugInfo", func() string { return a.debugInfo() })
 	w.Bind("languages", func() map[string]any {
