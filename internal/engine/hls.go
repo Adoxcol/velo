@@ -375,23 +375,31 @@ func (e *Engine) fetchPart(ctx context.Context, d *Download, u, dst string) (int
 }
 
 // concat writes parts 0..n-1 one after another into dst.
+// Uses a 256KB bufio.Writer and a single pre-allocated 64KB buffer to avoid allocating
+// a new 32KB buffer on every segment file copy and to reduce write syscalls.
 func concat(dst string, n int, partFile func(int) string) error {
 	out, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
+	bw := bufio.NewWriterSize(out, 256<<10)
+	buf := make([]byte, 64<<10)
 	for i := 0; i < n; i++ {
 		in, err := os.Open(partFile(i))
 		if err != nil {
 			out.Close()
 			return err
 		}
-		_, err = io.Copy(out, in)
+		_, err = io.CopyBuffer(bw, in, buf)
 		in.Close()
 		if err != nil {
 			out.Close()
 			return err
 		}
+	}
+	if err := bw.Flush(); err != nil {
+		out.Close()
+		return err
 	}
 	return out.Close()
 }
