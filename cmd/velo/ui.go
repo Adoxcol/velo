@@ -370,8 +370,17 @@ func bind(w webview2.WebView, a *app) {
 	w.Bind("getSettings", func() Settings { return a.getSettings() })
 	w.Bind("setSettings", func(s Settings) error { return a.setSettings(s) })
 	w.Bind("setSpeedLimit", func(kb int) error { return a.setSpeedLimit(kb) })
-	w.Bind("add", func(url string) (int, error) {
-		return a.add(engine.Request{URL: url}), nil
+	w.Bind("add", func(rawURL string) (int, error) {
+		u := strings.ToLower(rawURL)
+		if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
+			return 0, errors.New("enter a link starting with http:// or https://")
+		}
+		_, kind := engine.Downloadable(rawURL)
+		id := a.add(engine.Request{URL: rawURL, Kind: kind})
+		if id == 0 {
+			return 0, errors.New("invalid URL")
+		}
+		return id, nil
 	})
 	w.Bind("pause", func(id int) error { return a.pause(id) })
 	w.Bind("resume", func(id int) error { return a.resume(id) })

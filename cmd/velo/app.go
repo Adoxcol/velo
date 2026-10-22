@@ -217,6 +217,16 @@ func (a *app) addWith(o addOptions) (int, error) {
 }
 
 func (a *app) add(r engine.Request) int {
+	u := strings.ToLower(r.URL)
+	if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
+		log.Printf("add: rejected non-HTTP/HTTPS URL %q", r.URL)
+		return 0
+	}
+	if r.Kind == "" {
+		if _, kind := engine.Downloadable(r.URL); kind != "" {
+			r.Kind = kind
+		}
+	}
 	it := a.register(&engine.Download{Req: r})
 	log.Printf("#%d queued %s", it.d.ID, r.URL)
 	a.enqueue(it)
