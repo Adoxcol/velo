@@ -105,6 +105,18 @@ var page = template.Must(template.New("page").Parse(`<!doctype html>
 <meta name="description" content="What's new in each version of Velo, the free and open-source download manager for Windows.">
 <meta name="theme-color" content="#0d1728">
 <link rel="icon" href="favicon.ico" sizes="any">
+<link rel="canonical" href="https://velo.adoxcol.com/changelog">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Velo">
+<meta property="og:title" content="Velo changelog">
+<meta property="og:description" content="What's new in each version of Velo, the free and open-source download manager.">
+<meta property="og:url" content="https://velo.adoxcol.com/changelog">
+<meta property="og:image" content="https://velo.adoxcol.com/img/og.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta property="og:image:alt" content="Velo: fast downloads, a smoother internet. A download running at 5.1 MB/s over sixteen connections.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://velo.adoxcol.com/img/og.png">
 <!-- Generated from CHANGELOG.md by tools/changelog. Edit that file, not this one. -->
 <style>
   :root { --primary: #1677ff; --navy: #0d1728; --bg: #ffffff; --surface: #ffffff; --ink: #0d1728; --muted: #64748b; --line: #e6ebf2; --soft: #eef5ff; --ok: #22c55e; }
