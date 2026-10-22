@@ -315,5 +315,6 @@
  "Cancel download": "Cancelar descarga",
  "Add <b>Velo Download Manager</b> from the Chrome Web Store. It works in Chrome, Edge and Brave.": "Añade <b>Velo Download Manager</b> desde Chrome Web Store. Funciona en Chrome, Edge y Brave.",
  "Add to Chrome": "Añadir a Chrome",
- "Developers: load the unpacked extension": "Desarrolladores: cargar la extensión descomprimida"
+ "Developers: load the unpacked extension": "Desarrolladores: cargar la extensión descomprimida",
+ "Add to Firefox": "Añadir a Firefox"
 }

@@ -2,6 +2,11 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.14 — 2026-10-23
+
+### New
+- **Velo is on Firefox Add-ons.** The Browser Extension page and the welcome guide now have an **Add to Firefox** button next to **Add to Chrome**, and Firefox installs connect to Velo straight away.
+
 ## 0.8.13 — 2026-10-22
 
 ### New

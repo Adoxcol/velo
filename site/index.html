@@ -47,7 +47,8 @@
   },
   "sameAs": [
     "https://github.com/Adoxcol/velo",
-    "https://chromewebstore.google.com/detail/pcpdknogjedamkhakgfbaoieehnheelk"
+    "https://chromewebstore.google.com/detail/pcpdknogjedamkhakgfbaoieehnheelk",
+    "https://addons.mozilla.org/en-US/firefox/addon/velo-downloader/"
   ]
 }
 </script>
@@ -295,6 +296,9 @@
     footer .links { margin-left: 0; }
   }
 
+  .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); box-shadow: none; }
+  .btn.ghost:hover { background: var(--soft); }
+
   /* promo videos: the full video and its vertical short side by side */
   .promos { display: grid; grid-template-columns: minmax(0, 1fr) 236px; gap: 28px; align-items: center; max-width: 1120px; margin: 0 auto; }
   .promo { position: relative; border-radius: 20px; overflow: hidden; background: #0d1728;
@@ -536,9 +540,9 @@ veloctl get "https://example.com/file.zip"</code></pre>
           <li><svg class="i"><use href="#check"/></svg>Right-click any link, image or video to send it to Velo</li>
           <li><svg class="i"><use href="#check"/></svg>Logged-in downloads keep working; a site's cookies only go to that site</li>
         </ul>
-        <div class="ctas" style="margin:22px 0 14px;justify-content:flex-start"><a class="btn primary" href="https://chromewebstore.google.com/detail/pcpdknogjedamkhakgfbaoieehnheelk"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 8.5h8.5M8.97 13.75 4.7 6.4M15.03 13.75l-4.27 7.2"/></svg>Add to Chrome — it's free</a></div>
+        <div class="ctas" style="margin:22px 0 14px;justify-content:flex-start"><a class="btn primary" href="https://chromewebstore.google.com/detail/pcpdknogjedamkhakgfbaoieehnheelk"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 8.5h8.5M8.97 13.75 4.7 6.4M15.03 13.75l-4.27 7.2"/></svg>Add to Chrome — it's free</a><a class="btn ghost" href="https://addons.mozilla.org/en-US/firefox/addon/velo-downloader/"><svg class="i" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-1.6-.4-3.1-1.1-4.4.2 1.6-.6 3-1.9 3.5.3-2.6-1.2-5.2-3.6-6.2.7 1.4.5 3.1-.6 4.1-1-.9-2.4-1.2-3.6-.7 1.5.1 2.8 1.2 3 2.7-1.5-.5-3.2.1-4 1.4a4.5 4.5 0 0 0 7.8 3.6"/></svg>Add to Firefox</a></div>
         <div class="browsers"><span>Chrome</span><span>Edge</span><span>Brave</span><span>Firefox</span></div>
-        <p class="fine" style="margin-top:10px">Works in Chrome, Edge and Brave from the Chrome Web Store. Needs the Velo app for Windows.</p>
+        <p class="fine" style="margin-top:10px">Chrome, Edge and Brave install it from the Chrome Web Store; Firefox from Firefox Add-ons. Needs the Velo app for Windows.</p>
       </div>
       <div class="vid" aria-hidden="true">
         <div class="sun"></div><div class="m1"></div><div class="m2"></div>
@@ -582,7 +586,7 @@ veloctl get "https://example.com/file.zip"</code></pre>
     </div>
     <div class="steps">
       <div class="step"><div class="num">1</div><h3>Install Velo</h3><p>Run the installer. It sets Velo up for your Windows account and adds it to the Start menu. Or use the portable zip.</p></div>
-      <div class="step"><div class="num">2</div><h3>Add the extension</h3><p>Get <a href="https://chromewebstore.google.com/detail/pcpdknogjedamkhakgfbaoieehnheelk">Velo Download Manager</a> from the Chrome Web Store for Chrome, Edge or Brave. The installer already connects your browsers to Velo.</p></div>
+      <div class="step"><div class="num">2</div><h3>Add the extension</h3><p>Get Velo Download Manager for <a href="https://chromewebstore.google.com/detail/pcpdknogjedamkhakgfbaoieehnheelk">Chrome, Edge or Brave</a>, or for <a href="https://addons.mozilla.org/en-US/firefox/addon/velo-downloader/">Firefox</a>. The installer already connects your browsers to Velo.</p></div>
       <div class="step"><div class="num">3</div><h3>Download as usual</h3><p>Click download links like always. Velo shows the file and folder, then gets it done faster.</p></div>
     </div>
     <div class="note">
@@ -601,7 +605,7 @@ veloctl get "https://example.com/file.zip"</code></pre>
       <details><summary>Does Velo collect any data?</summary><p>Velo has no analytics or tracking. Downloads contact the sites you choose; the Windows app contacts GitHub to check for updates. The extension sends download information to the local Velo app. Read the <a href="https://gist.github.com/Adoxcol/ea9009ab50bad69a5067c20ae35edd49">privacy policy</a>.</p></details>
       <details><summary>Why does Windows warn about an unknown publisher?</summary><p>The installer isn't code-signed yet, so SmartScreen doesn't recognise it. Choose "More info" and then "Run anyway". The source is public, and every release lists its SHA-256 so you can check the file.</p></details>
       <details><summary>How does Velo update?</summary><p>The installed Windows app checks GitHub, verifies the installer checksum and updates while idle. Portable Windows copies and Linux/macOS CLI users download the new package manually. Keep optional video tools up to date separately.</p></details>
-      <details><summary>Does it work with Firefox?</summary><p>On Windows, yes—and with Chrome, Edge and Brave. Linux/macOS CLI builds do not connect to browser extensions yet. In Firefox, allow Velo on all sites when the add-on asks, so it can find videos and catch downloads.</p></details>
+      <details><summary>Does it work with Firefox?</summary><p>On Windows, yes—and with Chrome, Edge and Brave. Linux/macOS CLI builds do not connect to browser extensions yet. Install the add-on from <a href="https://addons.mozilla.org/en-US/firefox/addon/velo-downloader/">Firefox Add-ons</a>, then allow Velo on all sites when it asks, so it can find videos and catch downloads.</p></details>
       <details><summary>Can I use it without installing?</summary><p>Yes. Unzip the portable version anywhere, even a USB stick, and run velo.exe. Settings stay in a folder next to it.</p></details>
     </div>
   </div>

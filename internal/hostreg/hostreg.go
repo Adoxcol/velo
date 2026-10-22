@@ -18,7 +18,9 @@ const (
 	FirefoxID = "velo@adoxcol.github.io"
 	// ChromeStoreURL is the extension's Chrome Web Store page.
 	ChromeStoreURL = "https://chromewebstore.google.com/detail/" + "pcpdknogjedamkhakgfbaoieehnheelk"
-	firefoxKey     = `Software\Mozilla\NativeMessagingHosts\` + HostName
+	// FirefoxStoreURL is the add-on's Firefox Add-ons page.
+	FirefoxStoreURL = "https://addons.mozilla.org/en-US/firefox/addon/velo-downloader/"
+	firefoxKey      = `Software\Mozilla\NativeMessagingHosts\` + HostName
 )
 
 // Store extension IDs. Edge and Brave install the Chrome Web Store version too.

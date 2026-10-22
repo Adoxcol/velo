@@ -85,12 +85,12 @@ and connects Chrome, Edge, Brave and Firefox. Then add the browser extension:
 
 - **Chrome, Edge and Brave:** [Velo Download Manager on the Chrome Web Store](https://chromewebstore.google.com/detail/pcpdknogjedamkhakgfbaoieehnheelk).
   After installing Velo, Chrome also offers it by itself ("New extension added").
-- **Firefox:** coming to Firefox Add-ons.
+- **Firefox:** [Velo Download Manager on Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/velo-downloader/).
 
 Prefer no installer? `Velo-Portable-<version>.zip` runs from any folder (see its README.txt).
 
-**Firefox**: install the Velo add-on from Firefox Add-ons once it is listed. To try it before that,
-open `about:debugging` → This Firefox → Load Temporary Add-on and pick `manifest.json` from an unzipped
+**Firefox**: install the add-on from [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/velo-downloader/). For development, open
+`about:debugging` → This Firefox → Load Temporary Add-on and pick `manifest.json` from an unzipped
 `velo-firefox-<version>.zip` (temporary add-ons are removed when Firefox closes).
 
 

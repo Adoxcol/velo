@@ -414,6 +414,9 @@ func bind(w webview2.WebView, a *app) {
 	w.Bind("openStore", func() error {
 		return exec.Command("rundll32", "url.dll,FileProtocolHandler", hostreg.ChromeStoreURL).Start()
 	})
+	w.Bind("openFirefoxStore", func() error {
+		return exec.Command("rundll32", "url.dll,FileProtocolHandler", hostreg.FirefoxStoreURL).Start()
+	})
 	w.Bind("pauseAll", func() { a.all("pause") })
 	w.Bind("clearDone", func() int { return a.clearDone() })
 	w.Bind("resumeAll", func() { a.all("resume") })
