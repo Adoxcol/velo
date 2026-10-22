@@ -2,6 +2,11 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.15 — 2026-10-23
+
+### Fixed
+- **YouTube downloads from Firefox:** If YouTube rejects the browser cookies with HTTP 413 or 431, Velo retries once without cookies. This recovery covers both video title lookup and downloading.
+
 ## 0.8.14 — 2026-10-23
 
 ### New

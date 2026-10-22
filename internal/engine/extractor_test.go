@@ -2,16 +2,87 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 )
+
+func TestYouTubeCookieRetry(t *testing.T) {
+	for _, tc := range []struct {
+		name, url              string
+		failure                error
+		cookies, cancel, retry bool
+	}{
+		{"413", "https://www.youtube.com/watch?v=abc", errors.New("HTTP Error 413: Request Entity Too Large"), true, false, true},
+		{"metadata stderr", "https://youtu.be/abc", &exec.ExitError{Stderr: []byte("HTTP Error 413")}, true, false, true},
+		{"431", "https://youtube.com/watch?v=abc", errors.New("HTTP Error 431"), true, false, true},
+		{"login required", "https://youtube.com/watch?v=abc", errors.New("Sign in to confirm your age"), true, false, false},
+		{"other site", "https://facebook.com/watch?v=abc", errors.New("HTTP Error 413"), true, false, false},
+		{"lookalike", "https://youtube.com.evil.test/watch?v=abc", errors.New("HTTP Error 413"), true, false, false},
+		{"no cookies", "https://youtube.com/watch?v=abc", errors.New("HTTP Error 413"), false, false, false},
+		{"cancelled", "https://youtube.com/watch?v=abc", errors.New("HTTP Error 413"), true, true, false},
+		{"success", "https://youtube.com/watch?v=abc", nil, true, false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			args := []string{"--ignore-config", "--format", "ba/b"}
+			if tc.cookies {
+				args = append(args, "--cookies", "private-jar.txt")
+			}
+			args = append(args, "--", tc.url)
+			original := append([]string(nil), args...)
+			calls := 0
+			err := withYouTubeCookieRetry(ctx, tc.url, args, func(got []string) error {
+				calls++
+				if calls == 1 {
+					if tc.cancel {
+						cancel()
+					}
+					return tc.failure
+				}
+				want := []string{"--ignore-config", "--format", "ba/b", "--", tc.url}
+				if !reflect.DeepEqual(got, want) {
+					t.Fatalf("retry arguments: %v", got)
+				}
+				return nil
+			})
+			wantCalls := 1
+			if tc.retry {
+				wantCalls = 2
+			}
+			if calls != wantCalls || !reflect.DeepEqual(args, original) {
+				t.Fatalf("calls=%d; original args changed=%t", calls, !reflect.DeepEqual(args, original))
+			}
+			if tc.retry && err != nil {
+				t.Fatal(err)
+			}
+			if !tc.retry && err != tc.failure {
+				t.Fatalf("original failure lost: %v", err)
+			}
+		})
+	}
+}
+
+func TestYouTubeCookieRetryIsBounded(t *testing.T) {
+	calls := 0
+	failure := errors.New("HTTP Error 413")
+	err := withYouTubeCookieRetry(context.Background(), "https://youtube.com/watch?v=abc", []string{"--cookies", "jar", "--", "https://youtube.com/watch?v=abc"}, func([]string) error {
+		calls++
+		return failure
+	})
+	if calls != 2 || !errors.Is(err, failure) || !strings.Contains(err.Error(), "retry without cookies failed") {
+		t.Fatalf("calls=%d, error=%v", calls, err)
+	}
+}
 
 func TestVideoPage(t *testing.T) {
 	for raw, want := range map[string]bool{

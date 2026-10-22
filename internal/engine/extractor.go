@@ -220,7 +220,9 @@ func (e *Engine) runPage(ctx context.Context, d *Download) error {
 	if err != nil {
 		return err
 	}
-	if err := runExtractorProcess(ctx, ytdlp, args, d); err != nil {
+	if err := withYouTubeCookieRetry(ctx, d.Req.URL, args, func(args []string) error {
+		return runExtractorProcess(ctx, ytdlp, args, d)
+	}); err != nil {
 		return err
 	}
 	return finalizeExtractorOutput(d, work)
@@ -250,11 +252,16 @@ func (e *Engine) VideoFilename(ctx context.Context, r Request) (string, error) {
 	args = append(append(args[:len(args)-2:len(args)-2], "--skip-download", "--dump-single-json"), "--", r.URL)
 	ctx, cancel := context.WithTimeout(ctx, 25*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, ytdlp, args...)
-	hideWindow(cmd)
-	cmd.Cancel = func() error { return killProcessTree(cmd) }
-	cmd.WaitDelay = 5 * time.Second
-	out, err := cmd.Output()
+	var out []byte
+	err = withYouTubeCookieRetry(ctx, r.URL, args, func(args []string) error {
+		cmd := exec.CommandContext(ctx, ytdlp, args...)
+		hideWindow(cmd)
+		cmd.Cancel = func() error { return killProcessTree(cmd) }
+		cmd.WaitDelay = 5 * time.Second
+		var runErr error
+		out, runErr = cmd.Output()
+		return runErr
+	})
 	if err != nil {
 		return "", err
 	}
@@ -363,6 +370,44 @@ func (e *Engine) buildExtractorCmdArgs(u *url.URL, d *Download, ffmpeg, work str
 		add("--cookies", f.Name())
 	}
 	return args, cleanup, nil
+}
+
+// YouTube can reject a browser session with HTTP 413 even for a public video.
+// Retry that specific failure once without the cookie jar. Keep the original
+// request intact, and never drop authentication for other errors or sites.
+func withYouTubeCookieRetry(ctx context.Context, raw string, args []string, run func([]string) error) error {
+	err := run(args)
+	if err == nil || ctx.Err() != nil {
+		return err
+	}
+	u, parseErr := url.Parse(raw)
+	if parseErr != nil {
+		return err
+	}
+	host := strings.ToLower(u.Hostname())
+	if host != "youtu.be" && host != "youtube.com" && !strings.HasSuffix(host, ".youtube.com") && host != "youtube-nocookie.com" && !strings.HasSuffix(host, ".youtube-nocookie.com") {
+		return err
+	}
+	message := err.Error()
+	var exit *exec.ExitError
+	if errors.As(err, &exit) {
+		message += string(exit.Stderr)
+	}
+	if !strings.Contains(message, "HTTP Error 413") && !strings.Contains(message, "HTTP Error 431") {
+		return err
+	}
+	for i := 0; i+1 < len(args) && args[i] != "--"; i++ {
+		if args[i] != "--cookies" {
+			continue
+		}
+		clean := append([]string(nil), args[:i]...)
+		clean = append(clean, args[i+2:]...)
+		if retryErr := run(clean); retryErr != nil {
+			return fmt.Errorf("YouTube rejected the browser cookies; retry without cookies failed: %w", retryErr)
+		}
+		return nil
+	}
+	return err
 }
 
 func runExtractorProcess(ctx context.Context, ytdlp string, args []string, d *Download) error {
