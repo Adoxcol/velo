@@ -2,6 +2,16 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.11 — 2026-10-22
+
+### Changed
+- **"Offer to download copied links" is now off by default**, so copying a link no longer pops up a Velo notification. Turn it on in **Settings → General** if you want it. This also switches it off once for existing installs.
+
+### Improved
+- The search box has a clear button, and Escape clears it.
+- Faster setup of DASH video downloads.
+- Velo's local connection only accepts web links (http and https).
+
 ## 0.8.10 — 2026-10-20
 
 ### Fixed
