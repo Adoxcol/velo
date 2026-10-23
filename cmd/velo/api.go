@@ -170,7 +170,9 @@ func (a *app) addBatch(b batchReq, urls []string, start bool) int {
 	n := 0
 	for _, u := range urls {
 		ok, kind := engine.Downloadable(u)
-		if !ok && !strings.HasPrefix(strings.ToLower(u), "http") {
+		// Security: Input validation to ensure only HTTP/HTTPS URLs are accepted.
+		lu := strings.ToLower(u)
+		if !ok && !strings.HasPrefix(lu, "http://") && !strings.HasPrefix(lu, "https://") {
 			continue
 		}
 		r := engine.Request{URL: u, Referrer: b.Referrer, UserAgent: b.UserAgent, Kind: kind}
@@ -181,11 +183,13 @@ func (a *app) addBatch(b batchReq, urls []string, start bool) int {
 			r.Cookies = b.Cookies
 		}
 		if start {
-			a.add(r)
+			if id := a.add(r); id != 0 {
+				n++
+			}
 		} else {
 			a.register(&engine.Download{Req: r, Status: "paused"})
+			n++
 		}
-		n++
 	}
 	a.kick()
 	return n
