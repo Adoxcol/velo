@@ -90,7 +90,7 @@ async function handOff({ url, referrer, filename, kind, format, title, source, s
 }
 
 function extOf(name) {
-  const m = /\.([a-z0-9]{1,6})$/i.exec(name || "");
+  const m = /\.([a-z0-9]+)$/i.exec(name || "");
   return m ? m[1].toLowerCase() : "";
 }
 

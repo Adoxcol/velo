@@ -33,8 +33,8 @@ jobs:
       - name: Check extension scripts
         shell: bash
         run: for f in extension/*.js; do node --check "$f"; done
-      - name: Test video page routing
-        run: node --test tools/tests/video.test.cjs
+      - name: Test browser capture and video page routing
+        run: node --test tools/tests/*.test.cjs
       - name: Check site changelog
         run: |
           go run ./tools/changelog

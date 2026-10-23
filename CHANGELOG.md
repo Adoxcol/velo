@@ -2,6 +2,16 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.16 — 2026-10-24
+
+### Fixed
+- **Capture .torrent downloads in Firefox and Chrome:** The extension now recognizes file extensions longer than six characters, so `.torrent` and `.AppImage` downloads reach Velo's download dialog.
+- Batch downloads now validate web URL schemes more strictly.
+
+### Improved
+- History saving skips repeated serialization when nothing has changed.
+- Queue controls have clearer screen-reader labels.
+
 ## 0.8.15 — 2026-10-23
 
 ### Fixed
