@@ -75,6 +75,7 @@ type app struct {
 	onTick    func() // every second (taskbar progress)
 
 	lastHistory   []byte            // last saved history.json contents
+	lastSnap      []histEntry       // last saved history entries
 	speedHist     []float64         // total speed per second, last minute
 	extSeen       time.Time         // last message from the browser extension
 	batch         *batchReq         // links waiting in the batch dialog

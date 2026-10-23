@@ -64,9 +64,30 @@ func (a *app) snapshot() []histEntry {
 	return out
 }
 
+func histEqual(a, b []histEntry) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 // saveHistory writes the list if it changed since the last save.
 func (a *app) saveHistory() {
-	b, err := json.MarshalIndent(a.snapshot(), "", " ")
+	snap := a.snapshot()
+	a.mu.Lock()
+	if a.lastSnap != nil && histEqual(snap, a.lastSnap) {
+		a.mu.Unlock()
+		return
+	}
+	a.lastSnap = snap
+	a.mu.Unlock()
+
+	b, err := json.MarshalIndent(snap, "", " ")
 	if err != nil {
 		return
 	}
@@ -77,6 +98,7 @@ func (a *app) saveHistory() {
 	if same {
 		return
 	}
+
 	tmp := a.historyPath() + ".tmp"
 	if err := os.WriteFile(tmp, b, 0o600); err == nil {
 		os.Rename(tmp, a.historyPath())
