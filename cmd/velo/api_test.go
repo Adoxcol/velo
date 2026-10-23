@@ -144,3 +144,32 @@ func TestAddInvalidScheme(t *testing.T) {
 		t.Fatalf("expected error for non-http URL, got: %s", res.Body.String())
 	}
 }
+
+func TestAddBatchInvalidScheme(t *testing.T) {
+	a := &app{token: "test-token"}
+	b := batchReq{
+		Links: []struct {
+			URL  string `json:"url"`
+			Text string `json:"text"`
+		}{
+			{URL: "httpfoo://example.com/file.zip", Text: "bad1"},
+			{URL: "file:///etc/passwd", Text: "bad2"},
+			{URL: "https://example.com/file.zip", Text: "good"},
+		},
+	}
+	urls := []string{
+		"httpfoo://example.com/file.zip",
+		"file:///etc/passwd",
+		"https://example.com/file.zip",
+	}
+
+	addedStart := a.addBatch(b, urls, true)
+	if addedStart != 1 {
+		t.Fatalf("expected 1 valid URL added when start=true, got %d", addedStart)
+	}
+
+	addedPaused := a.addBatch(b, urls, false)
+	if addedPaused != 1 {
+		t.Fatalf("expected 1 valid URL added when start=false, got %d", addedPaused)
+	}
+}
