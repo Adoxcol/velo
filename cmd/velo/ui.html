@@ -1180,13 +1180,13 @@ function renderQueues() {
     <div class="qtop"><input data-qf="name" value="${escapeHtml(q.name)}" maxlength="40" title="Rename" aria-label="Queue name">
       <button class="iconbtn" data-qdel="${i}" title="Delete queue" aria-label="Delete queue">${icon(I.trash)}</button></div>
     <div class="opt"><div><div class="t">Only download during set hours</div></div>
-      <span class="switch"><input type="checkbox" data-qf="enabled"${q.schedule.enabled ? " checked" : ""}><i></i></span></div>
+      <span class="switch"><input type="checkbox" data-qf="enabled"${q.schedule.enabled ? " checked" : ""} aria-label="Only download during set hours for ${escapeHtml(q.name)}"><i></i></span></div>
     <div style="padding-top:12px" class="${q.schedule.enabled ? "" : "off"}">
-      <div class="field"><span class="lbl">Between</span><div class="row2"><input type="time" class="time" data-qf="start" value="${q.schedule.start}"> <span class="hint">and</span> <input type="time" class="time" data-qf="stop" value="${q.schedule.stop}"></div></div>
+      <div class="field"><span class="lbl">Between</span><div class="row2"><input type="time" class="time" data-qf="start" value="${q.schedule.start}" aria-label="Schedule start time for ${escapeHtml(q.name)}"> <span class="hint">and</span> <input type="time" class="time" data-qf="stop" value="${q.schedule.stop}" aria-label="Schedule stop time for ${escapeHtml(q.name)}"></div></div>
       <div class="field"><span class="lbl">On these days</span><div class="days">${DAYS.map((d, k) => `<label><input type="checkbox" data-qday="${k}"${q.schedule.days[k] ? " checked" : ""}>${d}</label>`).join("")}</div></div>
     </div>
     <div class="opt"><div><div class="t">Downloads at once in this queue</div><div class="d">Never more than the overall limit above.</div></div>
-      <select class="sel" data-qf="max"><option value="0"${q.maxConcurrent ? "" : " selected"}>No own limit</option>${[1, 2, 3, 4, 5].map((n) => `<option${q.maxConcurrent === n ? " selected" : ""}>${n}</option>`).join("")}</select></div>
+      <select class="sel" data-qf="max" aria-label="Downloads at once in ${escapeHtml(q.name)}"><option value="0"${q.maxConcurrent ? "" : " selected"}>No own limit</option>${[1, 2, 3, 4, 5].map((n) => `<option${q.maxConcurrent === n ? " selected" : ""}>${n}</option>`).join("")}</select></div>
   </div>`).join("") : `<p class="hint" style="max-width:640px">No other queues yet.</p>`;
 }
 function editQueue(i, f) { save((s) => { s.queues = s.queues || []; f(s.queues[i]); }); }
