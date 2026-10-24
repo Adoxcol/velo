@@ -651,3 +651,37 @@ func TestAddURLSchemeValidation(t *testing.T) {
 		t.Fatalf("a.add(%q) returned 0, want non-zero ID", validURL)
 	}
 }
+
+func TestAddWithDirectoryValidation(t *testing.T) {
+	a := &app{eng: engine.New(t.TempDir()), pending: make(map[int]pendingDL)}
+
+	// 1. Relative dir on new download returns error
+	_, err := a.addWith(addOptions{URL: "https://example.com/file.zip", Dir: "relative/path"})
+	if err == nil || !strings.Contains(err.Error(), "choose a full folder path") {
+		t.Fatalf("expected 'choose a full folder path', got %v", err)
+	}
+
+	// 2. Relative dir on pending download returns error and does NOT register download
+	a.mu.Lock()
+	a.pending[1] = pendingDL{ID: 1, Req: engine.Request{URL: "https://example.com/file.zip"}}
+	a.pendingOrder = append(a.pendingOrder, 1)
+	a.mu.Unlock()
+
+	_, err = a.addWith(addOptions{PendingID: 1, Dir: "../relative"})
+	if err == nil || !strings.Contains(err.Error(), "choose a full folder path") {
+		t.Fatalf("expected 'choose a full folder path' for pending download, got %v", err)
+	}
+	if len(a.items) != 0 {
+		t.Fatalf("pending download with invalid dir was registered in items")
+	}
+
+	// 3. Clean absolute dir on new download works
+	targetDir := filepath.Join(t.TempDir(), "sub", "..", "clean")
+	id, err := a.addWith(addOptions{URL: "https://example.com/file.zip", Dir: "  " + targetDir + "  ", Start: false})
+	if err != nil || id == 0 {
+		t.Fatalf("addWith clean absolute dir failed: %v", err)
+	}
+	if it := a.get(id); it == nil || it.d.Req.Dir != filepath.Clean(targetDir) {
+		t.Fatalf("expected cleaned dir %q, got %q", filepath.Clean(targetDir), it.d.Req.Dir)
+	}
+}

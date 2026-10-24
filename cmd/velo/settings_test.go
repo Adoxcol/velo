@@ -43,6 +43,24 @@ func TestScheduleAllowed(t *testing.T) {
 	}
 }
 
+func TestValidateDownloadDir(t *testing.T) {
+	s := defaultSettings()
+	s.DownloadDir = "relative/path"
+	if err := s.validate(); err == nil {
+		t.Fatal("expected error for relative DownloadDir, got nil")
+	}
+
+	s = defaultSettings()
+	cleanDir := filepath.Join(t.TempDir(), "sub", "..", "clean")
+	s.DownloadDir = "  " + cleanDir + "  "
+	if err := s.validate(); err != nil {
+		t.Fatalf("validate failed for absolute DownloadDir: %v", err)
+	}
+	if s.DownloadDir != filepath.Clean(cleanDir) {
+		t.Fatalf("expected cleaned DownloadDir %q, got %q", filepath.Clean(cleanDir), s.DownloadDir)
+	}
+}
+
 func TestSaveFilePermissions(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("VELO_HOME", dir)

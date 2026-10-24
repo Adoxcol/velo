@@ -177,6 +177,13 @@ func (a *app) addWith(o addOptions) (int, error) {
 			return 0, err
 		}
 	}
+	o.Dir = strings.TrimSpace(o.Dir)
+	if o.Dir != "" {
+		o.Dir = filepath.Clean(o.Dir)
+		if !filepath.IsAbs(o.Dir) {
+			return 0, errors.New("choose a full folder path")
+		}
+	}
 	if o.PendingID != 0 {
 		base, ok := a.takePending(o.PendingID)
 		if !ok {
@@ -190,9 +197,6 @@ func (a *app) addWith(o addOptions) (int, error) {
 		if o.User != "" {
 			base.User, base.Pass = o.User, o.Pass
 		}
-		if o.Dir != "" && !filepath.IsAbs(o.Dir) {
-			return 0, errors.New("choose a full folder path")
-		}
 		if !o.Start {
 			it := a.register(&engine.Download{Req: base, Status: "paused"})
 			a.kick()
@@ -204,9 +208,6 @@ func (a *app) addWith(o addOptions) (int, error) {
 	u := strings.ToLower(o.URL)
 	if !ok && !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
 		return 0, errors.New("enter a link starting with http:// or https://")
-	}
-	if o.Dir != "" && !filepath.IsAbs(o.Dir) {
-		return 0, errors.New("choose a full folder path")
 	}
 	r := engine.Request{URL: o.URL, Filename: strings.TrimSpace(o.Filename), Dir: o.Dir, Segments: o.Segments, Kind: kind, Format: o.Format, Checksum: sum, User: o.User, Pass: o.Pass, Queue: o.Queue}
 	if !o.Start {

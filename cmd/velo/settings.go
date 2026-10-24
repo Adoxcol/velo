@@ -151,8 +151,12 @@ func (s *Settings) validate() error {
 		return err
 	}
 	s.Proxy = p
-	if s.DownloadDir != "" && !filepath.IsAbs(s.DownloadDir) {
-		return fmt.Errorf(`download folder must be a full path like C:\Downloads`)
+	s.DownloadDir = strings.TrimSpace(s.DownloadDir)
+	if s.DownloadDir != "" {
+		s.DownloadDir = filepath.Clean(s.DownloadDir)
+		if !filepath.IsAbs(s.DownloadDir) {
+			return fmt.Errorf(`download folder must be a full path like C:\Downloads`)
+		}
 	}
 	return nil
 }
