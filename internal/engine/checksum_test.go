@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"strings"
 	"testing"
@@ -124,5 +126,36 @@ func TestVerifyChecksum(t *testing.T) {
 
 	if err := verifyChecksum(tmp.Name(), "invalid-algo"); err == nil {
 		t.Errorf("verifyChecksum should fail for unknown checksum length")
+	}
+}
+
+func BenchmarkVerifyChecksum(b *testing.B) {
+	tmp, err := os.CreateTemp("", "checksum-bench-*.bin")
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer os.Remove(tmp.Name())
+
+	data := make([]byte, 10<<20) // 10 MB
+	for i := range data {
+		data[i] = byte(i)
+	}
+	if _, err := tmp.Write(data); err != nil {
+		b.Fatal(err)
+	}
+	tmp.Close()
+
+	h := sha256.New()
+	h.Write(data)
+	sha256Hash := hex.EncodeToString(h.Sum(nil))
+
+	b.SetBytes(int64(len(data)))
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		if err := verifyChecksum(tmp.Name(), sha256Hash); err != nil {
+			b.Fatal(err)
+		}
 	}
 }

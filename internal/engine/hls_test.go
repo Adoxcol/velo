@@ -174,3 +174,17 @@ func BenchmarkConcat(b *testing.B) {
 		os.Remove(dst)
 	}
 }
+
+func BenchmarkParseMedia(b *testing.B) {
+	u := "https://cdn.example.com/stream/video/index.m3u8?token=xyz123"
+	text := vodPlaylist(1000)(u)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		if _, err := parseMedia(u, text); err != nil {
+			b.Fatal(err)
+		}
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -265,6 +266,8 @@ func kindOf(set *mpdAdaptSet, rep *mpdRep) string {
 
 // segmentURLs expands a representation into its init + media segment URLs.
 func segmentURLs(base string, set *mpdAdaptSet, rep *mpdRep, periodSecs float64) ([]string, error) {
+	// Pre-parse base URL once outside the segment expansion loop to avoid url.Parse overhead.
+	baseURL, _ := url.Parse(base)
 	if l := rep.List; l != nil || set.List != nil {
 		if l == nil {
 			l = set.List
@@ -274,13 +277,13 @@ func segmentURLs(base string, set *mpdAdaptSet, rep *mpdRep, periodSecs float64)
 			if l.Init.Range != "" {
 				return nil, errors.New("byte-range DASH segments aren't supported yet")
 			}
-			urls = append(urls, resolve(base, l.Init.SourceURL))
+			urls = append(urls, resolveURL(baseURL, l.Init.SourceURL))
 		}
 		for _, s := range l.Segments {
 			if s.Range != "" {
 				return nil, errors.New("byte-range DASH segments aren't supported yet")
 			}
-			urls = append(urls, resolve(base, s.Media))
+			urls = append(urls, resolveURL(baseURL, s.Media))
 		}
 		return urls, nil
 	}
@@ -299,7 +302,7 @@ func segmentURLs(base string, set *mpdAdaptSet, rep *mpdRep, periodSecs float64)
 	var urls []string
 	if t.Initialization != "" {
 		initTpl := parseDashTemplate(t.Initialization)
-		urls = append(urls, resolve(base, initTpl.eval(rep, 0, 0)))
+		urls = append(urls, resolveURL(baseURL, initTpl.eval(rep, 0, 0)))
 	}
 	mediaTpl := parseDashTemplate(t.Media)
 	switch {
@@ -322,7 +325,7 @@ func segmentURLs(base string, set *mpdAdaptSet, rep *mpdRep, periodSecs float64)
 				repeat = (until-time+s.D-1)/s.D - 1
 			}
 			for k := int64(0); k <= repeat; k++ {
-				urls = append(urls, resolve(base, mediaTpl.eval(rep, n, time)))
+				urls = append(urls, resolveURL(baseURL, mediaTpl.eval(rep, n, time)))
 				n++
 				time += s.D
 			}
@@ -334,7 +337,7 @@ func segmentURLs(base string, set *mpdAdaptSet, rep *mpdRep, periodSecs float64)
 		count := int64(math.Ceil(periodSecs * float64(scale) / float64(*t.Duration)))
 		for k := int64(0); k < count; k++ {
 			n := start + k
-			urls = append(urls, resolve(base, mediaTpl.eval(rep, n, k**t.Duration)))
+			urls = append(urls, resolveURL(baseURL, mediaTpl.eval(rep, n, k**t.Duration)))
 		}
 	default:
 		return nil, errors.New("SegmentTemplate without duration or timeline")
