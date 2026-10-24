@@ -1,0 +1,174 @@
+<!doctype html>
+<html data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Downloading</title>
+<style>
+  :root { color-scheme: light; --primary: #1677ff; --primary-2: #4c9bff; --primary-h: #0f6ae6; --ink: #0d1728; --muted: #64748b; --bg: #ffffff; --bg2: #f5f8fc; --line: #e3e9f2; --track: #e8eef6; --ok: #16a34a; --warn: #d97706; --err: #ef4444; }
+  html[data-theme="dark"] { color-scheme: dark; --primary: #3b8bff; --primary-2: #6aa8ff; --primary-h: #5a9dff; --ink: #eef3fa; --muted: #93a1b5; --bg: #111b2e; --bg2: #0d1628; --line: #22314a; --track: #1c2a42; --ok: #22c55e; --warn: #f59e0b; --err: #f87171; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body { background: var(--bg); color: var(--ink); font: 13.5px/1.4 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; display: flex; flex-direction: column; user-select: none; }
+  svg.i { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+  .top { display: flex; gap: 14px; align-items: center; padding: 14px 18px; background: var(--bg2); border-bottom: 1px solid var(--line); }
+  .tile { width: 42px; height: 42px; border-radius: 11px; display: grid; place-items: center; flex: none; background: color-mix(in srgb, var(--c, #94a3b8) 15%, transparent); color: var(--c, #94a3b8); }
+  .tile svg.i { width: 22px; height: 22px; }
+  .tile img { width: 26px; height: 26px; object-fit: contain; }
+  .t-Video { --c: #3b82f6; } .t-Music { --c: #a855f7; } .t-Images { --c: #14b8a6; } .t-Documents { --c: #f97316; }
+  .t-Ebooks { --c: #ec4899; } .t-Compressed { --c: #d97706; } .t-Diskimages { --c: #6366f1; } .t-Programs { --c: #64748b; }
+  .t-Torrents { --c: #22c55e; } .t-Fonts { --c: #0ea5e9; } .t-Other { --c: #94a3b8; }
+  .head { min-width: 0; flex: 1; }
+  .name { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .url { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pct { font: 700 22px "Segoe UI Variable Display", "Segoe UI", sans-serif; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+
+  .body { padding: 14px 18px 0; }
+  .bar { position: relative; height: 12px; border-radius: 99px; background: var(--track); overflow: hidden; }
+  .bar .fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--primary), var(--primary-2)); border-radius: 99px; transition: width .4s ease; }
+  .bar .gap { position: absolute; top: 0; bottom: 0; background: var(--track); }
+  .bar.seg .fill { width: 100% !important; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
+  .stat small { display: block; color: var(--muted); font-size: 11.5px; }
+  .stat b { display: block; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .state { margin-top: 10px; font-size: 12.5px; color: var(--muted); min-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .state.paused { color: var(--warn); } .state.failed { color: var(--err); } .state.done { color: var(--ok); }
+
+  .foot { margin-top: auto; display: flex; align-items: center; gap: 8px; padding: 10px 18px 14px; }
+  .foot .main { margin-right: auto; border: 0; background: none; color: var(--primary); font: 600 12.5px inherit; font-family: inherit; cursor: pointer; padding: 6px 4px; }
+  .btn { height: 32px; padding: 0 14px; border-radius: 9px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: 600 13.5px inherit; font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+  .btn:hover { background: var(--bg2); }
+  .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .btn.primary:hover { background: var(--primary-h); }
+  .btn.danger { color: var(--err); }
+  .btn.confirm { background: var(--err); border-color: var(--err); color: #fff; }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="tile" id="tile"></div>
+  <div class="head">
+    <div class="name" id="name" translate="no">Starting…</div>
+    <div class="url" id="url" translate="no"></div>
+  </div>
+  <div class="pct" id="pct">0%</div>
+</div>
+<div class="body">
+  <div class="bar" id="bar"><div class="fill" id="fill" style="width:0"></div></div>
+  <div class="stats">
+    <div class="stat"><small>Downloaded</small><b id="done">—</b></div>
+    <div class="stat"><small>File size</small><b id="total">—</b></div>
+    <div class="stat"><small>Speed</small><b id="speed">—</b></div>
+    <div class="stat"><small>Time left</small><b id="left">—</b></div>
+  </div>
+  <div class="state" id="state"></div>
+</div>
+<div class="foot">
+  <button class="main" id="openMain">Open Velo</button>
+  <button class="btn" id="hide">Hide</button>
+  <button class="btn" id="pause">Pause</button>
+  <button class="btn danger" id="cancel">Cancel</button>
+</div>
+
+<script>
+const $ = (s) => document.getElementById(s);
+const ICON = {"Video":"<rect x=\"2.5\" y=\"5\" width=\"19\" height=\"14\" rx=\"3\"/><path d=\"m10 9.5 4.5 2.5-4.5 2.5z\"/>",
+  "Music":"<path d=\"M9 18V6l11-2v12\"/><circle cx=\"6.5\" cy=\"18\" r=\"2.5\"/><circle cx=\"17.5\" cy=\"16\" r=\"2.5\"/>",
+  "Documents":"<path d=\"M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z\"/><path d=\"M14 3v5h5M9 13h6M9 17h6\"/>",
+  "Compressed":"<rect x=\"3\" y=\"4\" width=\"18\" height=\"5\" rx=\"1.5\"/><path d=\"M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4\"/>",
+  "Disk images":"<circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"12\" r=\"2.5\"/>",
+  "Other":"<path d=\"M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z\"/><path d=\"M14 3v5h5\"/>"};
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function size(n) { if (!(n > 0)) return "—"; const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0; while (n >= 1024 && i < 4) { n /= 1024; i++; } return n.toFixed(i && n < 100 ? 1 : 0) + " " + u[i]; }
+function dur(s) { if (!isFinite(s) || s <= 0) return "—"; s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return h ? `${h} h ${m} min` : m ? `${m} min ${x} s` : `${x} s`; }
+
+let iconFor = "", cancelArmed = false, gone = 0;
+async function tick() {
+  const r = await progressInfo().catch(() => null);
+  if (!r) { if (++gone > 2) closeProgress(); return; }   // removed elsewhere
+  gone = 0;
+  if (r.status === "done") return closeProgress();          // "Download complete" takes over
+  $("name").textContent = r.file || "Starting…";
+  $("name").title = r.file || "";
+  $("url").textContent = r.url;
+  document.title = `${Math.floor(r.percent || 0)}% — ${r.file || "Velo"}`;
+  if (r.file && iconFor !== r.file) {
+    iconFor = r.file;
+    const cat = r.category || "Other";
+    $("tile").className = "tile t-" + cat.replace(/\W/g, "");
+    let inner = `<svg class="i" viewBox="0 0 24 24">${ICON[cat] || ICON.Other}</svg>`;
+    const fi = await fileTypeIcon(r.file).catch(() => null);
+    if (fi && fi.src) inner = `<img src="${esc(fi.src)}" alt="">`;
+    veloSetHTML($("tile"), inner);
+  }
+  const pct = r.total > 0 ? Math.min(100, r.percent || 0) : 0;
+  $("pct").textContent = r.total > 0 ? Math.floor(pct) + "%" : "";
+  // Parts downloading at once: draw the bar full and cut out what's missing.
+  const bar = $("bar");
+  bar.querySelectorAll(".gap").forEach((g) => g.remove());
+  if (r.gaps && r.gaps.length && r.total > 0) {
+    bar.classList.add("seg");
+    for (const [start, width] of r.gaps) {
+      const g = document.createElement("div");
+      g.className = "gap";
+      g.style.left = start + "%";
+      g.style.width = width + "%";
+      bar.append(g);
+    }
+  } else {
+    bar.classList.remove("seg");
+    $("fill").style.width = pct + "%";
+  }
+  $("done").textContent = size(r.done);
+  $("total").textContent = r.total > 0 ? size(r.total) : "Unknown";
+  const running = r.status === "downloading";
+  $("speed").textContent = running && r.speed > 0 ? size(r.speed) + "/s" : "—";
+  $("left").textContent = running && r.speed > 0 && r.total > 0 ? dur((r.total - r.done) / r.speed) : "—";
+  const st = $("state");
+  st.className = "state";
+  if (r.retrying) st.textContent = `Connection lost · retrying in ${r.retryIn} s`;
+  else if (r.status === "downloading") st.textContent = r.connections > 1 ? `Downloading in ${r.connections} parts at once` : "Downloading";
+  else if (r.status === "paused") { st.textContent = "Paused"; st.classList.add("paused"); }
+  else if (r.status === "error") { st.textContent = r.error || "Failed"; st.classList.add("failed"); }
+  else if (r.status === "verifying") st.textContent = "Checking the file…";
+  else if (r.status === "queued") st.textContent = "Waiting in the queue";
+  else st.textContent = "Starting…";
+  const pausable = r.status === "downloading" || r.status === "queued";
+  $("pause").textContent = pausable ? "Pause" : (r.status === "error" ? "Retry" : "Resume");
+  $("pause").hidden = r.status === "verifying";
+  $("pause").className = "btn" + (pausable ? "" : " primary");
+  $("pause").dataset.mode = pausable ? "pause" : "resume";
+}
+
+$("pause").onclick = async () => {
+  try { await ($("pause").dataset.mode === "pause" ? pauseDownload() : resumeDownload()); } catch (e) { $("state").textContent = String(e?.message || e); }
+  tick();
+};
+$("cancel").onclick = async () => {
+  if (!cancelArmed) { // ask once: cancelling deletes the partial file
+    cancelArmed = true;
+    $("cancel").textContent = "Delete partial file?";
+    $("cancel").className = "btn confirm";
+    setTimeout(() => { cancelArmed = false; $("cancel").textContent = "Cancel"; $("cancel").className = "btn danger"; }, 4000);
+    return;
+  }
+  await cancelDownload().catch(() => {});
+  closeProgress();
+};
+$("hide").onclick = () => closeProgress();
+$("openMain").onclick = () => openMain();
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeProgress(); });
+document.addEventListener("contextmenu", (e) => e.preventDefault());
+
+(async () => {
+  const s = await getSettings().catch(() => ({}));
+  const dark = s.theme === "dark" || (s.theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  tick();
+  setInterval(tick, 500);
+})();
+</script>
+</body>
+</html>

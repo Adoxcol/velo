@@ -322,5 +322,21 @@
 "Ne plus afficher",
 "Le fichier a été déplacé ou supprimé.",
 "Afficher la fenêtre « Téléchargement terminé »",
-"Avec Ouvrir, Ouvrir avec… et Ouvrir le dossier à la fin d'un téléchargement."
+"Avec Ouvrir, Ouvrir avec… et Ouvrir le dossier à la fin d'un téléchargement.",
+"Téléchargé",
+"Taille",
+"Vitesse",
+"Temps restant",
+"Masquer",
+"Supprimer le fichier partiel ?",
+"Inconnue",
+"Téléchargement en {0} parties à la fois",
+"Connexion perdue · nouvel essai dans {0} s",
+"En attente dans la file",
+"Vérification du fichier…",
+"Afficher une fenêtre de progression pour chaque téléchargement",
+"S'ouvre après « Démarrer le téléchargement » dans la fenêtre de téléchargement, avec vitesse, temps restant, Pause et Annuler.",
+"{0} h {1} min",
+"{0} min {1} s",
+"{0} s"
 ]

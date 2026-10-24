@@ -322,5 +322,21 @@
  "Don't show this again": "Ne plus afficher",
  "The file was moved or deleted.": "Le fichier a été déplacé ou supprimé.",
  "Show the \"Download complete\" window": "Afficher la fenêtre « Téléchargement terminé »",
- "With Open, Open with… and Open folder when a download finishes.": "Avec Ouvrir, Ouvrir avec… et Ouvrir le dossier à la fin d'un téléchargement."
+ "With Open, Open with… and Open folder when a download finishes.": "Avec Ouvrir, Ouvrir avec… et Ouvrir le dossier à la fin d'un téléchargement.",
+ "Downloaded": "Téléchargé",
+ "File size": "Taille",
+ "Speed": "Vitesse",
+ "Time left": "Temps restant",
+ "Hide": "Masquer",
+ "Delete partial file?": "Supprimer le fichier partiel ?",
+ "Unknown": "Inconnue",
+ "Downloading in {0} parts at once": "Téléchargement en {0} parties à la fois",
+ "Connection lost · retrying in {0} s": "Connexion perdue · nouvel essai dans {0} s",
+ "Waiting in the queue": "En attente dans la file",
+ "Checking the file…": "Vérification du fichier…",
+ "Show a progress window for each download": "Afficher une fenêtre de progression pour chaque téléchargement",
+ "Opens after Start download in the download dialog, with speed, time left, Pause and Cancel.": "S'ouvre après « Démarrer le téléchargement » dans la fenêtre de téléchargement, avec vitesse, temps restant, Pause et Annuler.",
+ "{0} h {1} min": "{0} h {1} min",
+ "{0} min {1} s": "{0} min {1} s",
+ "{0} s": "{0} s"
 }

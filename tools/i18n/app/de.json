@@ -322,5 +322,21 @@
 "Nicht mehr anzeigen",
 "Die Datei wurde verschoben oder gelöscht.",
 "Fenster „Download abgeschlossen“ anzeigen",
-"Mit Öffnen, Öffnen mit… und Ordner öffnen, wenn ein Download fertig ist."
+"Mit Öffnen, Öffnen mit… und Ordner öffnen, wenn ein Download fertig ist.",
+"Heruntergeladen",
+"Dateigröße",
+"Geschwindigkeit",
+"Restzeit",
+"Ausblenden",
+"Teildatei löschen?",
+"Unbekannt",
+"Wird in {0} Teilen gleichzeitig heruntergeladen",
+"Verbindung verloren · neuer Versuch in {0} s",
+"Wartet in der Warteschlange",
+"Datei wird geprüft…",
+"Fortschrittsfenster für jeden Download anzeigen",
+"Öffnet sich nach „Download starten“ im Download-Dialog, mit Geschwindigkeit, Restzeit, Pause und Abbrechen.",
+"{0} Std. {1} Min.",
+"{0} Min. {1} s",
+"{0} s"
 ]

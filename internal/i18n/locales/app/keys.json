@@ -322,5 +322,21 @@
  "Don't show this again",
  "The file was moved or deleted.",
  "Show the \"Download complete\" window",
- "With Open, Open with… and Open folder when a download finishes."
+ "With Open, Open with… and Open folder when a download finishes.",
+ "Downloaded",
+ "File size",
+ "Speed",
+ "Time left",
+ "Hide",
+ "Delete partial file?",
+ "Unknown",
+ "Downloading in {0} parts at once",
+ "Connection lost · retrying in {0} s",
+ "Waiting in the queue",
+ "Checking the file…",
+ "Show a progress window for each download",
+ "Opens after Start download in the download dialog, with speed, time left, Pause and Cancel.",
+ "{0} h {1} min",
+ "{0} min {1} s",
+ "{0} s"
 ]

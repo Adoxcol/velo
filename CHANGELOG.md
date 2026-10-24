@@ -2,6 +2,11 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.19 — 2026-10-24
+
+### New
+- **A progress window for each download, like IDM's.** After **Start download** in the download dialog, a small window shows the file, percent done, the parts downloading at once, how much is downloaded, the file size, speed and time left, with **Pause** / **Resume**, **Hide** and **Cancel**. It closes by itself when the download finishes and the "Download complete" window takes over. Turn it off in **Settings → General**.
+
 ## 0.8.18 — 2026-10-24
 
 ### New

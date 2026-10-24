@@ -322,5 +322,21 @@
 "Não mostrar novamente",
 "O arquivo foi movido ou excluído.",
 "Mostrar a janela \"Download concluído\"",
-"Com Abrir, Abrir com… e Abrir pasta quando um download termina."
+"Com Abrir, Abrir com… e Abrir pasta quando um download termina.",
+"Baixado",
+"Tamanho",
+"Velocidade",
+"Tempo restante",
+"Ocultar",
+"Excluir o arquivo parcial?",
+"Desconhecido",
+"Baixando em {0} partes ao mesmo tempo",
+"Conexão perdida · tentando de novo em {0} s",
+"Aguardando na fila",
+"Verificando o arquivo…",
+"Mostrar uma janela de progresso para cada download",
+"Abre depois de Iniciar download na janela de download, com velocidade, tempo restante, Pausar e Cancelar.",
+"{0} h {1} min",
+"{0} min {1} s",
+"{0} s"
 ]

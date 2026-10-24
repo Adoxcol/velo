@@ -322,5 +322,21 @@
 "No volver a mostrar",
 "El archivo se movió o se eliminó.",
 "Mostrar la ventana \"Descarga completada\"",
-"Con Abrir, Abrir con… y Abrir carpeta al terminar una descarga."
+"Con Abrir, Abrir con… y Abrir carpeta al terminar una descarga.",
+"Descargado",
+"Tamaño",
+"Velocidad",
+"Tiempo restante",
+"Ocultar",
+"¿Borrar el archivo parcial?",
+"Desconocido",
+"Descargando en {0} partes a la vez",
+"Conexión perdida · reintentando en {0} s",
+"Esperando en la cola",
+"Comprobando el archivo…",
+"Mostrar una ventana de progreso para cada descarga",
+"Se abre tras Iniciar descarga en el diálogo de descarga, con velocidad, tiempo restante, Pausa y Cancelar.",
+"{0} h {1} min",
+"{0} min {1} s",
+"{0} s"
 ]

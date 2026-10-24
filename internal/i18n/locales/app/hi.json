@@ -322,5 +322,21 @@
  "Don't show this again": "फिर से न दिखाएँ",
  "The file was moved or deleted.": "फ़ाइल को हटा दिया गया है या कहीं और ले जाया गया है।",
  "Show the \"Download complete\" window": "\"डाउनलोड पूरा हुआ\" विंडो दिखाएँ",
- "With Open, Open with… and Open folder when a download finishes.": "डाउनलोड पूरा होने पर खोलें, इसके साथ खोलें… और फ़ोल्डर खोलें के साथ।"
+ "With Open, Open with… and Open folder when a download finishes.": "डाउनलोड पूरा होने पर खोलें, इसके साथ खोलें… और फ़ोल्डर खोलें के साथ।",
+ "Downloaded": "डाउनलोड हुआ",
+ "File size": "फ़ाइल का आकार",
+ "Speed": "गति",
+ "Time left": "बचा समय",
+ "Hide": "छिपाएँ",
+ "Delete partial file?": "अधूरी फ़ाइल हटाएँ?",
+ "Unknown": "अज्ञात",
+ "Downloading in {0} parts at once": "एक साथ {0} हिस्सों में डाउनलोड हो रहा है",
+ "Connection lost · retrying in {0} s": "कनेक्शन टूटा · {0} सेकंड में फिर कोशिश",
+ "Waiting in the queue": "कतार में इंतज़ार",
+ "Checking the file…": "फ़ाइल जाँची जा रही है…",
+ "Show a progress window for each download": "हर डाउनलोड के लिए प्रगति विंडो दिखाएँ",
+ "Opens after Start download in the download dialog, with speed, time left, Pause and Cancel.": "डाउनलोड डायलॉग में डाउनलोड शुरू करने के बाद खुलती है — गति, बचा समय, रोकें और रद्द करें के साथ।",
+ "{0} h {1} min": "{0} घंटे {1} मिनट",
+ "{0} min {1} s": "{0} मिनट {1} सेकंड",
+ "{0} s": "{0} सेकंड"
 }

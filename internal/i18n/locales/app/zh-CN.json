@@ -322,5 +322,21 @@
  "Don't show this again": "不再显示",
  "The file was moved or deleted.": "该文件已被移动或删除。",
  "Show the \"Download complete\" window": "显示“下载完成”窗口",
- "With Open, Open with… and Open folder when a download finishes.": "下载完成时提供“打开”“打开方式…”和“打开文件夹”。"
+ "With Open, Open with… and Open folder when a download finishes.": "下载完成时提供“打开”“打开方式…”和“打开文件夹”。",
+ "Downloaded": "已下载",
+ "File size": "文件大小",
+ "Speed": "速度",
+ "Time left": "剩余时间",
+ "Hide": "隐藏",
+ "Delete partial file?": "删除未完成的文件？",
+ "Unknown": "未知",
+ "Downloading in {0} parts at once": "正在同时分 {0} 段下载",
+ "Connection lost · retrying in {0} s": "连接中断 · {0} 秒后重试",
+ "Waiting in the queue": "正在队列中等待",
+ "Checking the file…": "正在检查文件…",
+ "Show a progress window for each download": "为每个下载显示进度窗口",
+ "Opens after Start download in the download dialog, with speed, time left, Pause and Cancel.": "在下载对话框中点击“开始下载”后打开，显示速度、剩余时间，并可暂停或取消。",
+ "{0} h {1} min": "{0} 小时 {1} 分钟",
+ "{0} min {1} s": "{0} 分 {1} 秒",
+ "{0} s": "{0} 秒"
 }

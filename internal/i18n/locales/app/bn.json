@@ -322,5 +322,21 @@
  "Don't show this again": "আর দেখাবেন না",
  "The file was moved or deleted.": "ফাইলটি সরানো বা মুছে ফেলা হয়েছে।",
  "Show the \"Download complete\" window": "\"ডাউনলোড সম্পূর্ণ\" উইন্ডো দেখান",
- "With Open, Open with… and Open folder when a download finishes.": "ডাউনলোড শেষ হলে খুলুন, এর মাধ্যমে খুলুন… ও ফোল্ডার খুলুন সহ।"
+ "With Open, Open with… and Open folder when a download finishes.": "ডাউনলোড শেষ হলে খুলুন, এর মাধ্যমে খুলুন… ও ফোল্ডার খুলুন সহ।",
+ "Downloaded": "ডাউনলোড হয়েছে",
+ "File size": "ফাইলের আকার",
+ "Speed": "গতি",
+ "Time left": "বাকি সময়",
+ "Hide": "লুকান",
+ "Delete partial file?": "আংশিক ফাইল মুছবেন?",
+ "Unknown": "অজানা",
+ "Downloading in {0} parts at once": "একসাথে {0} ভাগে ডাউনলোড হচ্ছে",
+ "Connection lost · retrying in {0} s": "সংযোগ বিচ্ছিন্ন · {0} সেকেন্ডে আবার চেষ্টা",
+ "Waiting in the queue": "কিউতে অপেক্ষমাণ",
+ "Checking the file…": "ফাইল যাচাই হচ্ছে…",
+ "Show a progress window for each download": "প্রতিটি ডাউনলোডের জন্য অগ্রগতির উইন্ডো দেখান",
+ "Opens after Start download in the download dialog, with speed, time left, Pause and Cancel.": "ডাউনলোড ডায়ালগে ডাউনলোড শুরু করলে খোলে — গতি, বাকি সময়, বিরতি ও বাতিলসহ।",
+ "{0} h {1} min": "{0} ঘণ্টা {1} মিনিট",
+ "{0} min {1} s": "{0} মিনিট {1} সেকেন্ড",
+ "{0} s": "{0} সেকেন্ড"
 }

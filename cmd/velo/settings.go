@@ -27,6 +27,7 @@ type Settings struct {
 	Autostart      bool     `json:"autostart"`         // start with Windows (in the tray)
 	Notify         bool     `json:"notify"`            // notification when a download finishes or fails
 	CompleteDialog bool     `json:"completeDialog"`    // "Download complete" window with Open / Open folder
+	ProgressWindow bool     `json:"progressWindow"`    // per-download progress window after Start download
 	WatchClipboard bool     `json:"offerCopiedLinks"`  // offer to download copied file links (off by default since 0.8.11)
 	Theme          string   `json:"theme"`             // light, dark or system
 	Connections    int      `json:"connections"`       // default connections per download, 1-32
@@ -64,6 +65,7 @@ func defaultSettings() Settings {
 		SortByType:     true,
 		Notify:         true,
 		CompleteDialog: true,
+		ProgressWindow: true,
 		WatchClipboard: false,
 		Theme:          "light",
 		Connections:    16,

@@ -81,7 +81,13 @@ func showCapture(a *app) {
 		w.Bind("nextPending", func() *pendingView { return a.nextPendingDL() })
 		w.Bind("pendingCount", func() int { a.mu.Lock(); defer a.mu.Unlock(); return len(a.pending) })
 		w.Bind("dropPending", func(id int) { a.takePending(id) })
-		w.Bind("addDownload", func(o addOptions) (int, error) { return a.addWith(o) })
+		w.Bind("addDownload", func(o addOptions) (int, error) {
+			id, err := a.addWith(o)
+			if err == nil && o.Start && a.getSettings().ProgressWindow {
+				showProgress(a, id) // IDM-style progress window for this download
+			}
+			return id, err
+		})
 		w.Bind("folderFor", func(name string) string { return a.eng.FolderFor(engine.SafeName(name)) })
 		w.Bind("categoryOf", func(name string) string { return engine.CategoryOf(name) })
 		w.Bind("fileTypeIcon", func(name string) thumbResult { return a.fileTypeIcon(name) })

@@ -322,5 +322,21 @@
  "Don't show this again": "Não mostrar novamente",
  "The file was moved or deleted.": "O arquivo foi movido ou excluído.",
  "Show the \"Download complete\" window": "Mostrar a janela \"Download concluído\"",
- "With Open, Open with… and Open folder when a download finishes.": "Com Abrir, Abrir com… e Abrir pasta quando um download termina."
+ "With Open, Open with… and Open folder when a download finishes.": "Com Abrir, Abrir com… e Abrir pasta quando um download termina.",
+ "Downloaded": "Baixado",
+ "File size": "Tamanho",
+ "Speed": "Velocidade",
+ "Time left": "Tempo restante",
+ "Hide": "Ocultar",
+ "Delete partial file?": "Excluir o arquivo parcial?",
+ "Unknown": "Desconhecido",
+ "Downloading in {0} parts at once": "Baixando em {0} partes ao mesmo tempo",
+ "Connection lost · retrying in {0} s": "Conexão perdida · tentando de novo em {0} s",
+ "Waiting in the queue": "Aguardando na fila",
+ "Checking the file…": "Verificando o arquivo…",
+ "Show a progress window for each download": "Mostrar uma janela de progresso para cada download",
+ "Opens after Start download in the download dialog, with speed, time left, Pause and Cancel.": "Abre depois de Iniciar download na janela de download, com velocidade, tempo restante, Pausar e Cancelar.",
+ "{0} h {1} min": "{0} h {1} min",
+ "{0} min {1} s": "{0} min {1} s",
+ "{0} s": "{0} s"
 }
