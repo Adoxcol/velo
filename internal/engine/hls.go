@@ -261,27 +261,16 @@ func (e *Engine) runStream(ctx context.Context, d *Download, tracks [][]string, 
 		return filepath.Join(partsDir, fmt.Sprintf("%d_%06d", t, i))
 	}
 
-	// Count what's already on disk (complete parts only: they're renamed into place).
-	type job struct{ t, i int }
-	var todo []job
 	total := 0
+	for _, parts := range tracks {
+		total += len(parts)
+	}
+	d.parts.Store(int64(total))
 	d.partsDone.Store(0)
 	d.partBytes.Store(0)
 	d.Done.Store(0)
-	for t, parts := range tracks {
-		total += len(parts)
-		for i := range parts {
-			if fi, err := os.Stat(partFile(t, i)); err == nil {
-				d.partsDone.Add(1)
-				d.partBytes.Add(fi.Size())
-				d.Done.Add(fi.Size())
-			} else {
-				todo = append(todo, job{t, i})
-			}
-		}
-	}
-	d.parts.Store(int64(total))
 
+	type job struct{ t, i int }
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	jobs := make(chan job)
@@ -306,11 +295,19 @@ func (e *Engine) runStream(ctx context.Context, d *Download, tracks [][]string, 
 		}()
 	}
 feed:
-	for _, j := range todo {
-		select {
-		case jobs <- j:
-		case <-ctx.Done():
-			break feed
+	for t, parts := range tracks {
+		for i := range parts {
+			if fi, err := os.Stat(partFile(t, i)); err == nil {
+				d.partsDone.Add(1)
+				d.partBytes.Add(fi.Size())
+				d.Done.Add(fi.Size())
+			} else {
+				select {
+				case jobs <- job{t, i}:
+				case <-ctx.Done():
+					break feed
+				}
+			}
 		}
 	}
 	close(jobs)
