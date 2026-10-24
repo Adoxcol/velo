@@ -58,16 +58,29 @@ func (e *Engine) fetchText(ctx context.Context, r Request, u string) (string, er
 	return string(b), err
 }
 
+// resolveURL resolves ref against a pre-parsed baseURL to avoid re-parsing
+// the base URL string on every iteration of high-frequency segment loops.
+func resolveURL(baseURL *url.URL, ref string) string {
+	ref = strings.TrimSpace(ref)
+	if ref == "" {
+		return ""
+	}
+	if baseURL == nil {
+		return ref
+	}
+	r, err := baseURL.Parse(ref)
+	if err != nil {
+		return ref
+	}
+	return r.String()
+}
+
 func resolve(base, ref string) string {
 	b, err := url.Parse(base)
 	if err != nil {
 		return ref
 	}
-	r, err := b.Parse(strings.TrimSpace(ref))
-	if err != nil {
-		return ref
-	}
-	return r.String()
+	return resolveURL(b, ref)
 }
 
 var attrRe = regexp.MustCompile(`([A-Z0-9-]+)=("[^"]*"|[^,]*)`)
@@ -93,6 +106,7 @@ func (e *Engine) loadPlaylist(ctx context.Context, r Request, u string) (*hlsPla
 			return nil, errors.New("not an HLS playlist")
 		}
 		if strings.Contains(text, "#EXT-X-STREAM-INF") {
+			baseURL, _ := url.Parse(u)
 			best, bestBW := "", int64(-1)
 			fit, fitBW := "", int64(-1)
 			sc := bufio.NewScanner(strings.NewReader(text))
@@ -109,7 +123,7 @@ func (e *Engine) loadPlaylist(ctx context.Context, r Request, u string) (*hlsPla
 				}
 				for sc.Scan() { // the URI is the next non-comment line
 					if next := strings.TrimSpace(sc.Text()); next != "" && !strings.HasPrefix(next, "#") {
-						target := resolve(u, next)
+						target := resolveURL(baseURL, next)
 						if bw > bestBW {
 							best, bestBW = target, bw
 						}
@@ -135,6 +149,8 @@ func (e *Engine) loadPlaylist(ctx context.Context, r Request, u string) (*hlsPla
 }
 
 func parseMedia(u, text string) (*hlsPlaylist, error) {
+	// Pre-parse the base URL once to avoid url.Parse overhead on every segment.
+	baseURL, _ := url.Parse(u)
 	p := &hlsPlaylist{}
 	ended := false
 	sc := bufio.NewScanner(strings.NewReader(text))
@@ -150,12 +166,12 @@ func parseMedia(u, text string) (*hlsPlaylist, error) {
 		case strings.HasPrefix(line, "#EXT-X-BYTERANGE"):
 			return nil, errors.New("byte-range HLS playlists aren't supported yet")
 		case strings.HasPrefix(line, "#EXT-X-MAP:"):
-			p.init = resolve(u, attrs(line)["URI"])
+			p.init = resolveURL(baseURL, attrs(line)["URI"])
 		case line == "#EXT-X-ENDLIST":
 			ended = true
 		case strings.HasPrefix(line, "#"):
 		default:
-			p.segments = append(p.segments, resolve(u, line))
+			p.segments = append(p.segments, resolveURL(baseURL, line))
 		}
 	}
 	if !ended {
