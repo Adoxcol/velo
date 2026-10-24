@@ -632,6 +632,27 @@ func TestDeleteFileAndBatchLinksAndVideoTools(t *testing.T) {
 	}
 }
 
+func TestURLPathName(t *testing.T) {
+	cases := []struct {
+		url  string
+		want string
+	}{
+		{"https://example.com/downloads/file.zip", "file.zip"},
+		{"https://example.com/downloads/file%20name.zip?key=val#tag", "file name.zip"},
+		{"https://example.com/", ""},
+		{"https://example.com", ""},
+		{"http://example.com:8080/path/to/doc.pdf", "doc.pdf"},
+		{"/local/path/image.png", "image.png"},
+		{"", ""},
+		{"https://example.com/a%2Fb", "a/b"},
+	}
+	for _, c := range cases {
+		if got := urlPathName(c.url); got != c.want {
+			t.Errorf("urlPathName(%q) = %q, want %q", c.url, got, c.want)
+		}
+	}
+}
+
 func TestAddURLSchemeValidation(t *testing.T) {
 	a := testApp(t, defaultSettings())
 	for _, badURL := range []string{
