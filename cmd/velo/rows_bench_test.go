@@ -52,8 +52,8 @@ func BenchmarkRowsUncachedURLParse(b *testing.B) {
 			a := &app{}
 			for i := 1; i <= n; i++ {
 				d := &engine.Download{
-					ID:    i,
-					Req:   engine.Request{URL: "https://example.com/downloads/file" + strconv.Itoa(i) + ".zip?token=123#section"},
+					ID:     i,
+					Req:    engine.Request{URL: "https://example.com/downloads/file" + strconv.Itoa(i) + ".zip?token=123#section"},
 					Status: "queued",
 				}
 				it := &item{
