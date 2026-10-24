@@ -90,8 +90,19 @@
 </header>
 <main>
   <div class="wrap">
+    <article class="rel" id="v0.8.20">
+      <div class="ver"><b>0.8.20</b><span>2026-10-25</span><br><span class="latest">Latest</span></div>
+      <div class="body">
+        <h3>Fixed</h3>
+        <ul>
+          <li><b>&#34;Download complete&#34; dialog unresponsiveness:</b> Opening files, opening with another app, or revealing in File Explorer now dispatches asynchronously on a background worker thread. This prevents Windows Defender SmartScreen scans, UAC elevation prompts, and cross-process File Explorer COM calls from freezing the dialog&#39;s UI message loop.</li>
+          <li>The &#34;Download complete&#34; dialog closes immediately upon action instead of waiting for external programs to launch.</li>
+          <li>Removed permanent <code>HWND_TOPMOST</code> pinning so the completion dialog does not stay trapped on top of newly launched applications or elevation prompts.</li>
+        </ul>
+      </div>
+    </article>
     <article class="rel" id="v0.8.19">
-      <div class="ver"><b>0.8.19</b><span>2026-10-24</span><br><span class="latest">Latest</span></div>
+      <div class="ver"><b>0.8.19</b><span>2026-10-24</span></div>
       <div class="body">
         <h3>New</h3>
         <ul>

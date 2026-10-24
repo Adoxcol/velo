@@ -2,6 +2,13 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.20 — 2026-10-25
+
+### Fixed
+- **"Download complete" dialog unresponsiveness:** Opening files, opening with another app, or revealing in File Explorer now dispatches asynchronously on a background worker thread. This prevents Windows Defender SmartScreen scans, UAC elevation prompts, and cross-process File Explorer COM calls from freezing the dialog's UI message loop.
+- The "Download complete" dialog closes immediately upon action instead of waiting for external programs to launch.
+- Removed permanent `HWND_TOPMOST` pinning so the completion dialog does not stay trapped on top of newly launched applications or elevation prompts.
+
 ## 0.8.19 — 2026-10-24
 
 ### New

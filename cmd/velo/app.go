@@ -758,16 +758,23 @@ func (a *app) openFile(id int, folder bool) error {
 	if s, _ := it.d.State(); s != "done" {
 		p += ".part"
 	}
-	if folder {
-		return openInFolder(p)
-	}
-	return openPath(p)
+	go func() {
+		if folder {
+			_ = openInFolder(p)
+		} else {
+			_ = openPath(p)
+		}
+	}()
+	return nil
 }
 
 func (a *app) openDir() error {
 	dir := a.eng.Dir()
 	os.MkdirAll(dir, 0o755)
-	return openPath(dir)
+	go func() {
+		_ = openPath(dir)
+	}()
+	return nil
 }
 
 // measure updates each download's speed once a second, and keeps the last

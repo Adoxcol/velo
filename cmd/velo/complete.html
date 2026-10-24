@@ -105,8 +105,9 @@ window.load = load;
 async function act(fn, close = true) {
   $("err").textContent = "";
   try {
-    await fn(cur.id);
+    const id = cur?.id;
     if (close) closeComplete($("never").checked);
+    if (id != null) await fn(id);
   } catch (e) {
     $("err").textContent = String(e?.message || e);
   }

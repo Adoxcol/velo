@@ -60,6 +60,12 @@ func openInFolder(targetPath string) error {
 // openPath opens a file with its default associated application or opens a directory
 // in File Explorer using the native ShellExecuteW API.
 func openPath(targetPath string) error {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	hr, _, _ := pCoInitializeEx.Call(0, 0x6)
+	if hr == 0 || hr == 1 {
+		defer pCoUninitialize.Call()
+	}
 	clean := filepath.Clean(targetPath)
 	p16, err := syscall.UTF16PtrFromString(clean)
 	if err != nil {

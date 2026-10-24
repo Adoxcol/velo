@@ -110,7 +110,7 @@ func showComplete(a *app, id int) {
 		const wsThickFrame, wsMaximizeBox = 0x40000, 0x10000
 		style, _, _ := pGetWindowLongPtr.Call(hwnd, index(gwlStyle))
 		pSetWindowLongPtr.Call(hwnd, index(gwlStyle), style&^(wsThickFrame|wsMaximizeBox))
-		pSetWindowPos.Call(hwnd, hwndTopmost, 0, 0, 0, 0, 0x1|0x2|swpFrameChanged)
+		pSetWindowPos.Call(hwnd, 0, 0, 0, 0, 0, 0x1|0x2|0x4|swpFrameChanged)
 
 		w.Bind("completeInfo", func() *completeView { return a.completeInfo() })
 		w.Bind("itemPreview", func(id int) thumbResult { return a.itemPreview(id) })
