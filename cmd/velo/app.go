@@ -38,9 +38,11 @@ type item struct {
 	cachedFilename string
 	cachedTitle    string
 	cachedFormat   string
+	cachedKind     string
 	cachedName     string
 	cachedCat      string
 	cachedFolder   string
+	cachedInit     bool
 
 	// Network drops: the download waits in the queue until retryAt.
 	retryAt   time.Time
@@ -146,12 +148,36 @@ func copiedLink(text string) (url, kind string, ok bool) {
 	return "", "", false
 }
 
-func linkName(u string) string {
-	name := path.Base(strings.SplitN(strings.SplitN(u, "?", 2)[0], "#", 2)[0])
-	if name == "" || name == "/" || name == "." {
-		return u
+func urlPathName(raw string) string {
+	u := raw
+	if i := strings.IndexByte(u, '?'); i != -1 {
+		u = u[:i]
 	}
-	return name
+	if i := strings.IndexByte(u, '#'); i != -1 {
+		u = u[:i]
+	}
+	if i := strings.Index(u, "://"); i != -1 {
+		slash := strings.IndexByte(u[i+3:], '/')
+		if slash == -1 {
+			return ""
+		}
+		u = u[i+3+slash:]
+	}
+	b := path.Base(u)
+	if unescaped, err := url.PathUnescape(b); err == nil {
+		b = unescaped
+	}
+	if b == "/" || b == "." {
+		return ""
+	}
+	return b
+}
+
+func linkName(u string) string {
+	if name := urlPathName(u); name != "" {
+		return name
+	}
+	return u
 }
 
 // addOptions come from the Add Download dialog.
@@ -831,12 +857,14 @@ func (a *app) rows() []row {
 		name := it.cachedName
 		category := it.cachedCat
 		folder := it.cachedFolder
-		if p != it.cachedPath || d.Req.URL != it.cachedURL || d.Req.Filename != it.cachedFilename || d.Req.Title != it.cachedTitle || d.Req.Format != it.cachedFormat || name == "" {
+		if !it.cachedInit || p != it.cachedPath || d.Req.URL != it.cachedURL || d.Req.Filename != it.cachedFilename || d.Req.Title != it.cachedTitle || d.Req.Format != it.cachedFormat || d.Req.Kind != it.cachedKind {
+			it.cachedInit = true
 			it.cachedPath = p
 			it.cachedURL = d.Req.URL
 			it.cachedFilename = d.Req.Filename
 			it.cachedTitle = d.Req.Title
 			it.cachedFormat = d.Req.Format
+			it.cachedKind = d.Req.Kind
 			if p != "" {
 				name = filepath.Base(p)
 				folder = filepath.Dir(p)
@@ -847,11 +875,7 @@ func (a *app) rows() []row {
 					name = d.Req.Title
 				}
 				if name == "" && d.Req.Kind == "" { // not started yet: the name in the link
-					if u, err := url.Parse(d.Req.URL); err == nil {
-						if b, err := url.PathUnescape(path.Base(u.Path)); err == nil && b != "/" && b != "." {
-							name = b
-						}
-					}
+					name = urlPathName(d.Req.URL)
 				}
 			}
 			category = engine.CategoryOf(name)
