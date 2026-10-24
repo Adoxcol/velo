@@ -2,6 +2,11 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.18 — 2026-10-24
+
+### New
+- **A "Download complete" window, like IDM's.** When a download finishes, Velo shows the file with its size and folder, and **Open**, **Open with…**, **Open folder** and **Close**. Downloads set to open by themselves skip it. Tick **Don't show this again**, or turn it off in **Settings → General**; the notification is used instead.
+
 ## 0.8.17 — 2026-10-24
 
 ### Improved

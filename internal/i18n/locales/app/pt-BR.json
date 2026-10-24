@@ -316,5 +316,11 @@
  "Add <b>Velo Download Manager</b> from the Chrome Web Store. It works in Chrome, Edge and Brave.": "Adicione o <b>Velo Download Manager</b> pela Chrome Web Store. Ele funciona no Chrome, Edge e Brave.",
  "Add to Chrome": "Usar no Chrome",
  "Developers: load the unpacked extension": "Desenvolvedores: carregar a extensão sem pacote",
- "Add to Firefox": "Adicionar ao Firefox"
+ "Add to Firefox": "Adicionar ao Firefox",
+ "Open with…": "Abrir com…",
+ "Open folder": "Abrir pasta",
+ "Don't show this again": "Não mostrar novamente",
+ "The file was moved or deleted.": "O arquivo foi movido ou excluído.",
+ "Show the \"Download complete\" window": "Mostrar a janela \"Download concluído\"",
+ "With Open, Open with… and Open folder when a download finishes.": "Com Abrir, Abrir com… e Abrir pasta quando um download termina."
 }

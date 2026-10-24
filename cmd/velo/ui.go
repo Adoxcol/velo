@@ -60,9 +60,13 @@ func setupTrayApp(a *app) {
 		})
 	}
 	toast = startNotifier()
-	a.onDone = func(d *engine.Download) {
+	a.onDone = func(d *engine.Download, autoOpened bool) {
 		p, _ := d.Info()
 		systray.SetTooltip("Velo — finished " + filepath.Base(p))
+		if a.getSettings().CompleteDialog && !autoOpened { // already opening by itself otherwise
+			showComplete(a, d.ID) // IDM-style "Download complete" window
+			return
+		}
 		if a.getSettings().Notify {
 			toast.Show(a.tr("Download complete"), filepath.Base(p)+"\n"+a.tr("Click to show it in its folder."), func() {
 				a.openFile(d.ID, true)

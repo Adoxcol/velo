@@ -316,5 +316,11 @@
  "Add <b>Velo Download Manager</b> from the Chrome Web Store. It works in Chrome, Edge and Brave.",
  "Add to Chrome",
  "Developers: load the unpacked extension",
- "Add to Firefox"
+ "Add to Firefox",
+ "Open with…",
+ "Open folder",
+ "Don't show this again",
+ "The file was moved or deleted.",
+ "Show the \"Download complete\" window",
+ "With Open, Open with… and Open folder when a download finishes."
 ]

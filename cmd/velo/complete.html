@@ -1,0 +1,131 @@
+<!doctype html>
+<html data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Download complete</title>
+<style>
+  :root { color-scheme: light; --primary: #1677ff; --primary-h: #0f6ae6; --ink: #0d1728; --muted: #64748b; --bg: #ffffff; --bg2: #f5f8fc; --line: #e3e9f2; --ok: #16a34a; --ok-soft: #e8f8ee; --err: #ef4444; }
+  html[data-theme="dark"] { color-scheme: dark; --primary: #3b8bff; --primary-h: #5a9dff; --ink: #eef3fa; --muted: #93a1b5; --bg: #111b2e; --bg2: #0d1628; --line: #22314a; --ok: #22c55e; --ok-soft: #12301f; --err: #f87171; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body { background: var(--bg); color: var(--ink); font: 13.5px/1.4 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; display: flex; flex-direction: column; user-select: none; }
+  svg.i { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+  .top { display: flex; gap: 14px; align-items: center; padding: 16px 18px; background: var(--bg2); border-bottom: 1px solid var(--line); }
+  .tile { position: relative; width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; flex: none; overflow: visible;
+    background: color-mix(in srgb, var(--c, #94a3b8) 15%, transparent); color: var(--c, #94a3b8); }
+  .tile svg.i { width: 23px; height: 23px; }
+  .tile img.ficon { width: 28px; height: 28px; object-fit: contain; }
+  .tile img.cover { width: 46px; height: 46px; object-fit: cover; border-radius: 12px; }
+  .tile .badge { position: absolute; right: -5px; bottom: -5px; width: 20px; height: 20px; border-radius: 50%; background: var(--ok); color: #fff; display: grid; place-items: center; border: 2px solid var(--bg2); }
+  .tile .badge svg { width: 11px; height: 11px; stroke: #fff; stroke-width: 3.2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .t-Video { --c: #3b82f6; } .t-Music { --c: #a855f7; } .t-Images { --c: #14b8a6; } .t-Documents { --c: #f97316; }
+  .t-Ebooks { --c: #ec4899; } .t-Compressed { --c: #d97706; } .t-Diskimages { --c: #6366f1; } .t-Programs { --c: #64748b; }
+  .t-Torrents { --c: #22c55e; } .t-Fonts { --c: #0ea5e9; } .t-Other { --c: #94a3b8; }
+  .head { min-width: 0; flex: 1; }
+  .status { color: var(--ok); font-weight: 600; font-size: 12.5px; }
+  .name { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: text; }
+  .sub { color: var(--muted); font-size: 12.5px; }
+
+  .where { margin: 12px 18px 0; display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); }
+  .where span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); user-select: text; }
+  .err { margin: 8px 18px 0; color: var(--err); font-size: 12.5px; min-height: 17px; }
+
+  .foot { margin-top: auto; display: flex; align-items: center; gap: 8px; padding: 10px 18px 14px; }
+  .check { margin-right: auto; display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12.5px; cursor: pointer; }
+  .check input { margin: 0; accent-color: var(--primary); }
+  .btn { height: 32px; padding: 0 14px; border-radius: 9px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: 600 13.5px inherit; font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+  .btn:hover { background: var(--bg2); }
+  .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .btn.primary:hover { background: var(--primary-h); }
+  .btn:disabled { opacity: .55; cursor: default; }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="tile" id="tile"></div>
+  <div class="head">
+    <div class="status">Download complete</div>
+    <div class="name" id="name" translate="no"></div>
+    <div class="sub" id="sub"></div>
+  </div>
+</div>
+<div class="where" title="">
+  <svg class="i" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+  <span id="dir" translate="no"></span>
+</div>
+<div class="err" id="err"></div>
+<div class="foot">
+  <label class="check"><input type="checkbox" id="never"> Don't show this again</label>
+  <button class="btn" id="close">Close</button>
+  <button class="btn" id="folder">Open folder</button>
+  <button class="btn" id="with">Open with…</button>
+  <button class="btn primary" id="open">Open</button>
+</div>
+
+<script>
+const $ = (s) => document.getElementById(s);
+const ICON = {"Video":"<rect x=\"2.5\" y=\"5\" width=\"19\" height=\"14\" rx=\"3\"/><path d=\"m10 9.5 4.5 2.5-4.5 2.5z\"/>",
+  "Music":"<path d=\"M9 18V6l11-2v12\"/><circle cx=\"6.5\" cy=\"18\" r=\"2.5\"/><circle cx=\"17.5\" cy=\"16\" r=\"2.5\"/>",
+  "Images":"<rect x=\"3\" y=\"4\" width=\"18\" height=\"16\" rx=\"3\"/><circle cx=\"9\" cy=\"10\" r=\"2\"/><path d=\"m21 16-5-5-9 9\"/>",
+  "Documents":"<path d=\"M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z\"/><path d=\"M14 3v5h5M9 13h6M9 17h6\"/>",
+  "Compressed":"<rect x=\"3\" y=\"4\" width=\"18\" height=\"5\" rx=\"1.5\"/><path d=\"M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4\"/>",
+  "Disk images":"<circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"12\" r=\"2.5\"/>",
+  "Programs":"<rect x=\"3\" y=\"4\" width=\"18\" height=\"16\" rx=\"3\"/><path d=\"M3 9h18M7.5 13.5l2.5 2-2.5 2M12.5 17.5h4\"/>",
+  "Other":"<path d=\"M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z\"/><path d=\"M14 3v5h5\"/>"};
+const BADGE = '<span class="badge"><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg></span>';
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function size(n) { if (!(n > 0)) return ""; const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0; while (n >= 1024 && i < 4) { n /= 1024; i++; } return n.toFixed(i && n < 100 ? 1 : 0) + " " + u[i]; }
+
+let cur = null;
+async function load() {
+  cur = await completeInfo().catch(() => null);
+  if (!cur) return closeComplete(false);
+  $("name").textContent = cur.name;
+  $("name").title = cur.name;
+  $("dir").textContent = cur.dir;
+  $("dir").parentElement.title = cur.dir;
+  const ext = (cur.name.match(/\.([a-z0-9]{1,6})$/i) || [])[1];
+  $("sub").textContent = [size(cur.size), ext && ext.toUpperCase() + " file"].filter(Boolean).join(" · ");
+  $("err").textContent = cur.exists ? "" : "The file was moved or deleted.";
+  $("open").disabled = $("with").disabled = !cur.exists;
+  const cat = cur.category || "Other";
+  $("tile").className = "tile t-" + cat.replace(/\W/g, "");
+  let inner = `<svg class="i" viewBox="0 0 24 24">${ICON[cat] || ICON.Other}</svg>`;
+  const pv = (await itemPreview(cur.id).catch(() => null)) || {};
+  const fi = pv.src ? pv : (await fileTypeIcon(cur.name).catch(() => null)) || {};
+  if (fi.src) inner = fi.mode === "cover" ? `<img class="cover" src="${esc(fi.src)}" alt="">` : `<img class="ficon" src="${esc(fi.src)}" alt="">`;
+  veloSetHTML($("tile"), inner + BADGE);
+  ($("open").disabled ? $("folder") : $("open")).focus();
+}
+window.load = load;
+
+async function act(fn, close = true) {
+  $("err").textContent = "";
+  try {
+    await fn(cur.id);
+    if (close) closeComplete($("never").checked);
+  } catch (e) {
+    $("err").textContent = String(e?.message || e);
+  }
+}
+$("open").onclick = () => act(openDone);
+$("with").onclick = () => act(openDoneWith);
+$("folder").onclick = () => act(showDoneInFolder);
+$("close").onclick = () => closeComplete($("never").checked);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeComplete($("never").checked);
+});
+document.addEventListener("contextmenu", (e) => e.preventDefault());
+
+(async () => {
+  const s = await getSettings().catch(() => ({}));
+  const dark = s.theme === "dark" || (s.theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  load();
+})();
+</script>
+</body>
+</html>

@@ -316,5 +316,11 @@
  "Add <b>Velo Download Manager</b> from the Chrome Web Store. It works in Chrome, Edge and Brave.": "Chrome Web Store থেকে <b>Velo Download Manager</b> যোগ করুন। এটি Chrome, Edge ও Brave-এ কাজ করে।",
  "Add to Chrome": "Chrome-এ যোগ করুন",
  "Developers: load the unpacked extension": "ডেভেলপারদের জন্য: আনপ্যাকড এক্সটেনশন লোড করুন",
- "Add to Firefox": "Firefox-এ যোগ করুন"
+ "Add to Firefox": "Firefox-এ যোগ করুন",
+ "Open with…": "এর মাধ্যমে খুলুন…",
+ "Open folder": "ফোল্ডার খুলুন",
+ "Don't show this again": "আর দেখাবেন না",
+ "The file was moved or deleted.": "ফাইলটি সরানো বা মুছে ফেলা হয়েছে।",
+ "Show the \"Download complete\" window": "\"ডাউনলোড সম্পূর্ণ\" উইন্ডো দেখান",
+ "With Open, Open with… and Open folder when a download finishes.": "ডাউনলোড শেষ হলে খুলুন, এর মাধ্যমে খুলুন… ও ফোল্ডার খুলুন সহ।"
 }

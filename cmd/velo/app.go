@@ -66,7 +66,7 @@ type app struct {
 	running   int
 	finished  bool          // a download completed since the last finish action
 	wake      chan struct{} // nudges the dispatcher
-	onDone    func(d *engine.Download)
+	onDone    func(d *engine.Download, autoOpened bool)
 	onFail    func(d *engine.Download, err error)
 	show      func() // opens the main window
 	quit      func() // exits the app
@@ -379,7 +379,7 @@ func (a *app) launch(it *item) {
 				go a.openFile(d.ID, false)
 			}
 			if a.onDone != nil {
-				a.onDone(d)
+				a.onDone(d, openNow)
 			}
 		}
 		a.kick()
