@@ -59,6 +59,7 @@ type app struct {
 	eng       *engine.Engine
 	token     string
 	mu        sync.Mutex
+	stopCond  *sync.Cond
 	items     []*item
 	byID      map[int]*item
 	nextID    int
@@ -89,8 +90,16 @@ type app struct {
 	home          string // data folder (%APPDATA%\Velo), fixed at start
 }
 
+func (a *app) cond() *sync.Cond {
+	if a.stopCond == nil {
+		a.stopCond = sync.NewCond(&a.mu)
+	}
+	return a.stopCond
+}
+
 func newApp(eng *engine.Engine) *app {
 	a := &app{eng: eng, token: ipc.NewToken(), wake: make(chan struct{}, 1), settings: loadSettings(), defaultDir: eng.Dir(), home: ipc.Dir(), pending: make(map[int]pendingDL)}
+	a.stopCond = sync.NewCond(&a.mu)
 	eng.Limit.SetRate(int64(a.settings.SpeedLimitKB) * 1024)
 	if a.settings.DownloadDir != "" {
 		eng.SetDir(a.settings.DownloadDir)
@@ -334,6 +343,7 @@ func (a *app) launch(it *item) {
 		a.mu.Lock()
 		it.running = false
 		a.running--
+		a.cond().Broadcast()
 		requeue := it.requeue
 		if err == nil {
 			a.finished = true
@@ -588,21 +598,14 @@ func (a *app) remove(id int) error {
 		return errors.New("no such download")
 	}
 	a.mu.Lock()
-	wasRunning := it.running
-	if wasRunning {
+	if it.running {
 		it.requeue = false
 		it.cancel()
+		for it.running {
+			a.cond().Wait()
+		}
 	}
 	a.mu.Unlock()
-	for i := 0; wasRunning && i < 50; i++ { // wait for the engine to let go of the file
-		a.mu.Lock()
-		r := it.running
-		a.mu.Unlock()
-		if !r {
-			break
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
 	if s, _ := it.d.State(); s != "done" {
 		if p, _ := it.d.Info(); p != "" {
 			os.Remove(p + ".part")
