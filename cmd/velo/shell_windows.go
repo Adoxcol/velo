@@ -5,6 +5,7 @@ package main
 import (
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"syscall"
 	"unsafe"
 )
@@ -24,6 +25,10 @@ var (
 // It uses the native SHOpenFolderAndSelectItems Shell API for near-instant execution
 // without spawning an external explorer.exe launcher process.
 func openInFolder(targetPath string) error {
+	// COM initialization belongs to the OS thread: keep this goroutine on one
+	// thread so CoUninitialize runs where CoInitializeEx did.
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
 	clean := filepath.Clean(targetPath)
 	p16, err := syscall.UTF16PtrFromString(clean)
 	if err != nil {

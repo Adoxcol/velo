@@ -103,6 +103,15 @@ func showCapture(a *app) {
 		capMu.Unlock()
 		if !clean {
 			a.clearPending() // closing the dialog via window close cancels what was still waiting
+		} else {
+			// A download that arrived while the dialog was closing itself
+			// would otherwise wait unseen: show it in a new dialog.
+			a.mu.Lock()
+			left := len(a.pending)
+			a.mu.Unlock()
+			if left > 0 {
+				go showCapture(a)
+			}
 		}
 	}()
 }
@@ -110,7 +119,7 @@ func showCapture(a *app) {
 func closeCapture(clean bool) {
 	capMu.Lock()
 	w := capWin
-	if clean {
+	if clean && w != nil {
 		capClean = true
 	}
 	capMu.Unlock()

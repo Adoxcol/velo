@@ -2,6 +2,19 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.17 — 2026-10-24
+
+### Improved
+- **Show in folder** and **Open** respond faster: Velo asks Windows directly instead of starting a separate Explorer process.
+- Translations were checked and completed in every language.
+- Clearer screen-reader labels on dialogs and the folder buttons.
+
+### Fixed
+- In the download dialog, a folder you picked for one download no longer carries over to the next one.
+- Clicking a dialog button twice, or while Velo is still saving, no longer causes errors.
+- A browser download that arrives just as the download dialog closes is no longer lost: the dialog opens again for it.
+- Download folders are checked and must be full paths.
+
 ## 0.8.16 — 2026-10-24
 
 ### Fixed
