@@ -282,3 +282,22 @@ func TestExtractorArgsFormatsAndRemainingGaps(t *testing.T) {
 		t.Fatalf("unexpected RemainingGaps: %+v", gaps)
 	}
 }
+
+func BenchmarkExtractorLogWrite(b *testing.B) {
+	chunks := [][]byte{
+		[]byte("[download]   0.0% of   10.00MiB at  100.00KiB/s ETA 01:40\r[download]  10.0% of   10.00MiB at    1.00MiB/s ETA 00:09\r"),
+		[]byte("velo:{\"downloaded_bytes\":1048576,\"total_bytes\":10485760}\n[download]  20.0% of   10.00MiB at    2.00MiB/s ETA 00:04\n"),
+		[]byte("ERROR: Something went wrong\nvelo:{\"downloaded_bytes\":2097152,\"total_bytes\":10485760}\n"),
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		d := &Download{}
+		l := &extractorLog{d: d}
+		for _, chunk := range chunks {
+			_, _ = l.Write(chunk)
+		}
+	}
+}

@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -471,38 +472,42 @@ func extractorCookies(u *url.URL, raw string) string {
 
 // os/exec serializes writes when stdout and stderr share the same writer.
 type extractorLog struct {
-	d                  *Download
-	pending, lastError string
+	d         *Download
+	pending   []byte
+	lastError string
 }
 
 func (l *extractorLog) Write(p []byte) (int, error) {
-	l.pending += string(p)
+	l.pending = append(l.pending, p...)
 	for {
-		line, rest, ok := strings.Cut(l.pending, "\n")
-		if !ok {
+		idx := bytes.IndexByte(l.pending, '\n')
+		if idx < 0 {
 			break
 		}
-		l.pending = rest
-		line = strings.TrimSuffix(line, "\r")
-		if strings.HasPrefix(line, "ERROR:") {
-			l.lastError = line
+		line := l.pending[:idx]
+		if len(line) > 0 && line[len(line)-1] == '\r' {
+			line = line[:len(line)-1]
 		}
-		if strings.HasPrefix(line, "velo:") {
+		if bytes.HasPrefix(line, []byte("ERROR:")) {
+			l.lastError = string(line)
+		} else if bytes.HasPrefix(line, []byte("velo:")) {
 			var progress struct {
 				Downloaded int64 `json:"downloaded_bytes"`
 				Total      int64 `json:"total_bytes"`
 				Estimate   int64 `json:"total_bytes_estimate"`
 			}
-			if json.Unmarshal([]byte(strings.TrimPrefix(line, "velo:")), &progress) == nil {
+			if json.Unmarshal(line[len("velo:"):], &progress) == nil {
 				l.d.Done.Store(progress.Downloaded)
 				l.d.mu.Lock()
 				l.d.Total = max(progress.Total, progress.Estimate)
 				l.d.mu.Unlock()
 			}
 		}
+		n := copy(l.pending, l.pending[idx+1:])
+		l.pending = l.pending[:n]
 	}
 	if len(l.pending) > 65536 {
-		l.pending = ""
+		l.pending = l.pending[:0]
 	}
 	return len(p), nil
 }
