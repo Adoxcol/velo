@@ -7,3 +7,8 @@
 
 **Learning:** In Velo's `.opt` setting rows, `<input type="checkbox">` and `<select>` elements are rendered inside `.switch` or `.row2` spans without `<label for="...">` associations or `aria-labelledby`, leaving screen readers with unlabelled inputs.
 **Action:** Always provide explicit `aria-label` attributes corresponding to the setting title text for form inputs and switches in `.opt` rows.
+
+## 2025-03-15 - ARIA Labeling on Modal Dialogs and Ambiguous Location Buttons
+
+**Learning:** Native `<dialog>` elements in Velo require explicit `aria-labelledby` (pointing to the dialog title ID) or `aria-label` so screen readers announce dialog context upon opening. Additionally, generic text-only buttons like "Change" or "Reset" in location inputs need explicit `aria-label` attributes to clarify their action context.
+**Action:** Ensure every `<dialog>` element has `aria-labelledby` or `aria-label`, and add explicit `aria-label`s to generic context action buttons.

@@ -395,7 +395,7 @@
           </div>
           <div class="sec" data-sec="downloads"><h2>Downloads</h2>
             <div class="field"><span class="lbl">Default download location</span>
-              <div class="inp ro"><input id="dirShow" readonly aria-label="Default download location"><button class="link" id="dirChange">Change</button><button class="link" id="dirReset">Reset</button></div></div>
+              <div class="inp ro"><input id="dirShow" readonly aria-label="Default download location"><button class="link" id="dirChange" aria-label="Change default download location">Change</button><button class="link" id="dirReset" aria-label="Reset default download location">Reset</button></div></div>
             <div class="opt"><div><div class="t">Auto-categorize downloads</div><div class="d">Video, Music, Images, Documents, E-books, Compressed, Disk images, Programs, Torrents and Fonts subfolders.</div></div><span class="switch"><input type="checkbox" data-s="sortByType" aria-label="Auto-categorize downloads"><i></i></span></div>
           </div>
           <div class="sec" data-sec="connection"><h2>Connection</h2>
@@ -446,13 +446,13 @@
 <div id="toast"></div>
 <div class="dropzone" id="dropzone">Drop a link or .txt link list to download</div>
 
-<dialog id="addDlg">
+<dialog id="addDlg" aria-labelledby="aTitle">
   <div class="dh"><span id="aTitle">Add Download</span><button class="iconbtn" data-close title="Close" aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="db">
     <div class="inp" style="margin-bottom:10px"><svg class="i" viewBox="0 0 24 24" style="color:var(--faint)"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>
       <input id="aUrl" placeholder="https://example.com/file.zip" spellcheck="false" aria-label="Download link URL"><button class="iconbtn" id="aClear" title="Clear" aria-label="Clear link input"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
     <div class="probe" id="aProbe"></div>
-    <div class="formrow"><span>Save to</span><div class="inp ro"><svg class="i" viewBox="0 0 24 24" style="color:var(--faint)"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><input id="aDir" readonly aria-label="Save to folder"><button class="link" id="aDirChange">Change</button></div></div>
+    <div class="formrow"><span>Save to</span><div class="inp ro"><svg class="i" viewBox="0 0 24 24" style="color:var(--faint)"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><input id="aDir" readonly aria-label="Save to folder"><button class="link" id="aDirChange" aria-label="Change save to folder">Change</button></div></div>
     <div class="formrow"><span>File name</span><div class="inp"><input id="aName" spellcheck="false" placeholder="From the server" aria-label="File name"></div></div>
     <div class="formrow" id="aFormatRow" hidden><span>Quality</span><div class="inp"><select id="aFormat" aria-label="Quality">
       <option value="">Best quality (Video + Audio)</option>
@@ -475,14 +475,14 @@
   <div class="df"><button class="btn" data-close>Cancel</button><button class="btn primary" id="aGo"><svg class="i" viewBox="0 0 24 24"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z"/></svg>Download</button></div>
 </dialog>
 
-<dialog id="askDlg">
+<dialog id="askDlg" aria-labelledby="askMsg">
   <div class="askic"><svg class="i" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></div>
   <p id="askMsg"></p>
   <div class="askbtns"><button class="btn" id="askNo">Keep it</button><button class="btn danger" id="askYes">Cancel download</button></div>
 </dialog>
 
-<dialog id="relinkDlg">
-  <div class="dh"><span>Refresh link</span><button class="iconbtn" data-close title="Close" aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+<dialog id="relinkDlg" aria-labelledby="relinkTitle">
+  <div class="dh"><span id="relinkTitle">Refresh link</span><button class="iconbtn" data-close title="Close" aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="db">
     <p class="hint" style="margin-top:0">If the download link expired, get a fresh one from the website (start the download again in the browser and copy its link) and paste it here. Velo checks it is the same file, then continues where it stopped.</p>
     <div class="hint" id="rlName" style="font-weight:600;color:var(--ink);margin-bottom:8px"></div>
@@ -491,7 +491,7 @@
   <div class="df"><button class="btn" data-close>Cancel</button><button class="btn primary" id="rlGo">Continue download</button></div>
 </dialog>
 
-<dialog id="batchDlg">
+<dialog id="batchDlg" aria-labelledby="bTitle">
   <div class="dh"><span id="bTitle">Download links</span><button class="iconbtn" data-close title="Close" aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="db">
     <div class="hint" id="bPage" style="margin:-6px 0 12px"></div>
@@ -515,7 +515,7 @@
   <div class="df"><button class="btn primary" id="newsDone">Got it</button></div>
 </dialog>
 
-<dialog id="onboard">
+<dialog id="onboard" aria-label="Welcome onboarding">
   <div id="obBody"></div>
   <div class="df"><span class="dots" id="obDots"></span><button class="btn" id="obBack">Back</button><button class="btn primary" id="obNext">Next</button></div>
 </dialog>
