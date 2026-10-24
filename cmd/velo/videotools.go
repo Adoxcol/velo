@@ -18,20 +18,6 @@ import (
 	"github.com/Adoxcol/velo/internal/engine"
 )
 
-type videoToolInfo struct {
-	Name      string `json:"name"`
-	Role      string `json:"role"`
-	Installed bool   `json:"installed"`
-	Path      string `json:"path,omitempty"`
-}
-
-type videoToolsState struct {
-	Tools      []videoToolInfo `json:"tools"`
-	Installing bool            `json:"installing"`
-	Step       string          `json:"step,omitempty"`
-	Error      string          `json:"error,omitempty"`
-}
-
 var (
 	vtMu         sync.Mutex
 	vtInstalling bool

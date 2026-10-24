@@ -40,14 +40,6 @@ var (
 	shellIconMu     sync.Mutex
 )
 
-// thumbResult describes a visual preview for a download row.
-// Mode is "cover" for video/image thumbnails (fills the tile) or "icon" for
-// native Windows file/application icons (centered inside the tile).
-type thumbResult struct {
-	Src  string `json:"src"`
-	Mode string `json:"mode"` // "cover" | "icon" | ""
-}
-
 // youtubeThumbURL returns the thumbnail URL for a YouTube video/Shorts URL, or "".
 func youtubeThumbURL(rawURL string) string {
 	u, err := url.Parse(rawURL)
