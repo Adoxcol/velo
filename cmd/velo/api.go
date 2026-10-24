@@ -274,6 +274,106 @@ func (a *app) takePending(id int) (engine.Request, bool) {
 	return p.Req, true
 }
 
+// replyIPC encodes an IPC response with either an error message or success result.
+func replyIPC(w http.ResponseWriter, id int, err error) {
+	enc := json.NewEncoder(w)
+	if err != nil {
+		enc.Encode(ipc.Reply{Error: err.Error(), Ext: extensionVersion()})
+	} else {
+		enc.Encode(ipc.Reply{OK: true, ID: id, Ext: extensionVersion()})
+	}
+}
+
+// handleBatch processes requests to add a list of downloadable links.
+func (a *app) handleBatch(w http.ResponseWriter, r *http.Request) {
+	var b batchReq
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<20)).Decode(&b); err != nil || len(b.Links) == 0 {
+		replyIPC(w, 0, fmt.Errorf("no links"))
+		return
+	}
+	if len(b.Links) > 2000 {
+		b.Links = b.Links[:2000]
+	}
+	a.mu.Lock()
+	a.batch = &b
+	a.mu.Unlock()
+	if a.showBatch != nil {
+		a.showBatch()
+	}
+	replyIPC(w, len(b.Links), nil)
+}
+
+// handleAdd processes individual download creation requests from extensions or clients.
+func (a *app) handleAdd(w http.ResponseWriter, r *http.Request) {
+	var j ipc.Job
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&j); err != nil || j.URL == "" {
+		replyIPC(w, 0, fmt.Errorf("bad job"))
+		return
+	}
+	// Security: Input validation to ensure only HTTP/HTTPS URLs are accepted.
+	u := strings.ToLower(j.URL)
+	if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
+		replyIPC(w, 0, fmt.Errorf("invalid URL scheme"))
+		return
+	}
+	if j.Kind != "" && j.Kind != "hls" && j.Kind != "dash" && j.Kind != "page" {
+		replyIPC(w, 0, fmt.Errorf("unknown kind %q", j.Kind))
+		return
+	}
+	req := engine.Request{URL: j.URL, Referrer: j.Referrer, Cookies: j.Cookies,
+		UserAgent: j.UserAgent, Filename: j.Filename, Kind: j.Kind, Format: j.Format, Title: j.Title}
+	// Like IDM: a download the browser started opens Velo's download
+	// dialog (unless turned off); the browser's own download is stopped.
+	if j.Source == "capture" && a.getSettings().AskOnCapture && a.showPending != nil {
+		a.mu.Lock()
+		if len(a.pending) >= 50 { // a page firing downloads in a loop
+			a.mu.Unlock()
+			replyIPC(w, 0, fmt.Errorf("too many downloads waiting for the download dialog"))
+			return
+		}
+		a.nextPending++
+		if a.pending == nil {
+			a.pending = make(map[int]pendingDL)
+		}
+		p := pendingDL{ID: a.nextPending, Req: req, Size: j.Size}
+		a.pending[p.ID] = p
+		a.pendingOrder = append(a.pendingOrder, p.ID)
+		a.mu.Unlock()
+		go func() {
+			if req.Kind == "page" && req.Filename == "" {
+				if name, err := a.eng.VideoFilename(context.Background(), req); err == nil {
+					a.mu.Lock()
+					if pending, ok := a.pending[p.ID]; ok {
+						pending.Req.Filename = name
+						a.pending[p.ID] = pending
+					}
+					a.mu.Unlock()
+				}
+			}
+			a.showPending()
+		}()
+		replyIPC(w, 0, nil)
+		return
+	}
+	replyIPC(w, a.add(req), nil)
+}
+
+// handleQuit handles the shutdown request issued by installers or clients.
+func (a *app) handleQuit(w http.ResponseWriter) {
+	replyIPC(w, 0, nil)
+	if a.quit != nil {
+		go a.quit()
+	}
+}
+
+// handleShow triggers bringing the main application window into focus.
+func (a *app) handleShow(w http.ResponseWriter) {
+	if a.show != nil {
+		a.show()
+	}
+	replyIPC(w, 0, nil)
+}
+
 // handle serves the token-protected API used by velo-host and veloctl.
 func (a *app) handle(w http.ResponseWriter, r *http.Request) {
 	token := r.Header.Get(ipc.TokenHeader)
@@ -284,14 +384,6 @@ func (a *app) handle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	enc := json.NewEncoder(w)
-	reply := func(id int, err error) {
-		if err != nil {
-			enc.Encode(ipc.Reply{Error: err.Error(), Ext: extensionVersion()})
-		} else {
-			enc.Encode(ipc.Reply{OK: true, ID: id, Ext: extensionVersion()})
-		}
-	}
 	id, _ := strconv.Atoi(r.URL.Query().Get("id"))
 	if r.Header.Get("Content-Type") == "application/json" { // from velo-host, i.e. the extension
 		a.mu.Lock()
@@ -300,97 +392,27 @@ func (a *app) handle(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.URL.Path {
 	case "/ping":
-		reply(0, nil)
+		replyIPC(w, 0, nil)
 	case "/batch":
-		var b batchReq
-		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<20)).Decode(&b); err != nil || len(b.Links) == 0 {
-			reply(0, fmt.Errorf("no links"))
-			return
-		}
-		if len(b.Links) > 2000 {
-			b.Links = b.Links[:2000]
-		}
-		a.mu.Lock()
-		a.batch = &b
-		a.mu.Unlock()
-		if a.showBatch != nil {
-			a.showBatch()
-		}
-		reply(len(b.Links), nil)
+		a.handleBatch(w, r)
 	case "/add":
-		var j ipc.Job
-		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&j); err != nil || j.URL == "" {
-			reply(0, fmt.Errorf("bad job"))
-			return
-		}
-		// Security: Input validation to ensure only HTTP/HTTPS URLs are accepted.
-		u := strings.ToLower(j.URL)
-		if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
-			reply(0, fmt.Errorf("invalid URL scheme"))
-			return
-		}
-		if j.Kind != "" && j.Kind != "hls" && j.Kind != "dash" && j.Kind != "page" {
-			reply(0, fmt.Errorf("unknown kind %q", j.Kind))
-			return
-		}
-		r := engine.Request{URL: j.URL, Referrer: j.Referrer, Cookies: j.Cookies,
-			UserAgent: j.UserAgent, Filename: j.Filename, Kind: j.Kind, Format: j.Format, Title: j.Title}
-		// Like IDM: a download the browser started opens Velo's download
-		// dialog (unless turned off); the browser's own download is stopped.
-		if j.Source == "capture" && a.getSettings().AskOnCapture && a.showPending != nil {
-			a.mu.Lock()
-			if len(a.pending) >= 50 { // a page firing downloads in a loop
-				a.mu.Unlock()
-				reply(0, fmt.Errorf("too many downloads waiting for the download dialog"))
-				return
-			}
-			a.nextPending++
-			if a.pending == nil {
-				a.pending = make(map[int]pendingDL)
-			}
-			p := pendingDL{ID: a.nextPending, Req: r, Size: j.Size}
-			a.pending[p.ID] = p
-			a.pendingOrder = append(a.pendingOrder, p.ID)
-			a.mu.Unlock()
-			go func() {
-				if r.Kind == "page" && r.Filename == "" {
-					if name, err := a.eng.VideoFilename(context.Background(), r); err == nil {
-						a.mu.Lock()
-						if pending, ok := a.pending[p.ID]; ok {
-							pending.Req.Filename = name
-							a.pending[p.ID] = pending
-						}
-						a.mu.Unlock()
-					}
-				}
-				a.showPending()
-			}()
-			reply(0, nil)
-			return
-		}
-		reply(a.add(r), nil)
+		a.handleAdd(w, r)
 	case "/list":
-		enc.Encode(a.rows())
+		json.NewEncoder(w).Encode(a.rows())
 	case "/pause":
-		reply(id, a.pause(id))
+		replyIPC(w, id, a.pause(id))
 	case "/resume":
-		reply(id, a.resume(id))
+		replyIPC(w, id, a.resume(id))
 	case "/remove":
-		reply(id, a.remove(id))
+		replyIPC(w, id, a.remove(id))
 	case "/limit": // id = KB/s, 0 = unlimited
-		reply(id, a.setSpeedLimit(id))
+		replyIPC(w, id, a.setSpeedLimit(id))
 	case "/quit": // used by the installer before replacing files
-		reply(0, nil)
-		if a.quit != nil {
-			go a.quit()
-		}
+		a.handleQuit(w)
 	case "/version":
-		enc.Encode(map[string]string{"version": version.Version})
+		json.NewEncoder(w).Encode(map[string]string{"version": version.Version})
 	case "/show":
-		if a.show != nil {
-			a.show()
-		}
-		reply(0, nil)
+		a.handleShow(w)
 	default:
 		http.NotFound(w, r)
 	}
