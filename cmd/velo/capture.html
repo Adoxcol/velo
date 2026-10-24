@@ -155,10 +155,20 @@ const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", 
 
 // Show the next waiting download, or close when there are none.
 async function load() {
-  cur = await nextPending();
-  if (!cur) return closeDialog();
+  try {
+    cur = await nextPending();
+  } catch (e) {
+    cur = null;
+  }
+  if (!cur) {
+    $("start").disabled = $("later").disabled = $("cancel").disabled = true;
+    $("name").disabled = true;
+    return closeDialog();
+  }
+  $("start").disabled = $("later").disabled = $("cancel").disabled = false;
+  $("name").disabled = false;
   done++;
-  total = done - 1 + await pendingCount();
+  total = done - 1 + await pendingCount().catch(() => 0);
   $("count").textContent = total > 1 ? `${done} of ${total}` : "";
   $("name").value = cur.filename || (cur.kind === "page" ? "" : cur.url.split(/[?#]/)[0].split("/").pop()) || "";
   $("name").placeholder = cur.kind === "page" ? "Automatic video title (or enter a name)" : "File name";
@@ -168,11 +178,22 @@ async function load() {
   $("format").value = cur.format || "";
   $("fmtLbl").hidden = $("fmtRow").hidden = !cur.kind;
   $("err").textContent = "";
-  await Promise.all([showFolder(), showKind()]);
+  try {
+    await Promise.all([showFolder(), showKind()]);
+  } catch (e) {
+    console.error(e);
+  }
   $("start").focus();
 }
 // More downloads arrived while the dialog was open.
-window.refreshPending = async () => { total = done - 1 + await pendingCount(); $("count").textContent = total > 1 ? `${done} of ${total}` : ""; };
+window.refreshPending = async () => {
+  if (!cur) {
+    await load();
+    return;
+  }
+  total = done - 1 + await pendingCount().catch(() => 0);
+  $("count").textContent = total > 1 ? `${done} of ${total}` : "";
+};
 $("format").onchange = () => {
   if (cur?.kind !== "page" || !$("name").value.trim()) return;
   const ext = $("format").value === "audio" ? ".mp3" : $("format").value === "mp4" ? ".mp4" : ".mkv";
@@ -181,19 +202,30 @@ $("format").onchange = () => {
 
 async function finish(start) {
   if (busy || !cur) return;
-  busy = true; $("start").disabled = $("later").disabled = true;
+  busy = true; $("start").disabled = $("later").disabled = $("cancel").disabled = true;
   try {
-    await addDownload({ pendingId: cur.id, url: cur.url, filename: $("name").value.trim(), dir: customDir, segments: 0, format: cur.kind ? $("format").value : "", start });
+    const pendingId = cur.id;
+    await addDownload({ pendingId, url: cur.url, filename: $("name").value.trim(), dir: customDir, segments: 0, format: cur.kind ? $("format").value : "", start });
+    customDir = "";
     await load();
   } catch (e) {
-    $("err").textContent = String(e);
+    const msg = String(e?.message || e);
+    $("err").textContent = msg;
+    if (msg.includes("already handled")) {
+      await load();
+    }
   } finally {
-    busy = false; $("start").disabled = $("later").disabled = false;
+    busy = false;
+    if (cur) {
+      $("start").disabled = $("later").disabled = $("cancel").disabled = false;
+    }
   }
 }
 async function cancel() {
   if (!cur) return closeDialog();
-  await dropPending(cur.id);
+  const pendingId = cur.id;
+  await dropPending(pendingId).catch(() => {});
+  customDir = "";
   load();
 }
 

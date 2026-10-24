@@ -28,6 +28,7 @@ var (
 	capMu      sync.Mutex
 	capWin     webview2.WebView
 	capOpening bool
+	capClean   bool
 )
 
 const capW, capH = 700, 292
@@ -86,7 +87,7 @@ func showCapture(a *app) {
 		w.Bind("fileTypeIcon", func(name string) thumbResult { return a.fileTypeIcon(name) })
 		w.Bind("getSettings", func() Settings { return a.getSettings() })
 		w.Bind("openMain", func() { go a.show() })
-		w.Bind("closeDialog", func() { go closeCapture() })
+		w.Bind("closeDialog", func() { go closeCapture(true) })
 		w.Bind("pickFolder", func(start string) (string, error) {
 			return pickFolder(uintptr(w.Window()), "Choose download folder", start)
 		})
@@ -97,16 +98,25 @@ func showCapture(a *app) {
 		w.Run()
 		capMu.Lock()
 		capWin = nil
+		clean := capClean
+		capClean = false
 		capMu.Unlock()
-		a.clearPending() // closing the dialog cancels what was still waiting
+		if !clean {
+			a.clearPending() // closing the dialog via window close cancels what was still waiting
+		}
 	}()
 }
 
-func closeCapture() {
+func closeCapture(clean bool) {
 	capMu.Lock()
 	w := capWin
+	if clean {
+		capClean = true
+	}
 	capMu.Unlock()
 	if w != nil {
-		w.Destroy()
+		w.Dispatch(func() {
+			w.Destroy()
+		})
 	}
 }

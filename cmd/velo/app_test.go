@@ -49,7 +49,7 @@ func testApp(t *testing.T, s Settings) *app {
 	home := t.TempDir() // keep history.json out of the real profile
 	t.Setenv("VELO_HOME", home)
 	eng := engine.New(t.TempDir())
-	a := &app{eng: eng, wake: make(chan struct{}, 1), settings: s, home: home}
+	a := &app{eng: eng, wake: make(chan struct{}, 1), settings: s, home: home, pending: make(map[int]pendingDL)}
 	eng.Limit.SetRate(int64(s.SpeedLimitKB) * 1024)
 	go a.dispatcher()
 	t.Cleanup(func() {
@@ -521,6 +521,44 @@ func TestPendingDownloads(t *testing.T) {
 	a.clearPending()
 	if p := a.nextPendingDL(); p != nil {
 		t.Fatalf("expected nil after clearPending, got %+v", p)
+	}
+}
+
+func TestAddWithPendingValidationPreservesPending(t *testing.T) {
+	a := testApp(t, defaultSettings())
+	a.mu.Lock()
+	a.pending[42] = pendingDL{ID: 42, Req: engine.Request{URL: "https://example.com/test.zip", Filename: "test.zip"}}
+	a.pendingOrder = append(a.pendingOrder, 42)
+	a.mu.Unlock()
+
+	// Calling addWith with invalid relative folder path must fail and NOT consume pending ID 42.
+	_, err := a.addWith(addOptions{PendingID: 42, Dir: "relative/path"})
+	if err == nil {
+		t.Fatal("expected error for relative dir")
+	}
+
+	p := a.nextPendingDL()
+	if p == nil || p.ID != 42 {
+		t.Fatalf("expected pending ID 42 to still be intact, got %+v", p)
+	}
+
+	// Valid addWith consumes it.
+	id, err := a.addWith(addOptions{PendingID: 42, Start: false})
+	if err != nil || id == 0 {
+		t.Fatalf("expected valid addWith to succeed, got id=%d, err=%v", id, err)
+	}
+	if p2 := a.nextPendingDL(); p2 != nil {
+		t.Fatalf("expected pending queue to be empty, got %+v", p2)
+	}
+}
+
+func TestOpenFileErrorsOnMissing(t *testing.T) {
+	a := testApp(t, defaultSettings())
+	if err := a.openFile(9999, false); err == nil {
+		t.Fatal("expected error for non-existent download")
+	}
+	if err := a.openFile(9999, true); err == nil {
+		t.Fatal("expected error for non-existent download folder")
 	}
 }
 

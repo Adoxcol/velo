@@ -185,6 +185,9 @@ func (a *app) addWith(o addOptions) (int, error) {
 		}
 	}
 	if o.PendingID != 0 {
+		if o.Dir != "" && !filepath.IsAbs(o.Dir) {
+			return 0, errors.New("choose a full folder path")
+		}
 		base, ok := a.takePending(o.PendingID)
 		if !ok {
 			return 0, errors.New("that download was already handled")
@@ -753,15 +756,15 @@ func (a *app) openFile(id int, folder bool) error {
 		p += ".part"
 	}
 	if folder {
-		return exec.Command("explorer", "/select,", p).Start()
+		return openInFolder(p)
 	}
-	return exec.Command("rundll32", "url.dll,FileProtocolHandler", p).Start()
+	return openPath(p)
 }
 
 func (a *app) openDir() error {
 	dir := a.eng.Dir()
 	os.MkdirAll(dir, 0o755)
-	return exec.Command("explorer", dir).Start()
+	return openPath(dir)
 }
 
 // measure updates each download's speed once a second, and keeps the last

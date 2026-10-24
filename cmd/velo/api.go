@@ -268,6 +268,9 @@ func (a *app) takePending(id int) (engine.Request, bool) {
 		return engine.Request{}, false
 	}
 	delete(a.pending, id)
+	for len(a.pendingOrder) > 0 && a.pendingOrder[0] == id {
+		a.pendingOrder = a.pendingOrder[1:]
+	}
 	if len(a.pending) == 0 {
 		a.pendingOrder = nil
 	}
