@@ -123,7 +123,7 @@ func TestDownloadResumesAfterDropAndStall(t *testing.T) {
 	}
 	sum := sha256.Sum256(body)
 	oldStall := StallTimeout
-	StallTimeout = 300 * time.Millisecond
+	StallTimeout = 1 * time.Second
 	defer func() { StallTimeout = oldStall }()
 
 	var calls int
