@@ -37,7 +37,7 @@ type Release struct {
 	URL     string `json:"url"`    // installer download
 	SHA256  string `json:"sha256"` // expected checksum, hex
 	SumURL  string `json:"sum_url,omitempty"`
-	Page    string `json:"page"`   // release notes page
+	Page    string `json:"page"` // release notes page
 	Notes   string `json:"notes"`
 }
 
