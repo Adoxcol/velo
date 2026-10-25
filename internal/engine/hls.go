@@ -2,6 +2,7 @@ package engine
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -154,25 +155,33 @@ func parseMedia(u, text string) (*hlsPlaylist, error) {
 	p := &hlsPlaylist{}
 	ended := false
 	sc := bufio.NewScanner(strings.NewReader(text))
-	sc.Buffer(make([]byte, 1<<20), 1<<20)
+	// Use 4KB initial buffer with 1MB max limit to avoid allocating 1MB upfront per playlist parse.
+	sc.Buffer(make([]byte, 0, 4096), 1<<20)
 	for sc.Scan() {
-		line := strings.TrimSpace(sc.Text())
-		switch {
-		case line == "":
-		case strings.HasPrefix(line, "#EXT-X-KEY:"), strings.HasPrefix(line, "#EXT-X-SESSION-KEY:"):
-			if m := attrs(line)["METHOD"]; m != "" && m != "NONE" {
-				return nil, ErrEncrypted
-			}
-		case strings.HasPrefix(line, "#EXT-X-BYTERANGE"):
-			return nil, errors.New("byte-range HLS playlists aren't supported yet")
-		case strings.HasPrefix(line, "#EXT-X-MAP:"):
-			p.init = resolveURL(baseURL, attrs(line)["URI"])
-		case line == "#EXT-X-ENDLIST":
-			ended = true
-		case strings.HasPrefix(line, "#"):
-		default:
-			p.segments = append(p.segments, resolveURL(baseURL, line))
+		b := bytes.TrimSpace(sc.Bytes())
+		if len(b) == 0 {
+			continue
 		}
+		if b[0] == '#' {
+			if !bytes.HasPrefix(b, []byte("#EXT-X-")) {
+				continue
+			}
+			line := string(b)
+			switch {
+			case strings.HasPrefix(line, "#EXT-X-KEY:"), strings.HasPrefix(line, "#EXT-X-SESSION-KEY:"):
+				if m := attrs(line)["METHOD"]; m != "" && m != "NONE" {
+					return nil, ErrEncrypted
+				}
+			case strings.HasPrefix(line, "#EXT-X-BYTERANGE"):
+				return nil, errors.New("byte-range HLS playlists aren't supported yet")
+			case strings.HasPrefix(line, "#EXT-X-MAP:"):
+				p.init = resolveURL(baseURL, attrs(line)["URI"])
+			case line == "#EXT-X-ENDLIST":
+				ended = true
+			}
+			continue
+		}
+		p.segments = append(p.segments, resolveURL(baseURL, string(b)))
 	}
 	if !ended {
 		return nil, ErrLive
