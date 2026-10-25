@@ -737,9 +737,10 @@ function card(r) {
                               : `<button class="iconbtn" data-act="cancel" title="Cancel" aria-label="Cancel download">${icon(I.x)}</button>`;
   const fresh = !seenIds.has(r.id);
   seenIds.add(r.id);
+  const progressAttrs = `role="progressbar" aria-label="Download progress" aria-valuemin="0" aria-valuemax="100"${r.total > 0 ? ` aria-valuenow="${Math.floor(pct)}" aria-valuetext="${Math.floor(pct)}%"` : ""}`;
   const barHTML = r.status === "done" ? "" : r.gaps?.length
-    ? `<div class="bar"><i style="width:100%;transition:none"></i>${r.gaps.map(([l, w]) => `<b style="left:${l}%;width:${w}%"></b>`).join("")}</div>`
-    : `<div class="bar"><i style="width:${pct}%"></i></div>`;
+    ? `<div class="bar" ${progressAttrs}><i style="width:100%;transition:none"></i>${r.gaps.map(([l, w]) => `<b style="left:${l}%;width:${w}%"></b>`).join("")}</div>`
+    : `<div class="bar" ${progressAttrs}><i style="width:${pct}%"></i></div>`;
   return `<div class="card ${r.status}${r.id === selected ? " selected" : ""}${fresh ? " new" : ""}" data-id="${r.id}">
     <div class="tile t-${cat.replace(/\W/g, "")}">${tileHTML(r, cat)}</div>
     <div class="info"><div class="name" title="${escapeHtml(r.url)}">${escapeHtml(r.file || "Starting…")}${r.queue && r.status !== "done" && queueName(r.queue) ? ` <span class="qbadge">${escapeHtml(queueName(r.queue))}</span>` : ""}${r.openOnDone && r.status !== "done" ? ` <span class="qbadge">Open when done</span>` : ""}</div>

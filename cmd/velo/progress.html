@@ -56,7 +56,7 @@
   <div class="pct" id="pct">0%</div>
 </div>
 <div class="body">
-  <div class="bar" id="bar"><div class="fill" id="fill" style="width:0"></div></div>
+  <div class="bar" id="bar" role="progressbar" aria-label="Download progress" aria-valuemin="0" aria-valuemax="100"><div class="fill" id="fill" style="width:0"></div></div>
   <div class="stats">
     <div class="stat"><small>Downloaded</small><b id="done">—</b></div>
     <div class="stat"><small>File size</small><b id="total">—</b></div>
@@ -107,6 +107,14 @@ async function tick() {
   $("pct").textContent = r.total > 0 ? Math.floor(pct) + "%" : "";
   // Parts downloading at once: draw the bar full and cut out what's missing.
   const bar = $("bar");
+  if (r.total > 0) {
+    const floorPct = Math.floor(pct);
+    bar.setAttribute("aria-valuenow", floorPct);
+    bar.setAttribute("aria-valuetext", floorPct + "%");
+  } else {
+    bar.removeAttribute("aria-valuenow");
+    bar.removeAttribute("aria-valuetext");
+  }
   bar.querySelectorAll(".gap").forEach((g) => g.remove());
   if (r.gaps && r.gaps.length && r.total > 0) {
     bar.classList.add("seg");

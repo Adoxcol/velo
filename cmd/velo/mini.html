@@ -38,7 +38,7 @@
 <body>
 <div class="wrap" id="wrap" title="Open Velo">
   <div class="tile" id="tile"></div>
-  <div class="info"><div class="name" id="name">Starting…</div><div class="meta" id="meta"></div><div class="bar"><i id="bar" style="width:0"></i></div></div>
+  <div class="info"><div class="name" id="name">Starting…</div><div class="meta" id="meta"></div><div class="bar" id="barWrap" role="progressbar" aria-label="Download progress" aria-valuemin="0" aria-valuemax="100"><i id="bar" style="width:0"></i></div></div>
   <div class="acts"><button id="pp" title="Pause" aria-label="Pause"></button><button id="close" title="Hide Velo Mini" aria-label="Hide Velo Mini"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
 </div>
 <div class="ask" id="ask" hidden>
@@ -105,6 +105,15 @@ async function refresh() {
   if (active.length > 1) parts.push(`+${active.length - 1} more`);
   $("#meta").textContent = parts.join(" • ");
   $("#bar").style.width = pct + "%";
+  const floorPct = Math.floor(pct || 0);
+  const barWrap = $("#barWrap");
+  if (r.total > 0 || r.status === "done") {
+    barWrap.setAttribute("aria-valuenow", floorPct);
+    barWrap.setAttribute("aria-valuetext", floorPct + "%");
+  } else {
+    barWrap.removeAttribute("aria-valuenow");
+    barWrap.removeAttribute("aria-valuetext");
+  }
   document.body.classList.toggle("done", r.status === "done");
   $("#pp").innerHTML = svg(r.status === "downloading" ? ICON.pause : ICON.check);
   const title = r.status === "downloading" ? "Pause" : "Done";
