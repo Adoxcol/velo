@@ -173,3 +173,40 @@ func TestAddBatchInvalidScheme(t *testing.T) {
 		t.Fatalf("expected 1 valid URL added when start=false, got %d", addedPaused)
 	}
 }
+
+func TestHandleBatchFiltersInvalidSchemes(t *testing.T) {
+	a := &app{token: "test-token"}
+
+	// Test 1: All links invalid -> expected "no links" error
+	reqAllInvalid := httptest.NewRequest("POST", "/batch", strings.NewReader(`{
+		"page": "http://example.com",
+		"links": [
+			{"url": "file:///etc/passwd", "text": "bad1"},
+			{"url": "javascript:alert(1)", "text": "bad2"}
+		]
+	}`))
+	reqAllInvalid.Header.Set(ipc.TokenHeader, a.token)
+	resAllInvalid := httptest.NewRecorder()
+	a.handle(resAllInvalid, reqAllInvalid)
+	if !strings.Contains(resAllInvalid.Body.String(), "no links") {
+		t.Fatalf("expected 'no links' error for batch with only invalid schemes, got: %s", resAllInvalid.Body.String())
+	}
+
+	// Test 2: Mixed links -> expected valid link retained, invalid filtered out
+	reqMixed := httptest.NewRequest("POST", "/batch", strings.NewReader(`{
+		"page": "http://example.com",
+		"links": [
+			{"url": "file:///etc/passwd", "text": "bad1"},
+			{"url": "https://example.com/file.zip", "text": "good"}
+		]
+	}`))
+	reqMixed.Header.Set(ipc.TokenHeader, a.token)
+	resMixed := httptest.NewRecorder()
+	a.handle(resMixed, reqMixed)
+	if !strings.Contains(resMixed.Body.String(), `"ok":true`) || !strings.Contains(resMixed.Body.String(), `"id":1`) {
+		t.Fatalf("expected ok with count 1 for mixed batch, got: %s", resMixed.Body.String())
+	}
+	if a.batch == nil || len(a.batch.Links) != 1 || a.batch.Links[0].URL != "https://example.com/file.zip" {
+		t.Fatalf("expected batch to contain only valid URL, got: %+v", a.batch)
+	}
+}
