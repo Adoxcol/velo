@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+	"sync/atomic"
 
 	webview2 "github.com/jchv/go-webview2"
 
@@ -112,23 +113,34 @@ func showComplete(a *app, id int) {
 		pSetWindowLongPtr.Call(hwnd, index(gwlStyle), style&^(wsThickFrame|wsMaximizeBox))
 		pSetWindowPos.Call(hwnd, 0, 0, 0, 0, 0, 0x1|0x2|0x4|swpFrameChanged)
 
-		w.Bind("completeInfo", func() *completeView { return a.completeInfo() })
-		w.Bind("itemPreview", func(id int) thumbResult { return a.itemPreview(id) })
-		w.Bind("fileTypeIcon", func(name string) thumbResult { return a.fileTypeIcon(name) })
+		var closed atomic.Bool
+		bindWindowAsync(w, &closed, "completeInfo", func(_ int) (*completeView, error) { return a.completeInfo(), nil })
+		bindWindowAsync(w, &closed, "itemPreview", func(id int) (thumbResult, error) { return a.itemPreview(id), nil })
+		bindWindowAsync(w, &closed, "fileTypeIcon", func(name string) (thumbResult, error) { return a.fileTypeIcon(name), nil })
 		w.Bind("getSettings", func() Settings { return a.getSettings() })
 		w.Bind("openDone", func(id int) error { return a.openFile(id, false) })
-		w.Bind("openDoneWith", func(id int) error { return a.openWith(id) })
+		bindWindowAsync(w, &closed, "openDoneWith", func(id int) (bool, error) { return true, a.openWith(id) })
 		w.Bind("showDoneInFolder", func(id int) error { return a.openFile(id, true) })
-		w.Bind("closeComplete", func(dontShowAgain bool) {
+		bindWindowAsync(w, &closed, "closeComplete", func(dontShowAgain bool) (bool, error) {
 			if dontShowAgain {
-				a.updateSettings(func(s *Settings) { s.CompleteDialog = false })
+				if err := a.updateSettings(func(s *Settings) { s.CompleteDialog = false }); err != nil {
+					return false, err
+				}
 			}
-			go closeComplete()
+			// Target this window, not whichever completion window is current
+			// when a slow settings save finishes.
+			w.Dispatch(func() {
+				if !closed.Load() {
+					w.Destroy()
+				}
+			})
+			return true, nil
 		})
 		w.SetHtml(i18n.Inject(completeHTML, a.lang()))
 		doneWin = w
 		doneMu.Unlock()
 		w.Run()
+		closed.Store(true)
 		doneMu.Lock()
 		doneWin = nil
 		doneMu.Unlock()

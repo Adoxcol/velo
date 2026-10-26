@@ -80,8 +80,12 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&
 function size(n) { if (!(n > 0)) return ""; const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0; while (n >= 1024 && i < 4) { n /= 1024; i++; } return n.toFixed(i && n < 100 ? 1 : 0) + " " + u[i]; }
 
 let cur = null;
+let loadVersion = 0;
 async function load() {
-  cur = await completeInfo().catch(() => null);
+  const version = ++loadVersion;
+  const info = await completeInfo().catch(() => null);
+  if (version !== loadVersion) return;
+  cur = info;
   if (!cur) return closeComplete(false);
   $("name").textContent = cur.name;
   $("name").title = cur.name;
@@ -90,34 +94,56 @@ async function load() {
   const ext = (cur.name.match(/\.([a-z0-9]{1,6})$/i) || [])[1];
   $("sub").textContent = [size(cur.size), ext && ext.toUpperCase() + " file"].filter(Boolean).join(" · ");
   $("err").textContent = cur.exists ? "" : "The file was moved or deleted.";
-  $("open").disabled = $("with").disabled = !cur.exists;
+  $("open").disabled = $("with").disabled = acting || !cur.exists;
+  $("folder").disabled = acting;
   const cat = cur.category || "Other";
   $("tile").className = "tile t-" + cat.replace(/\W/g, "");
   let inner = `<svg class="i" viewBox="0 0 24 24">${ICON[cat] || ICON.Other}</svg>`;
   const pv = (await itemPreview(cur.id).catch(() => null)) || {};
+  if (version !== loadVersion) return;
   const fi = pv.src ? pv : (await fileTypeIcon(cur.name).catch(() => null)) || {};
+  if (version !== loadVersion) return;
   if (fi.src) inner = fi.mode === "cover" ? `<img class="cover" src="${esc(fi.src)}" alt="">` : `<img class="ficon" src="${esc(fi.src)}" alt="">`;
   veloSetHTML($("tile"), inner + BADGE);
   ($("open").disabled ? $("folder") : $("open")).focus();
 }
 window.load = load;
 
-async function act(fn, close = true) {
+let acting = false;
+async function act(fn) {
+  if (acting || cur?.id == null) return;
+  acting = true;
+  const version = loadVersion;
+  const buttons = [$("open"), $("with"), $("folder")];
+  const disabled = buttons.map((b) => b.disabled);
+  buttons.forEach((b) => { b.disabled = true; });
   $("err").textContent = "";
   try {
-    const id = cur?.id;
-    if (close) closeComplete($("never").checked);
-    if (id != null) await fn(id);
+    // Native actions enqueue the launch. Keep the WebView alive until the
+    // request is accepted; closing it first can discard the action RPC.
+    await fn(cur.id);
+    if (version === loadVersion) await closeComplete($("never").checked);
   } catch (e) {
-    $("err").textContent = String(e?.message || e);
+    if (version === loadVersion) $("err").textContent = String(e?.message || e);
+  } finally {
+    acting = false;
+    if (version === loadVersion) buttons.forEach((b, i) => { b.disabled = disabled[i]; });
+    else {
+      $("open").disabled = $("with").disabled = !cur?.exists;
+      $("folder").disabled = false;
+    }
   }
 }
 $("open").onclick = () => act(openDone);
 $("with").onclick = () => act(openDoneWith);
 $("folder").onclick = () => act(showDoneInFolder);
-$("close").onclick = () => closeComplete($("never").checked);
+async function dismiss() {
+  try { await closeComplete($("never").checked); }
+  catch (e) { $("err").textContent = String(e?.message || e); }
+}
+$("close").onclick = dismiss;
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeComplete($("never").checked);
+  if (e.key === "Escape") dismiss();
 });
 document.addEventListener("contextmenu", (e) => e.preventDefault());
 

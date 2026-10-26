@@ -115,12 +115,9 @@ jobs:
             --release-notes-url https://velo.adoxcol.com/changelog `
             --token $env:WINGET_TOKEN --submit
 
-      # Uploads velo-extension-<version>.zip to the Chrome Web Store and submits
-      # it for publishing when CWS_CLIENT_ID, CWS_CLIENT_SECRET, and
-      # CWS_REFRESH_TOKEN secrets are configured (or when manually triggered
-      # with publish_extension=true).
+      # Store submissions are explicitly requested, never triggered by an app release.
       - name: Publish Chrome Web Store extension
-        if: (github.event_name == 'push' && env.CWS_CLIENT_ID != '' && env.CWS_CLIENT_SECRET != '' && env.CWS_REFRESH_TOKEN != '') || inputs.publish_extension == true
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_extension == true
         continue-on-error: ${{ github.event_name == 'push' }}
         run: |
           if (-not $env:CWS_CLIENT_ID -or -not $env:CWS_CLIENT_SECRET -or -not $env:CWS_REFRESH_TOKEN) {

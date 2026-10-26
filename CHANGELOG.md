@@ -2,6 +2,18 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.21 — 2026-10-26
+
+### Fixed
+- Keep the download-complete popup responsive while loading thumbnails, checking files, opening the app chooser, or saving its settings.
+- Accept Open actions before closing the popup, prevent duplicate clicks, and show settings-save errors.
+- Ignore stale previews and prevent an older Open action from dismissing a newer completed download.
+- Improved credential handling when refreshing links and saving history, and stricter batch URL validation.
+
+### Improved
+- More efficient update checks, download-list refreshes, and HLS processing.
+- Accessibility improvements for status messages and download progress indicators.
+
 ## 0.8.20 — 2026-10-25
 
 ### Fixed
