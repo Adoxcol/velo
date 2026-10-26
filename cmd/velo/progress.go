@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+	"sync/atomic"
 
 	webview2 "github.com/jchv/go-webview2"
 
@@ -82,7 +83,8 @@ func showProgress(a *app, id int) {
 		w.Bind("pauseDownload", func() error { return a.pause(id) })
 		w.Bind("resumeDownload", func() error { return a.resume(id) })
 		w.Bind("cancelDownload", func() error { return a.remove(id) })
-		w.Bind("fileTypeIcon", func(name string) thumbResult { return a.fileTypeIcon(name) })
+		var closed atomic.Bool
+		bindWindowAsync(w, &closed, "fileTypeIcon", func(name string) (thumbResult, error) { return a.fileTypeIcon(name), nil })
 		w.Bind("getSettings", func() Settings { return a.getSettings() })
 		w.Bind("openMain", func() { go a.show() })
 		w.Bind("closeProgress", func() { go closeProgress(id) })
@@ -90,6 +92,7 @@ func showProgress(a *app, id int) {
 		progWins[id] = w
 		progMu.Unlock()
 		w.Run()
+		closed.Store(true)
 		progMu.Lock()
 		delete(progWins, id)
 		progMu.Unlock()

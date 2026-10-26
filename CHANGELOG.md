@@ -2,6 +2,14 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.22 — 2026-10-26
+
+### Fixed
+- **Velo no longer freezes when a download finishes.** Making a preview of the finished file (a video frame or a Windows file icon) ran on the window itself and could hold up the main window, the download dialog and the progress windows for several seconds. Previews, **Open**, **Show in folder** and **Open folder** now run in the background.
+
+### New
+- **日本語 (Japanese)** language.
+
 ## 0.8.21 — 2026-10-26
 
 ### Fixed

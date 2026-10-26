@@ -118,9 +118,9 @@ func showComplete(a *app, id int) {
 		bindWindowAsync(w, &closed, "itemPreview", func(id int) (thumbResult, error) { return a.itemPreview(id), nil })
 		bindWindowAsync(w, &closed, "fileTypeIcon", func(name string) (thumbResult, error) { return a.fileTypeIcon(name), nil })
 		w.Bind("getSettings", func() Settings { return a.getSettings() })
-		w.Bind("openDone", func(id int) error { return a.openFile(id, false) })
+		bindWindowAsync(w, &closed, "openDone", func(id int) (bool, error) { return true, a.openFile(id, false) })
 		bindWindowAsync(w, &closed, "openDoneWith", func(id int) (bool, error) { return true, a.openWith(id) })
-		w.Bind("showDoneInFolder", func(id int) error { return a.openFile(id, true) })
+		bindWindowAsync(w, &closed, "showDoneInFolder", func(id int) (bool, error) { return true, a.openFile(id, true) })
 		bindWindowAsync(w, &closed, "closeComplete", func(dontShowAgain bool) (bool, error) {
 			if dontShowAgain {
 				if err := a.updateSettings(func(s *Settings) { s.CompleteDialog = false }); err != nil {

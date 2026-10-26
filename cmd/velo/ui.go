@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -306,11 +307,13 @@ func showMain(a *app) {
 			return
 		}
 		setWindowIcon(uintptr(w.Window()))
-		bind(w, a)
+		var closed atomic.Bool
+		bind(w, a, &closed)
 		w.SetHtml(i18n.Inject(uiHTML, a.lang()))
 		win = w
 		winMu.Unlock()
 		w.Run() // until the window is closed
+		closed.Store(true)
 		winMu.Lock()
 		win = nil
 		winMu.Unlock()
@@ -342,7 +345,10 @@ func closeMain() {
 }
 
 // bind exposes the app to the page's JavaScript (each returns a Promise).
-func bind(w webview2.WebView, a *app) {
+// bind exposes the app to the main window. Calls that can take seconds
+// (thumbnails via ffmpeg or the shell, opening files and Explorer) run off
+// the window thread with bindWindowAsync, so the window never freezes.
+func bind(w webview2.WebView, a *app, closed *atomic.Bool) {
 	w.Bind("probe", func(url, user, pass string) (engine.Info, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
@@ -412,9 +418,9 @@ func bind(w webview2.WebView, a *app) {
 	w.Bind("loadBatchLinks", func(urls []string, source string) int { return a.loadBatchLinks(urls, source) })
 	w.Bind("videoToolsStatus", func() videoToolsState { return a.videoToolsStatus() })
 	w.Bind("installVideoTools", func() error { return a.installVideoTools() })
-	w.Bind("openFile", func(id int) error { return a.openFile(id, false) })
-	w.Bind("showInFolder", func(id int) error { return a.openFile(id, true) })
-	w.Bind("openDir", func() error { return a.openDir() })
+	bindWindowAsync(w, closed, "openFile", func(id int) (bool, error) { return true, a.openFile(id, false) })
+	bindWindowAsync(w, closed, "showInFolder", func(id int) (bool, error) { return true, a.openFile(id, true) })
+	bindWindowAsync(w, closed, "openDir", func(_ any) (bool, error) { return true, a.openDir() })
 	w.Bind("openStore", func() error {
 		return exec.Command("rundll32", "url.dll,FileProtocolHandler", hostreg.ChromeStoreURL).Start()
 	})
@@ -426,8 +432,8 @@ func bind(w webview2.WebView, a *app) {
 	w.Bind("resumeAll", func() { a.all("resume") })
 	w.Bind("downloadDir", func() string { return a.eng.Dir() })
 	w.Bind("defaultDir", func() string { return a.defaultDir })
-	w.Bind("itemPreview", func(id int) thumbResult { return a.itemPreview(id) })
-	w.Bind("fileTypeIcon", func(name string) thumbResult { return a.fileTypeIcon(name) })
+	bindWindowAsync(w, closed, "itemPreview", func(id int) (thumbResult, error) { return a.itemPreview(id), nil })
+	bindWindowAsync(w, closed, "fileTypeIcon", func(name string) (thumbResult, error) { return a.fileTypeIcon(name), nil })
 	// Runs on the window's thread, so the picker is modal to it.
 	w.Bind("pickFolder", func(start string) (string, error) {
 		return pickFolder(uintptr(w.Window()), "Choose download folder", start)

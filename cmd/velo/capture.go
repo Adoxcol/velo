@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+	"sync/atomic"
 
 	webview2 "github.com/jchv/go-webview2"
 
@@ -90,7 +91,8 @@ func showCapture(a *app) {
 		})
 		w.Bind("folderFor", func(name string) string { return a.eng.FolderFor(engine.SafeName(name)) })
 		w.Bind("categoryOf", func(name string) string { return engine.CategoryOf(name) })
-		w.Bind("fileTypeIcon", func(name string) thumbResult { return a.fileTypeIcon(name) })
+		var closed atomic.Bool
+		bindWindowAsync(w, &closed, "fileTypeIcon", func(name string) (thumbResult, error) { return a.fileTypeIcon(name), nil })
 		w.Bind("getSettings", func() Settings { return a.getSettings() })
 		w.Bind("openMain", func() { go a.show() })
 		w.Bind("closeDialog", func() { go closeCapture(true) })
@@ -102,6 +104,7 @@ func showCapture(a *app) {
 		capMu.Unlock()
 		setForeground.Call(hwnd)
 		w.Run()
+		closed.Store(true)
 		capMu.Lock()
 		capWin = nil
 		clean := capClean
