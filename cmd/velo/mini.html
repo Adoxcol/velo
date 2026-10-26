@@ -41,8 +41,8 @@
   <div class="info"><div class="name" id="name">Starting…</div><div class="meta" id="meta"></div><div class="bar" id="barWrap" role="progressbar" aria-label="Download progress" aria-valuemin="0" aria-valuemax="100"><i id="bar" style="width:0"></i></div></div>
   <div class="acts"><button id="pp" title="Pause" aria-label="Pause"></button><button id="close" title="Hide Velo Mini" aria-label="Hide Velo Mini"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
 </div>
-<div class="ask" id="ask" hidden>
-  <div class="q">Hide Velo Mini?</div>
+<div class="ask" id="ask" role="dialog" aria-labelledby="askTitle" hidden>
+  <div class="q" id="askTitle">Hide Velo Mini?</div>
   <div class="row">
     <button class="primary" id="hideNow" title="It comes back when you start another download">Until downloads finish</button>
     <button id="hideNever" title="Turn it back on in Settings or the tray menu">Don't show again</button>
