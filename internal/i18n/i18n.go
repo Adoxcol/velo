@@ -31,6 +31,7 @@ var Languages = []Language{
 	{"es", "Español"},
 	{"fr", "Français"},
 	{"hi", "हिन्दी"},
+	{"ja", "日本語"},
 	{"pt-BR", "Português (Brasil)"},
 	{"zh-CN", "简体中文"},
 }
@@ -72,6 +73,8 @@ func match(tag string) string {
 		return "pt-BR"
 	case strings.HasPrefix(tag, "zh-hans"), tag == "zh-cn", tag == "zh-sg", tag == "zh":
 		return "zh-CN"
+	case strings.HasPrefix(tag, "ja"):
+		return "ja"
 	}
 	base, _, _ := strings.Cut(tag, "-")
 	for _, l := range Languages {

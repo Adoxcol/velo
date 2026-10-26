@@ -41,7 +41,7 @@ Ticked items are done. Work goes roughly top to bottom.
 ## Reach
 - [x] Firefox: add-on package (velo-firefox zip), native host registered for Firefox, tested end to end
 - [ ] Publish the Firefox add-on on addons.mozilla.org (needs your Mozilla account)
-- [x] Translations: app, dialog, Velo Mini, tray, notifications and extension in বাংলা, Deutsch, Español, Français, हिन्दी, Português (Brasil) and 简体中文 (0.4.0)
+- [x] Translations: app, dialog, Velo Mini, tray, notifications and extension in বাংলা, Deutsch, Español, Français, हिन्दी, 日本語, Português (Brasil) and 简体中文 (0.4.0)
 - [ ] More languages (add tools/i18n/app/<code>.json and tools/i18n/ext/<code>.json, then node tools/i18n/build.js)
 - [x] Portable zip (settings in its own data folder, connects the browser when run)
 

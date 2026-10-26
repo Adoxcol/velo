@@ -22,7 +22,7 @@ func TestLanguagesLoad(t *testing.T) {
 }
 
 func TestResolveAndMatch(t *testing.T) {
-	for in, want := range map[string]string{"pt-PT": "pt-BR", "pt-BR": "pt-BR", "zh-Hans-CN": "zh-CN", "bn-IN": "bn", "de-AT": "de", "ja-JP": "", "en-GB": "en"} {
+	for in, want := range map[string]string{"pt-PT": "pt-BR", "pt-BR": "pt-BR", "zh-Hans-CN": "zh-CN", "bn-IN": "bn", "de-AT": "de", "ja-JP": "ja", "ko-KR": "", "en-GB": "en"} {
 		if got := match(in); got != want {
 			t.Errorf("match(%q) = %q, want %q", in, got, want)
 		}

@@ -69,7 +69,7 @@ The install script checks the download's SHA-256 and puts `veloctl` in
   continue the same file; optional **checksum** (SHA-256, SHA-1, MD5) checked when done.
 - **Proxy** (follows Windows by default) and **password-protected downloads**.
 - **Portable version**: unzip and run; settings stay next to the program.
-- **Eight languages**: English, বাংলা, Deutsch, Español, Français, हिन्दी, Português (Brasil) and 简体中文, following your Windows language (the extension follows the browser's).
+- **Nine languages**: English, বাংলা, Deutsch, Español, Français, हिन्दी, 日本語, Português (Brasil) and 简体中文, following your Windows language (the extension follows the browser's).
 - **Speed limit**, **auto-categorized folders** (Video, Music, Images, Documents, Compressed, Programs),
   **history**, **notifications**, **clipboard link detection**, light and dark themes.
 
