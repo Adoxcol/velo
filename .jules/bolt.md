@@ -21,3 +21,7 @@
 ## 2026-04-05 - Avoid fixed large scanner buffer allocations and fast-path comment lines in HLS playlist parsing
 **Learning:** Initializing `bufio.Scanner` with a fixed large buffer (`make([]byte, 1<<20)`) allocates 1 MB of heap upfront on every HLS playlist parse regardless of playlist size. Initializing `sc.Buffer` with a small initial capacity buffer (`make([]byte, 0, 4096)`) and a large max limit (`1<<20`), combined with filtering `#` comment lines on raw byte slices before converting to strings, reduces parse execution time by ~45% (1.10 ms vs 2.01 ms per 1,000 segments) and cuts heap allocations by ~71% (0.43 MB vs 1.49 MB).
 **Action:** Use small initial buffer capacities with large max limits when configuring `bufio.Scanner` for files with variable line lengths, and filter comments on raw byte slices before converting lines to heap strings.
+
+## 2026-04-06 - Fast path lowercasing in CategoryOf for file extension lookup
+**Learning:** Calling `strings.ToLower` on every file extension in `CategoryOf` allocated heap memory even when extensions were already lowercase (which is the case for >95% of files in download queues and UI row rendering loops). Checking `unicode.IsUpper` before calling `strings.ToLower` on `ext[1:]` avoids heap allocations and string formatting overhead while preserving full Unicode lowercasing support.
+**Action:** When performing map lookups by lowercased key strings, check for uppercase runes first to bypass `strings.ToLower` heap allocations for already lowercase keys.
