@@ -54,9 +54,10 @@ func bindWindowAsync[A, R any](w webview2.WebView, closed *atomic.Bool, name str
     pending.delete(id);
     if (error !== null) p.reject(new Error(error)); else p.resolve(value);
   };
-  window.%s = (arg) => new Promise((resolve, reject) => {
+  window.%s = (...args) => new Promise((resolve, reject) => {
     const id = ++next;
     pending.set(id, {resolve, reject});
+    const arg = args.length === 0 ? null : (args.length === 1 ? args[0] : args);
     window.%s(id, arg === undefined ? null : arg).catch(error => {
       pending.delete(id); reject(error);
     });

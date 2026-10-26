@@ -16,13 +16,22 @@ import (
 	"github.com/Adoxcol/velo/internal/version"
 )
 
+var defaultUpdateClient = sync.OnceValue(func() *http.Client {
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.ResponseHeaderTimeout = 15 * time.Second
+	tr.TLSHandshakeTimeout = 10 * time.Second
+	tr.MaxIdleConns = 10
+	tr.IdleConnTimeout = 90 * time.Second
+	return &http.Client{Transport: tr}
+})
+
 // updater keeps Velo up to date from GitHub Releases. With auto-update on
 // (the default) a verified update is installed when Velo is idle: nothing
 // downloading and the window closed. Otherwise the user is notified.
 type updater struct {
 	mu         sync.Mutex
 	status     string // shown in Settings → Advanced
-	checking   bool
+	busy       bool   // true when check or update download is running
 	release    *update.Release
 	downloaded string // verified installer, ready to run
 	notified   string // version we already notified about
@@ -40,7 +49,7 @@ type updateInfo struct {
 func (u *updater) info() updateInfo {
 	u.mu.Lock()
 	defer u.mu.Unlock()
-	i := updateInfo{Current: version.Version, Status: u.status, Ready: u.downloaded != "", Checking: u.checking}
+	i := updateInfo{Current: version.Version, Status: u.status, Ready: u.downloaded != "", Checking: u.busy}
 	if u.release != nil {
 		i.Available, i.Page = u.release.Version, u.release.Page
 	}
@@ -56,21 +65,18 @@ func (u *updater) set(status string) {
 // check looks for a newer release and downloads it. Safe to call anytime.
 func (u *updater) check(a *app) {
 	u.mu.Lock()
-	if u.checking {
+	if u.busy {
 		u.mu.Unlock()
 		return
 	}
-	u.checking = true
+	u.busy = true
 	u.status = "Checking for updates…"
 	u.mu.Unlock()
 
-	doneCheck := false
 	defer func() {
-		if !doneCheck {
-			u.mu.Lock()
-			u.checking = false
-			u.mu.Unlock()
-		}
+		u.mu.Lock()
+		u.busy = false
+		u.mu.Unlock()
 	}()
 
 	if version.Version == "dev" {
@@ -82,18 +88,10 @@ func (u *updater) check(a *app) {
 	// only gives up when the connection stalls, so slow links still update.
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Hour)
 	defer cancel()
-	tr := http.DefaultTransport.(*http.Transport).Clone()
-	tr.ResponseHeaderTimeout = 15 * time.Second
-	tr.TLSHandshakeTimeout = 10 * time.Second
-	client := &http.Client{Transport: tr}
+	client := defaultUpdateClient()
 	checkCtx, cancelCheck := context.WithTimeout(ctx, 15*time.Second)
 	rel, err := update.Latest(checkCtx, client)
 	cancelCheck()
-
-	u.mu.Lock()
-	u.checking = false
-	doneCheck = true
-	u.mu.Unlock()
 	switch {
 	case errors.Is(err, update.ErrNoRelease):
 		u.set("No releases published yet.")
