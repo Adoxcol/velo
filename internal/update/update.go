@@ -36,7 +36,8 @@ type Release struct {
 	Version string `json:"version"`
 	URL     string `json:"url"`    // installer download
 	SHA256  string `json:"sha256"` // expected checksum, hex
-	Page    string `json:"page"`   // release notes page
+	SumURL  string `json:"sum_url,omitempty"`
+	Page    string `json:"page"` // release notes page
 	Notes   string `json:"notes"`
 }
 
@@ -85,7 +86,6 @@ func Latest(ctx context.Context, client *http.Client) (*Release, error) {
 	}
 	rel := &Release{Version: ver, Page: gr.Page, Notes: gr.Body}
 	want := "Velo-Setup-" + ver + ".exe"
-	var sumURL string
 	for _, a := range gr.Assets {
 		switch a.Name {
 		case want:
@@ -94,18 +94,13 @@ func Latest(ctx context.Context, client *http.Client) (*Release, error) {
 				rel.SHA256 = strings.ToLower(d)
 			}
 		case want + ".sha256":
-			sumURL = a.URL
+			rel.SumURL = a.URL
 		}
 	}
 	if rel.URL == "" {
 		return nil, fmt.Errorf("release %s has no %s", gr.Tag, want)
 	}
-	if rel.SHA256 == "" && sumURL != "" {
-		if rel.SHA256, err = fetchSum(ctx, client, sumURL); err != nil {
-			return nil, err
-		}
-	}
-	if len(rel.SHA256) != 64 {
+	if rel.SHA256 == "" && rel.SumURL == "" {
 		return nil, fmt.Errorf("release %s has no checksum for its installer", gr.Tag)
 	}
 	return rel, nil
@@ -139,6 +134,31 @@ func Download(ctx context.Context, client *http.Client, rel *Release, dir string
 		return "", err
 	}
 	dst := filepath.Join(dir, "Velo-Setup-"+rel.Version+".exe")
+
+	ensureChecksum := func() error {
+		if rel.SHA256 == "" && rel.SumURL != "" {
+			sum, err := fetchSum(ctx, client, rel.SumURL)
+			if err != nil {
+				return err
+			}
+			rel.SHA256 = sum
+		}
+		if len(rel.SHA256) != 64 {
+			return fmt.Errorf("release %s has invalid checksum", rel.Version)
+		}
+		return nil
+	}
+
+	if sum, err := fileSHA256(dst); err == nil {
+		if err := ensureChecksum(); err == nil && sum == rel.SHA256 {
+			return dst, nil
+		}
+	}
+
+	if err := ensureChecksum(); err != nil {
+		return "", err
+	}
+
 	tmp := dst + ".part"
 	var err error
 	for attempt := 0; attempt < Attempts; attempt++ {

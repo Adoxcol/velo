@@ -61,11 +61,16 @@ func (u *updater) check(a *app) {
 		return
 	}
 	u.checking = true
+	u.status = "Checking for updates…"
 	u.mu.Unlock()
+
+	doneCheck := false
 	defer func() {
-		u.mu.Lock()
-		u.checking = false
-		u.mu.Unlock()
+		if !doneCheck {
+			u.mu.Lock()
+			u.checking = false
+			u.mu.Unlock()
+		}
 	}()
 
 	if version.Version == "dev" {
@@ -78,11 +83,17 @@ func (u *updater) check(a *app) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Hour)
 	defer cancel()
 	tr := http.DefaultTransport.(*http.Transport).Clone()
-	tr.ResponseHeaderTimeout = 60 * time.Second
+	tr.ResponseHeaderTimeout = 15 * time.Second
+	tr.TLSHandshakeTimeout = 10 * time.Second
 	client := &http.Client{Transport: tr}
-	checkCtx, cancelCheck := context.WithTimeout(ctx, 2*time.Minute)
+	checkCtx, cancelCheck := context.WithTimeout(ctx, 15*time.Second)
 	rel, err := update.Latest(checkCtx, client)
 	cancelCheck()
+
+	u.mu.Lock()
+	u.checking = false
+	doneCheck = true
+	u.mu.Unlock()
 	switch {
 	case errors.Is(err, update.ErrNoRelease):
 		u.set("No releases published yet.")
