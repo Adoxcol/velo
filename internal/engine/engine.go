@@ -915,7 +915,6 @@ func hostOf(s string) string {
 // fetch downloads s until s.Pos passes s.End (End can shrink while it runs
 // when another connection steals part of it). Retries resume from s.Pos.
 func (e *Engine) fetch(ctx context.Context, d *Download, f *os.File, s *Segment) error {
-	buf := make([]byte, 64<<10)
 	var lastErr error
 	for attempt := 0; attempt < 5; attempt++ {
 		if attempt > 0 {
@@ -959,7 +958,7 @@ func (e *Engine) fetch(ctx context.Context, d *Download, f *os.File, s *Segment)
 			resp.Body.Close()
 			return &StatusError{resp.StatusCode, fmt.Sprintf("range %d-%d: %s", pos, end, resp.Status)}
 		}
-		finished, err := d.copySeg(ctx, e.Limit, f, s, resp.Body, buf)
+		finished, err := d.copySeg(ctx, e.Limit, f, s, resp.Body)
 		resp.Body.Close()
 		if finished {
 			return nil
@@ -978,7 +977,8 @@ func (e *Engine) fetch(ctx context.Context, d *Download, f *os.File, s *Segment)
 // copySeg writes body into f at s.Pos, stopping at s.End. Writes happen
 // under d.mu so a saved state never claims bytes that aren't on disk and a
 // concurrent steal can't move End below data being written.
-func (d *Download) copySeg(ctx context.Context, lim *Limiter, f *os.File, s *Segment, body io.Reader, buf []byte) (bool, error) {
+func (d *Download) copySeg(ctx context.Context, lim *Limiter, f *os.File, s *Segment, body io.Reader) (bool, error) {
+	buf := make([]byte, 64<<10)
 	for {
 		n, rerr := body.Read(buf[:lim.chunk(len(buf))])
 		if n > 0 {
