@@ -304,7 +304,7 @@
   <div class="side-bottom">
     <div class="speed-card">
       <div class="lbl">Download speed</div>
-      <div class="row"><div class="val" id="speedVal">0 B/s</div><svg id="spark" viewBox="0 0 84 30" preserveAspectRatio="none"></svg></div>
+      <div class="row"><div class="val" id="speedVal">0 B/s</div><svg id="spark" viewBox="0 0 84 30" preserveAspectRatio="none" aria-hidden="true"></svg></div>
     </div>
     <div class="oss"><svg class="i" viewBox="0 0 24 24"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z"/></svg>velo <span>· Open Source</span></div>
   </div>
@@ -445,7 +445,7 @@
 </main>
 
 <div class="menu" id="menu"></div>
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite"></div>
 <div class="dropzone" id="dropzone">Drop a link or .txt link list to download</div>
 
 <dialog id="addDlg" aria-labelledby="aTitle">
@@ -453,7 +453,7 @@
   <div class="db">
     <div class="inp" style="margin-bottom:10px"><svg class="i" viewBox="0 0 24 24" style="color:var(--faint)"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>
       <input id="aUrl" placeholder="https://example.com/file.zip" spellcheck="false" aria-label="Download link URL"><button class="iconbtn" id="aClear" title="Clear" aria-label="Clear link input"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-    <div class="probe" id="aProbe"></div>
+    <div class="probe" id="aProbe" role="status" aria-live="polite"></div>
     <div class="formrow"><span>Save to</span><div class="inp ro"><svg class="i" viewBox="0 0 24 24" style="color:var(--faint)"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><input id="aDir" readonly aria-label="Save to folder"><button class="link" id="aDirChange" aria-label="Change save to folder">Change</button></div></div>
     <div class="formrow"><span>File name</span><div class="inp"><input id="aName" spellcheck="false" placeholder="From the server" aria-label="File name"></div></div>
     <div class="formrow" id="aFormatRow" hidden><span>Quality</span><div class="inp"><select id="aFormat" aria-label="Quality">
@@ -737,9 +737,10 @@ function card(r) {
                               : `<button class="iconbtn" data-act="cancel" title="Cancel" aria-label="Cancel download">${icon(I.x)}</button>`;
   const fresh = !seenIds.has(r.id);
   seenIds.add(r.id);
+  const progressAttrs = `role="progressbar" aria-label="Download progress" aria-valuemin="0" aria-valuemax="100"${r.total > 0 ? ` aria-valuenow="${Math.floor(pct)}" aria-valuetext="${Math.floor(pct)}%"` : ""}`;
   const barHTML = r.status === "done" ? "" : r.gaps?.length
-    ? `<div class="bar"><i style="width:100%;transition:none"></i>${r.gaps.map(([l, w]) => `<b style="left:${l}%;width:${w}%"></b>`).join("")}</div>`
-    : `<div class="bar"><i style="width:${pct}%"></i></div>`;
+    ? `<div class="bar" ${progressAttrs}><i style="width:100%;transition:none"></i>${r.gaps.map(([l, w]) => `<b style="left:${l}%;width:${w}%"></b>`).join("")}</div>`
+    : `<div class="bar" ${progressAttrs}><i style="width:${pct}%"></i></div>`;
   return `<div class="card ${r.status}${r.id === selected ? " selected" : ""}${fresh ? " new" : ""}" data-id="${r.id}">
     <div class="tile t-${cat.replace(/\W/g, "")}">${tileHTML(r, cat)}</div>
     <div class="info"><div class="name" title="${escapeHtml(r.url)}">${escapeHtml(r.file || "Starting…")}${r.queue && r.status !== "done" && queueName(r.queue) ? ` <span class="qbadge">${escapeHtml(queueName(r.queue))}</span>` : ""}${r.openOnDone && r.status !== "done" ? ` <span class="qbadge">Open when done</span>` : ""}</div>

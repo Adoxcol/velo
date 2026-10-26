@@ -364,6 +364,36 @@ func TestRefreshLink(t *testing.T) {
 	}
 }
 
+func TestRefreshLinkClearsLoginsOnHostChange(t *testing.T) {
+	a := testApp(t, defaultSettings())
+	id := a.add(engine.Request{
+		URL:     "https://old-host.example.com/file.zip",
+		Cookies: "session=123",
+		User:    "alice",
+		Pass:    "secret",
+	})
+	a.pause(id)
+
+	// Refreshing to a different host must clear logins/cookies.
+	if err := a.refreshLink(id, "https://new-host.example.com/file.zip"); err != nil {
+		t.Fatal(err)
+	}
+	it := a.get(id)
+	if it.d.Req.Cookies != "" || it.d.Req.User != "" || it.d.Req.Pass != "" {
+		t.Fatalf("credentials were not cleared on host change: %+v", it.d.Req)
+	}
+
+	// Setting credentials and refreshing to the same host keeps credentials.
+	it.d.Req.Cookies, it.d.Req.User, it.d.Req.Pass = "session=456", "bob", "pass456"
+	a.pause(id)
+	if err := a.refreshLink(id, "https://new-host.example.com/other-path.zip"); err != nil {
+		t.Fatal(err)
+	}
+	if it.d.Req.User != "bob" || it.d.Req.Pass != "pass456" || it.d.Req.Cookies != "session=456" {
+		t.Fatalf("credentials were wrongly cleared on same host: %+v", it.d.Req)
+	}
+}
+
 func TestQueueOrder(t *testing.T) {
 	url := slowServer(t, 2<<20)
 	s := defaultSettings()
@@ -667,6 +697,27 @@ func TestDeleteFileAndBatchLinksAndVideoTools(t *testing.T) {
 	vt := a.videoToolsStatus()
 	if len(vt.Tools) != 3 {
 		t.Fatalf("expected 3 video tools, got %+v", vt.Tools)
+	}
+}
+
+func TestURLPathName(t *testing.T) {
+	cases := []struct {
+		url  string
+		want string
+	}{
+		{"https://example.com/downloads/file.zip", "file.zip"},
+		{"https://example.com/downloads/file%20name.zip?key=val#tag", "file name.zip"},
+		{"https://example.com/", ""},
+		{"https://example.com", ""},
+		{"http://example.com:8080/path/to/doc.pdf", "doc.pdf"},
+		{"/local/path/image.png", "image.png"},
+		{"", ""},
+		{"https://example.com/a%2Fb", "a/b"},
+	}
+	for _, c := range cases {
+		if got := urlPathName(c.url); got != c.want {
+			t.Errorf("urlPathName(%q) = %q, want %q", c.url, got, c.want)
+		}
 	}
 }
 

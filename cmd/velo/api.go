@@ -294,6 +294,22 @@ func (a *app) handleBatch(w http.ResponseWriter, r *http.Request) {
 		replyIPC(w, 0, fmt.Errorf("no links"))
 		return
 	}
+	// Security: Input validation to ensure only HTTP/HTTPS URLs are accepted.
+	var validLinks []struct {
+		URL  string `json:"url"`
+		Text string `json:"text"`
+	}
+	for _, l := range b.Links {
+		u := strings.ToLower(strings.TrimSpace(l.URL))
+		if strings.HasPrefix(u, "http://") || strings.HasPrefix(u, "https://") {
+			validLinks = append(validLinks, l)
+		}
+	}
+	if len(validLinks) == 0 {
+		replyIPC(w, 0, fmt.Errorf("no links"))
+		return
+	}
+	b.Links = validLinks
 	if len(b.Links) > 2000 {
 		b.Links = b.Links[:2000]
 	}

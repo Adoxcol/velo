@@ -5,6 +5,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"unicode"
 )
 
 // Categories sort new downloads into subfolders by file type.
@@ -35,7 +36,19 @@ func init() {
 
 // CategoryOf returns the category subfolder for a file name, or "".
 func CategoryOf(name string) string {
-	return categoryExt[strings.TrimPrefix(strings.ToLower(filepath.Ext(name)), ".")]
+	ext := filepath.Ext(name)
+	if len(ext) <= 1 {
+		return ""
+	}
+	ext = ext[1:]
+	// Fast path: if the extension contains no uppercase characters,
+	// avoid the strings.ToLower allocation when querying categoryExt.
+	for _, r := range ext {
+		if unicode.IsUpper(r) {
+			return categoryExt[strings.ToLower(ext)]
+		}
+	}
+	return categoryExt[ext]
 }
 
 // Downloadable reports whether a URL points at a file type worth offering

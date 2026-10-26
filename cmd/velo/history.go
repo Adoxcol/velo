@@ -48,7 +48,7 @@ func (a *app) snapshot() []histEntry {
 		e := histEntry{Req: d.Req, Path: p, Total: total, Status: status, Added: it.added.UnixMilli()}
 		if status == "done" {
 			e.Verified = d.Verified
-			e.Req.Cookies, e.Req.Pass = "", "" // only needed to finish the download
+			e.Req.Cookies, e.Req.User, e.Req.Pass = "", "", "" // only needed to finish the download
 		}
 		if !it.finished.IsZero() {
 			e.Finished = it.finished.UnixMilli()

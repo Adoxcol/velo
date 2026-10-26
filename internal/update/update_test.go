@@ -67,13 +67,19 @@ func TestCheckAndDownload(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if rel.Version != "0.2.0" || rel.SHA256 != hex.EncodeToString(sum[:]) {
-			t.Fatalf("release %+v", rel)
+		if rel.Version != "0.2.0" {
+			t.Fatalf("release version %+v", rel)
+		}
+		if digest != "" && rel.SHA256 != hex.EncodeToString(sum[:]) {
+			t.Fatalf("release SHA256 %+v", rel)
 		}
 		targetDir := filepath.Join(t.TempDir(), "subdir")
 		path, err := Download(context.Background(), http.DefaultClient, rel, targetDir)
 		if err != nil {
 			t.Fatal(err)
+		}
+		if rel.SHA256 != hex.EncodeToString(sum[:]) {
+			t.Fatalf("release SHA256 after download %+v", rel)
 		}
 		if b, _ := os.ReadFile(path); string(b) != string(body) {
 			t.Fatal("wrong installer contents")
@@ -166,5 +172,32 @@ func TestDownloadResumesAfterDropAndStall(t *testing.T) {
 	}
 	if calls != 3 || ranges[0] != "" || ranges[1] != "bytes=100000-" || ranges[2] != "bytes=200000-" {
 		t.Fatalf("expected 3 requests continuing at 0, 100000, 200000; got %d: %q", calls, ranges)
+	}
+}
+
+func TestDownloadReusesExistingFile(t *testing.T) {
+	dir := t.TempDir()
+	body := []byte("already downloaded installer")
+	sum := sha256.Sum256(body)
+	hexSum := hex.EncodeToString(sum[:])
+
+	dst := filepath.Join(dir, "Velo-Setup-0.3.0.exe")
+	if err := os.WriteFile(dst, body, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// URL points to an invalid host; if Download attempts HTTP GET, it will fail.
+	rel := &Release{
+		Version: "0.3.0",
+		URL:     "http://127.0.0.1:0/unreachable",
+		SHA256:  hexSum,
+	}
+
+	gotPath, err := Download(context.Background(), http.DefaultClient, rel, dir)
+	if err != nil {
+		t.Fatalf("expected Download to reuse existing file, got err = %v", err)
+	}
+	if gotPath != dst {
+		t.Fatalf("expected path %s, got %s", dst, gotPath)
 	}
 }

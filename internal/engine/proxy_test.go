@@ -252,37 +252,42 @@ func TestEngineProxy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// 1. Set mode to "none"
-	e.SetProxy("none")
-	u, err := e.proxyFor(req)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if u != nil {
-		t.Errorf("expected nil proxy for 'none', got %v", u)
-	}
+	t.Run("none mode", func(t *testing.T) {
+		e.SetProxy("none")
+		u, err := e.proxyFor(req)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if u != nil {
+			t.Errorf("expected nil proxy for 'none', got %v", u)
+		}
+	})
 
-	// 2. Set explicit proxy URL
-	proxyURL := "http://127.0.0.1:8080"
-	e.SetProxy(proxyURL)
-	u, err = e.proxyFor(req)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if u == nil || u.String() != proxyURL {
-		t.Errorf("proxyFor = %v, want %s", u, proxyURL)
-	}
+	t.Run("explicit proxy URL", func(t *testing.T) {
+		proxyURL := "http://127.0.0.1:8080"
+		e.SetProxy(proxyURL)
+		u, err := e.proxyFor(req)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if u == nil || u.String() != proxyURL {
+			t.Errorf("proxyFor = %v, want %s", u, proxyURL)
+		}
+	})
 
-	// 3. Set system mode / empty string
-	e.SetProxy("system")
-	_, err = e.proxyFor(req)
-	if err != nil {
-		t.Fatalf("unexpected error in system mode: %v", err)
-	}
+	t.Run("system mode", func(t *testing.T) {
+		e.SetProxy("system")
+		_, err := e.proxyFor(req)
+		if err != nil {
+			t.Fatalf("unexpected error in system mode: %v", err)
+		}
+	})
 
-	e.SetProxy("")
-	_, err = e.proxyFor(req)
-	if err != nil {
-		t.Fatalf("unexpected error in empty mode: %v", err)
-	}
+	t.Run("empty string mode", func(t *testing.T) {
+		e.SetProxy("")
+		_, err := e.proxyFor(req)
+		if err != nil {
+			t.Fatalf("unexpected error in empty mode: %v", err)
+		}
+	})
 }
