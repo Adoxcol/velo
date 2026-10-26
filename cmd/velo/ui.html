@@ -764,7 +764,13 @@ function emptyFor(view) {
   return `<div class="empty"><div class="ill">${icon(view === "completed" ? (cFilter === "media" ? I.media : I.check) : I.dl)}</div><b>${m[0]}</b>${m[1]}</div>`;
 }
 
-function render() {
+let lastRenderKey = "";
+function render(force = false) {
+  const key = `${page}:${filter}:${cFilter}:${qFilter}:${query}:${selected}:${JSON.stringify(data)}`;
+  if (!force && key === lastRenderKey) {
+    return;
+  }
+  lastRenderKey = key;
   const host = $(`[data-list="${page}"]`);
   if (host) {
     const rows = rowsFor(page);
@@ -1525,7 +1531,12 @@ $("#dbgCopy").onclick = async () => {
   try { await copyText(await debugInfo()); toast("Debug info copied"); }
   catch (e) { toast("Couldn't copy: " + e, true); }
 };
-$("#updCheck").onclick = async () => { await checkUpdate(); setTimeout(showUpdate, 300); };
+$("#updCheck").onclick = async () => {
+  $("#updStatus").textContent = "Checking…";
+  $("#updCheck").disabled = true;
+  await checkUpdate();
+  showUpdate();
+};
 $("#updInstall").onclick = () => act(installUpdate);
 setInterval(() => { if (page === "settings") showUpdate(); }, 1500);
 refresh();

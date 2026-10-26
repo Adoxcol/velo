@@ -8,7 +8,10 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/Adoxcol/velo/internal/update"
 	"github.com/Adoxcol/velo/internal/version"
@@ -89,5 +92,55 @@ func TestUpdaterUpToDateStatus(t *testing.T) {
 	}
 	if info.Status != "Velo is up to date." {
 		t.Fatalf("expected 'Velo is up to date.', got %q", info.Status)
+	}
+}
+
+func TestUpdaterDeduplication(t *testing.T) {
+	oldVer := version.Version
+	version.Version = "0.8.0"
+	t.Cleanup(func() { version.Version = oldVer })
+
+	var requestCount atomic.Int32
+	unblock := make(chan struct{})
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount.Add(1)
+		<-unblock
+		assets := `{"name":"Velo-Setup-0.8.0.exe","browser_download_url":"http://example.com/setup","digest":"sha256:0000000000000000000000000000000000000000000000000000000000000000"}`
+		fmt.Fprintf(w, `{"tag_name":"v0.8.0","html_url":"https://example.com/rel","body":"notes","assets":[%s]}`, assets)
+	}))
+	t.Cleanup(srv.Close)
+
+	oldAPI := update.API
+	update.API = srv.URL + "/latest"
+	t.Cleanup(func() { update.API = oldAPI })
+
+	a := testApp(t, defaultSettings())
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		a.upd.check(a)
+	}()
+
+	// Wait for the first check to start and hit the server.
+	for requestCount.Load() == 0 {
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	info := a.upd.info()
+	if !info.Checking {
+		t.Fatal("expected u.busy (Checking) to be true while check is in progress")
+	}
+
+	// Launch a second concurrent check; it should return immediately because u.busy is true.
+	a.upd.check(a)
+
+	close(unblock)
+	wg.Wait()
+
+	if count := requestCount.Load(); count != 1 {
+		t.Fatalf("expected exactly 1 server request due to deduplication, got %d", count)
 	}
 }

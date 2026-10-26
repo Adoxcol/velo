@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"log"
 	"os"
@@ -348,11 +349,35 @@ func closeMain() {
 // bind exposes the app to the main window. Calls that can take seconds
 // (thumbnails via ffmpeg or the shell, opening files and Explorer) run off
 // the window thread with bindWindowAsync, so the window never freezes.
+type probeArgs struct {
+	URL  string `json:"url"`
+	User string `json:"user"`
+	Pass string `json:"pass"`
+}
+
+func (p *probeArgs) UnmarshalJSON(b []byte) error {
+	var arr []string
+	if err := json.Unmarshal(b, &arr); err == nil {
+		if len(arr) > 0 {
+			p.URL = arr[0]
+		}
+		if len(arr) > 1 {
+			p.User = arr[1]
+		}
+		if len(arr) > 2 {
+			p.Pass = arr[2]
+		}
+		return nil
+	}
+	type alias probeArgs
+	return json.Unmarshal(b, (*alias)(p))
+}
+
 func bind(w webview2.WebView, a *app, closed *atomic.Bool) {
-	w.Bind("probe", func(url, user, pass string) (engine.Info, error) {
+	bindWindowAsync(w, closed, "probe", func(p probeArgs) (engine.Info, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
-		return a.eng.Probe(ctx, engine.Request{URL: strings.TrimSpace(url), User: user, Pass: pass})
+		return a.eng.Probe(ctx, engine.Request{URL: strings.TrimSpace(p.URL), User: p.User, Pass: p.Pass})
 	})
 	w.Bind("addDownload", func(o addOptions) (int, error) { return a.addWith(o) })
 	w.Bind("takeBatch", func() *batchView { return a.takeBatch() })
@@ -361,8 +386,8 @@ func bind(w webview2.WebView, a *app, closed *atomic.Bool) {
 	w.Bind("finishBatch", func(urls []string, start bool) int { return a.finishBatch(urls, start) })
 	w.Bind("extensionSeen", func() int64 { return a.extensionSeen() })
 	w.Bind("appVersion", func() string { return version.Version })
-	w.Bind("pendingReleaseNotes", a.pendingReleaseNotes)
-	w.Bind("dismissReleaseNotes", dismissReleaseNotes)
+	bindWindowAsync(w, closed, "pendingReleaseNotes", func(_ any) (*releaseNotesView, error) { return a.pendingReleaseNotes() })
+	bindWindowAsync(w, closed, "dismissReleaseNotes", func(_ any) (bool, error) { return true, dismissReleaseNotes() })
 	w.Bind("updateInfo", func() updateInfo { return a.upd.info() })
 	w.Bind("debugInfo", func() string { return a.debugInfo() })
 	w.Bind("languages", func() map[string]any {
@@ -372,7 +397,7 @@ func bind(w webview2.WebView, a *app, closed *atomic.Bool) {
 	w.Bind("reorder", func(id int, how string) error { return a.reorder(id, how) })
 	w.Bind("refreshLink", func(id int, u string) error { return a.refreshLink(id, u) })
 	w.Bind("checkUpdate", func() { go a.upd.check(a) })
-	w.Bind("installUpdate", func() error { return a.upd.install(a) })
+	bindWindowAsync(w, closed, "installUpdate", func(_ any) (bool, error) { return true, a.upd.install(a) })
 	w.Bind("copyText", func(t string) error { return setClipboardText(t) })
 	w.Bind("pasteText", func() string {
 		t, _ := clipboardText()
@@ -381,7 +406,7 @@ func bind(w webview2.WebView, a *app, closed *atomic.Bool) {
 	w.Bind("connections", func() int { return a.eng.SegmentsDefault() })
 	w.Bind("appStatus", func() status { return a.status() })
 	w.Bind("getSettings", func() Settings { return a.getSettings() })
-	w.Bind("setSettings", func(s Settings) error { return a.setSettings(s) })
+	bindWindowAsync(w, closed, "setSettings", func(s Settings) (bool, error) { return true, a.setSettings(s) })
 	w.Bind("setSpeedLimit", func(kb int) error { return a.setSpeedLimit(kb) })
 	w.Bind("add", func(rawURL string) (int, error) {
 		u := strings.ToLower(rawURL)
@@ -398,10 +423,10 @@ func bind(w webview2.WebView, a *app, closed *atomic.Bool) {
 	w.Bind("pause", func(id int) error { return a.pause(id) })
 	w.Bind("resume", func(id int) error { return a.resume(id) })
 	w.Bind("remove", func(id int) error { return a.remove(id) })
-	w.Bind("deleteFile", func(id int) error { return a.deleteFile(id) })
+	bindWindowAsync(w, closed, "deleteFile", func(id int) (bool, error) { return true, a.deleteFile(id) })
 	w.Bind("toggleOpenOnDone", func(id int) (bool, error) { return a.toggleOpenOnDone(id) })
-	w.Bind("expandPlaylist", func(url string) (int, error) { return a.expandPlaylistToBatch(url) })
-	w.Bind("exportLinks", func(ids []int) (string, error) {
+	bindWindowAsync(w, closed, "expandPlaylist", func(url string) (int, error) { return a.expandPlaylistToBatch(url) })
+	bindWindowAsync(w, closed, "exportLinks", func(ids []int) (string, error) {
 		txt := a.exportLinks(ids)
 		if txt == "" {
 			return "", nil
@@ -417,7 +442,7 @@ func bind(w webview2.WebView, a *app, closed *atomic.Bool) {
 	})
 	w.Bind("loadBatchLinks", func(urls []string, source string) int { return a.loadBatchLinks(urls, source) })
 	w.Bind("videoToolsStatus", func() videoToolsState { return a.videoToolsStatus() })
-	w.Bind("installVideoTools", func() error { return a.installVideoTools() })
+	bindWindowAsync(w, closed, "installVideoTools", func(_ any) (bool, error) { return true, a.installVideoTools() })
 	bindWindowAsync(w, closed, "openFile", func(id int) (bool, error) { return true, a.openFile(id, false) })
 	bindWindowAsync(w, closed, "showInFolder", func(id int) (bool, error) { return true, a.openFile(id, true) })
 	bindWindowAsync(w, closed, "openDir", func(_ any) (bool, error) { return true, a.openDir() })
