@@ -387,43 +387,54 @@ func TestChecksum(t *testing.T) {
 
 // Downloads go through a custom proxy, and "none" goes direct.
 func TestProxy(t *testing.T) {
-	data := randomData(t, 1<<20)
-	var proxied atomic.Int32
-	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !r.URL.IsAbs() {
-			http.Error(w, "not a proxy request", http.StatusBadRequest)
-			return
-		}
-		proxied.Add(1)
-		http.ServeContent(w, r, "f.bin", time.Time{}, bytes.NewReader(data))
-	}))
-	t.Cleanup(proxy.Close)
+	t.Run("download via proxy", func(t *testing.T) {
+		data := randomData(t, 1<<20)
+		var proxied atomic.Int32
+		proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !r.URL.IsAbs() {
+				http.Error(w, "not a proxy request", http.StatusBadRequest)
+				return
+			}
+			proxied.Add(1)
+			http.ServeContent(w, r, "f.bin", time.Time{}, bytes.NewReader(data))
+		}))
+		t.Cleanup(proxy.Close)
 
-	e := New(t.TempDir())
-	p, err := ParseProxy(strings.TrimPrefix(proxy.URL, "http://")) // host:port is enough
-	if err != nil {
-		t.Fatal(err)
-	}
-	e.SetProxy(p)
-	d := &Download{Req: Request{URL: "http://example.invalid/f.bin"}} // only the proxy can serve this
-	if err := e.Run(context.Background(), d); err != nil {
-		t.Fatal(err)
-	}
-	check(t, d, data)
-	if proxied.Load() == 0 {
-		t.Fatal("nothing went through the proxy")
-	}
-	for _, bad := range []string{"ftp://x:1", "http://nohost", "::"} {
-		if _, err := ParseProxy(bad); err == nil {
-			t.Errorf("ParseProxy(%q) accepted", bad)
+		e := New(t.TempDir())
+		p, err := ParseProxy(strings.TrimPrefix(proxy.URL, "http://")) // host:port is enough
+		if err != nil {
+			t.Fatal(err)
 		}
-	}
-	if !wildcardMatch("*.corp.com", "a.corp.com") || wildcardMatch("*.corp.com", "corp.org") || !wildcardMatch("10.*", "10.1.2.3") {
-		t.Error("wildcardMatch")
-	}
-	if m := parseProxyServer("http=h:1;https=h:2;socks=s:3"); m["https"] != "h:2" || m["socks"] != "s:3" {
-		t.Errorf("parseProxyServer: %v", m)
-	}
+		e.SetProxy(p)
+		d := &Download{Req: Request{URL: "http://example.invalid/f.bin"}} // only the proxy can serve this
+		if err := e.Run(context.Background(), d); err != nil {
+			t.Fatal(err)
+		}
+		check(t, d, data)
+		if proxied.Load() == 0 {
+			t.Fatal("nothing went through the proxy")
+		}
+	})
+
+	t.Run("invalid proxy inputs", func(t *testing.T) {
+		for _, bad := range []string{"ftp://x:1", "http://nohost", "::"} {
+			if _, err := ParseProxy(bad); err == nil {
+				t.Errorf("ParseProxy(%q) accepted", bad)
+			}
+		}
+	})
+
+	t.Run("wildcard match", func(t *testing.T) {
+		if !wildcardMatch("*.corp.com", "a.corp.com") || wildcardMatch("*.corp.com", "corp.org") || !wildcardMatch("10.*", "10.1.2.3") {
+			t.Error("wildcardMatch failed")
+		}
+	})
+
+	t.Run("parse proxy server", func(t *testing.T) {
+		if m := parseProxyServer("http=h:1;https=h:2;socks=s:3"); m["https"] != "h:2" || m["socks"] != "s:3" {
+			t.Errorf("parseProxyServer: %v", m)
+		}
+	})
 }
 
 // A login is sent to the site that needs it, never to another host the
