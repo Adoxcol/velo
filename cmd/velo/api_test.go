@@ -1,12 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/Adoxcol/velo/internal/engine"
 	"github.com/Adoxcol/velo/internal/ipc"
 )
 
@@ -208,5 +210,31 @@ func TestHandleBatchFiltersInvalidSchemes(t *testing.T) {
 	}
 	if a.batch == nil || len(a.batch.Links) != 1 || a.batch.Links[0].URL != "https://example.com/file.zip" {
 		t.Fatalf("expected batch to contain only valid URL, got: %+v", a.batch)
+	}
+}
+
+func BenchmarkAddBatch(b *testing.B) {
+	for _, n := range []int{10, 100, 500, 1000} {
+		b.Run(fmt.Sprintf("items-%d", n), func(b *testing.B) {
+			a := &app{eng: engine.New(b.TempDir()), home: b.TempDir()}
+			req := batchReq{
+				Page:    "https://example.com/gallery/list",
+				Cookies: "session=12345",
+			}
+			var urls []string
+			for i := 1; i <= n; i++ {
+				u := "https://example.com/files/download" + fmt.Sprint(i) + ".zip"
+				req.Links = append(req.Links, struct {
+					URL  string `json:"url"`
+					Text string `json:"text"`
+				}{URL: u, Text: "File " + fmt.Sprint(i)})
+				urls = append(urls, u)
+			}
+			b.ResetTimer()
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				_ = a.addBatch(req, urls, false)
+			}
+		})
 	}
 }
