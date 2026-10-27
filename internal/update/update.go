@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -130,6 +131,10 @@ func fetchSum(ctx context.Context, client *http.Client, u string) (string, error
 // where the last one stopped, and an attempt only gives up when no data
 // arrives for StallTimeout.
 func Download(ctx context.Context, client *http.Client, rel *Release, dir string) (string, error) {
+	// Two downloads at once (an automatic check and Check for updates)
+	// would append to the same .part file and fail the checksum.
+	downloadMu.Lock()
+	defer downloadMu.Unlock()
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
 	}
@@ -189,6 +194,8 @@ func Download(ctx context.Context, client *http.Client, rel *Release, dir string
 	}
 	return dst, os.Rename(tmp, dst)
 }
+
+var downloadMu sync.Mutex
 
 // Attempts and StallTimeout bound an update download.
 var (

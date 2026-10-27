@@ -28,7 +28,12 @@ func main() {
 	dir := flag.String("dir", filepath.Join(home, "Downloads", "Velo"), "download folder")
 	segs := flag.Int("segments", 16, "connections per download")
 	background := flag.Bool("background", false, "start in the tray without opening the window")
+	devtools := flag.Bool("devtools", false, "let Edge DevTools attach to Velo's windows at http://localhost:9222 (for debugging)")
 	flag.Parse()
+	if *devtools || os.Getenv("VELO_DEVTOOLS") == "1" {
+		// WebView2 reads this when it starts, so every window gets it.
+		os.Setenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "--remote-debugging-port=9222")
+	}
 
 	if !singleInstance() {
 		// Already running: ask it to open its window (it may still be starting).

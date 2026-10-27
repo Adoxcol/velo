@@ -201,3 +201,26 @@ func TestDownloadReusesExistingFile(t *testing.T) {
 		t.Fatalf("expected path %s, got %s", dst, gotPath)
 	}
 }
+
+func TestConcurrentDownloadsBothVerify(t *testing.T) {
+	body := bytes.Repeat([]byte("velo"), 256<<10)
+	sum := sha256.Sum256(body)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeContent(w, r, "setup.exe", time.Time{}, bytes.NewReader(body))
+	}))
+	defer srv.Close()
+	dir := t.TempDir()
+	errs := make(chan error, 2)
+	for i := 0; i < 2; i++ {
+		go func() {
+			rel := &Release{Version: "9.9.9", URL: srv.URL, SHA256: hex.EncodeToString(sum[:])}
+			_, err := Download(context.Background(), srv.Client(), rel, dir)
+			errs <- err
+		}()
+	}
+	for i := 0; i < 2; i++ {
+		if err := <-errs; err != nil {
+			t.Fatal(err)
+		}
+	}
+}
