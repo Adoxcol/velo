@@ -32,6 +32,7 @@ func main() {
 
 	if !singleInstance() {
 		// Already running: ask it to open its window (it may still be starting).
+		allowAnyForeground()
 		for i := 0; i < 20; i++ {
 			if _, err := ipc.Call("show", "", nil); err == nil {
 				break

@@ -3,3 +3,5 @@
 package main
 
 func singleInstance() bool { return true }
+
+func allowAnyForeground() {}

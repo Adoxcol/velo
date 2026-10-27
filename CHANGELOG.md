@@ -2,6 +2,11 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.23 — 2026-10-27
+
+### Fixed
+- **Opening Velo while it is running brings its window to the front.** Clicking Velo's shortcut or Start menu entry when it was already running in the tray could leave the window hidden behind other windows.
+
 ## 0.8.22 — 2026-10-26
 
 ### Fixed
