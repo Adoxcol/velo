@@ -472,3 +472,33 @@ func TestBasicAuth(t *testing.T) {
 		t.Fatal("the login was sent to the other host")
 	}
 }
+
+// A file replaced on the server while paused (same size, new ETag) must not
+// be stitched into the old one: the resume fails instead.
+func TestResumeRejectsChangedFile(t *testing.T) {
+	data := randomData(t, 8<<20)
+	var etag atomic.Value
+	etag.Store(`"v1"`)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("ETag", etag.Load().(string))
+		http.ServeContent(&slowWriter{w, 512 << 10}, r, "file.bin", time.Time{}, bytes.NewReader(data))
+	}))
+	t.Cleanup(srv.Close)
+	dir := t.TempDir()
+	d := &Download{Req: Request{URL: srv.URL + "/file.bin"}}
+	ctx, cancel := context.WithCancel(context.Background())
+	time.AfterFunc(300*time.Millisecond, cancel)
+	if err := New(dir).Run(ctx, d); !errors.Is(err, context.Canceled) {
+		t.Fatalf("want paused, got %v", err)
+	}
+	etag.Store(`"v2"`)
+	paused := FindPaused(dir)
+	if len(paused) != 1 || paused[0].Validator != `"v1"` {
+		t.Fatalf("validator not saved: %+v", paused)
+	}
+	err := New(dir).Run(context.Background(), paused[0])
+	var se *StatusError
+	if !errors.As(err, &se) || se.Code != http.StatusPreconditionFailed {
+		t.Fatalf("want changed-file error, got %v", err)
+	}
+}

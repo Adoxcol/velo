@@ -113,6 +113,10 @@ type Download struct {
 	Status   string // queued, downloading, paused, done, error
 	Err      error
 	Verified bool // matched Req.Checksum
+	// Validator is the file's strong ETag or Last-Modified date from the
+	// first response. Every range request sends it as If-Range, so a file
+	// that changed on the server since is never stitched into the old one.
+	Validator string
 
 	mu     sync.Mutex
 	segs   []*Segment
@@ -239,14 +243,15 @@ func (d *Download) RemainingGaps() [][2]float64 {
 type state struct {
 	Req      Request    `json:"req"`
 	Total    int64      `json:"total"`
-	Segments []*Segment `json:"segments"`
+	Segments  []*Segment `json:"segments"`
+	Validator string     `json:"validator,omitempty"`
 }
 
 func statePath(p string) string { return p + ".part.json" }
 
 func (d *Download) saveState() error {
 	d.mu.Lock()
-	st := state{Req: d.Req, Total: d.Total}
+	st := state{Req: d.Req, Total: d.Total, Validator: d.Validator}
 	st.Req.Cookies, st.Req.Pass = "", "" // this file sits in the download folder: keep logins out of it
 	for _, s := range d.segs {
 		if s.Pos <= s.End {
@@ -277,7 +282,7 @@ func Load(stateFile string) (*Download, error) {
 		return nil, err
 	}
 	d := &Download{Req: st.Req, Total: st.Total, Ranged: true, Status: "paused",
-		Path: strings.TrimSuffix(stateFile, ".part.json"), segs: st.Segments}
+		Path: strings.TrimSuffix(stateFile, ".part.json"), segs: st.Segments, Validator: st.Validator}
 	if d.isStream() { // progress is recounted from <file>.parts when resumed
 		d.Ranged, d.segs = false, nil
 		return d, nil
@@ -567,6 +572,7 @@ func (e *Engine) run(ctx context.Context, d *Download) error {
 	}
 	d.mu.Lock()
 	d.Total, d.Ranged = total, ranged
+	d.Validator = validator(resp)
 	d.Path = uniquePath(dir, name)
 	d.mu.Unlock()
 	f, err := os.Create(d.Path + ".part")
@@ -904,6 +910,15 @@ func (e *Engine) segReq(ctx context.Context, d *Download) (*http.Request, bool, 
 	return req, true, err
 }
 
+// validator picks what If-Range can use: a strong ETag (weak ones aren't
+// allowed there), otherwise Last-Modified.
+func validator(resp *http.Response) string {
+	if et := resp.Header.Get("ETag"); et != "" && !strings.HasPrefix(et, "W/") {
+		return et
+	}
+	return resp.Header.Get("Last-Modified")
+}
+
 func hostOf(s string) string {
 	u, err := url.Parse(s)
 	if err != nil {
@@ -935,6 +950,9 @@ func (e *Engine) fetch(ctx context.Context, d *Download, f *os.File, s *Segment)
 			return err
 		}
 		req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", pos, end))
+		if d.Validator != "" {
+			req.Header.Set("If-Range", d.Validator)
+		}
 		resp, err := e.Client.Do(req)
 		if err != nil {
 			if ctx.Err() != nil {
@@ -953,6 +971,10 @@ func (e *Engine) fetch(ctx context.Context, d *Download, f *os.File, s *Segment)
 			d.direct.Store(nil)
 			attempt--
 			continue
+		}
+		if resp.StatusCode == http.StatusOK && d.Validator != "" {
+			resp.Body.Close()
+			return &StatusError{http.StatusPreconditionFailed, "the file changed on the server since the download started; download it again"}
 		}
 		if resp.StatusCode != http.StatusPartialContent {
 			resp.Body.Close()

@@ -10,7 +10,8 @@ Ticked items are done. Work goes roughly top to bottom.
   - [x] Checked: only Velo's extension can talk to Velo; cookies don't follow redirects to other sites; updates must match their SHA-256
 - [x] Automated releases on GitHub Actions: push a vX.Y.Z tag (.github/workflows/release.yml)
 - [ ] Code signing: reapply to SignPath Foundation once Velo has more stars and downloads
-- [ ] Publish on winget (manifests in packaging/winget)
+- [ ] Publish on winget (each release sends a pull request to microsoft/winget-pkgs; not merged yet)
+- [x] `veloctl` on Homebrew, Scoop, .deb and .rpm (0.8.4)
 - [ ] Updater checks the installer's signature too (needs code signing first)
 - [ ] Release builds stop allowing the dev extension ID once the store ID is in
 - [x] "Copy debug info" button for bug reports (links and your user folder are hidden)
@@ -22,7 +23,8 @@ Ticked items are done. Work goes roughly top to bottom.
 
 ## Speed and reliability
 - [x] Separate HTTP/1.1 connections (HTTP/2 capped GitHub at ~300 KB/s)
-- [x] 16 connections by default, more added automatically on slow servers
+- [x] 16 connections by default, more added automatically on slow servers (up to 32; stops adding when the server answers 429/503 and honours Retry-After)
+- [x] Resuming checks the file hasn't changed on the server (If-Range with its ETag or Last-Modified)
 - [x] Segments go straight to the redirect target
 - [x] Keep Windows awake while downloading
 - [x] Survive network drops: wait and resume by itself (5s, 10s, 20s, then every minute)
@@ -40,7 +42,7 @@ Ticked items are done. Work goes roughly top to bottom.
 
 ## Reach
 - [x] Firefox: add-on package (velo-firefox zip), native host registered for Firefox, tested end to end
-- [ ] Publish the Firefox add-on on addons.mozilla.org (needs your Mozilla account)
+- [x] Firefox add-on published on addons.mozilla.org (0.8.14)
 - [x] Translations: app, dialog, Velo Mini, tray, notifications and extension in বাংলা, Deutsch, Español, Français, हिन्दी, 日本語, Português (Brasil) and 简体中文 (0.4.0)
 - [ ] More languages (add tools/i18n/app/<code>.json and tools/i18n/ext/<code>.json, then node tools/i18n/build.js)
 - [x] Portable zip (settings in its own data folder, connects the browser when run)
