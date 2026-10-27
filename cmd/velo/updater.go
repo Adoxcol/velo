@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -18,8 +19,12 @@ import (
 
 var defaultUpdateClient = sync.OnceValue(func() *http.Client {
 	tr := http.DefaultTransport.(*http.Transport).Clone()
-	tr.ResponseHeaderTimeout = 15 * time.Second
-	tr.TLSHandshakeTimeout = 10 * time.Second
+	tr.DialContext = (&net.Dialer{
+		Timeout:   5 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}).DialContext
+	tr.TLSHandshakeTimeout = 5 * time.Second
+	tr.ResponseHeaderTimeout = 10 * time.Second
 	tr.MaxIdleConns = 10
 	tr.IdleConnTimeout = 90 * time.Second
 	return &http.Client{Transport: tr}

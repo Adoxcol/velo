@@ -388,7 +388,7 @@ func bind(w webview2.WebView, a *app, closed *atomic.Bool) {
 	w.Bind("appVersion", func() string { return version.Version })
 	bindWindowAsync(w, closed, "pendingReleaseNotes", func(_ any) (*releaseNotesView, error) { return a.pendingReleaseNotes() })
 	bindWindowAsync(w, closed, "dismissReleaseNotes", func(_ any) (bool, error) { return true, dismissReleaseNotes() })
-	w.Bind("updateInfo", func() updateInfo { return a.upd.info() })
+	bindWindowAsync(w, closed, "updateInfo", func(_ any) (updateInfo, error) { return a.upd.info(), nil })
 	w.Bind("debugInfo", func() string { return a.debugInfo() })
 	w.Bind("languages", func() map[string]any {
 		return map[string]any{"list": i18n.Languages, "current": a.lang()}
