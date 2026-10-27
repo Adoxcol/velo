@@ -2,6 +2,11 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.25 — 2026-10-27
+
+### Fixed
+- **Update checks keep working when GitHub's hourly limit is reached.** GitHub allows 60 anonymous checks an hour per internet connection, shared with other apps on it; when it refuses, Velo now finds the latest release from the GitHub releases page instead and still verifies the installer's checksum.
+
 ## 0.8.24 — 2026-10-27
 
 ### Fixed
