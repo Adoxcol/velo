@@ -96,6 +96,8 @@ async function load() {
   $("err").textContent = cur.exists ? "" : "The file was moved or deleted.";
   $("open").disabled = $("with").disabled = acting || !cur.exists;
   $("folder").disabled = acting;
+  const noFileMsg = !cur.exists ? "The file was moved or deleted" : "";
+  $("open").title = $("with").title = noFileMsg;
   const cat = cur.category || "Other";
   $("tile").className = "tile t-" + cat.replace(/\W/g, "");
   let inner = `<svg class="i" viewBox="0 0 24 24">${ICON[cat] || ICON.Other}</svg>`;
@@ -131,6 +133,8 @@ async function act(fn) {
     else {
       $("open").disabled = $("with").disabled = !cur?.exists;
       $("folder").disabled = false;
+      const noFileMsg = !cur?.exists ? "The file was moved or deleted" : "";
+      $("open").title = $("with").title = noFileMsg;
     }
   }
 }

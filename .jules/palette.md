@@ -12,3 +12,8 @@
 
 **Learning:** Native `<dialog>` elements in Velo require explicit `aria-labelledby` (pointing to the dialog title ID) or `aria-label` so screen readers announce dialog context upon opening. Additionally, generic text-only buttons like "Change" or "Reset" in location inputs need explicit `aria-label` attributes to clarify their action context.
 **Action:** Ensure every `<dialog>` element has `aria-labelledby` or `aria-label`, and add explicit `aria-label`s to generic context action buttons.
+
+## 2025-03-28 - Dynamic Confirmation States on Action Buttons
+
+**Learning:** When an action button transitions to a multi-step confirmation state (such as "Delete partial file?"), updating visible button text alone leaves screen readers and tooltip hovers uninformed of the destructive confirmation context.
+**Action:** Update both `aria-label` and `title` when entering a multi-step confirmation state on action buttons, and clear timer handles cleanly on subsequent clicks or timeouts.
