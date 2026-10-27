@@ -2,6 +2,14 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.24 — 2026-10-27
+
+### Fixed
+- **Updates no longer fail their checksum check when two update checks overlap.** An automatic check and **Check for updates** could download the installer into the same file at once and corrupt it.
+
+### New
+- **`--devtools`** starts Velo with Edge DevTools available on port 9222, for diagnosing problems in its windows.
+
 ## 0.8.23 — 2026-10-27
 
 ### Fixed
