@@ -2,6 +2,12 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.26 — 2026-10-27
+
+### Fixed
+- **Resuming never mixes two versions of a file.** Velo remembers the file's ETag or Last-Modified date when a download starts and only continues if the server still has the same file. If it was replaced while paused, even with the same size, Velo says so instead of joining old and new data.
+- Clearer button tooltips and accessibility labels for confirmations and disabled buttons.
+
 ## 0.8.25 — 2026-10-27
 
 ### Fixed
