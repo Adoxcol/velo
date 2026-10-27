@@ -84,7 +84,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&
 function size(n) { if (!(n > 0)) return "—"; const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0; while (n >= 1024 && i < 4) { n /= 1024; i++; } return n.toFixed(i && n < 100 ? 1 : 0) + " " + u[i]; }
 function dur(s) { if (!isFinite(s) || s <= 0) return "—"; s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return h ? `${h} h ${m} min` : m ? `${m} min ${x} s` : `${x} s`; }
 
-let iconFor = "", cancelArmed = false, gone = 0;
+let iconFor = "", cancelArmed = false, cancelTimer = null, gone = 0;
 async function tick() {
   const r = await progressInfo().catch(() => null);
   if (!r) { if (++gone > 2) closeProgress(); return; }   // removed elsewhere
@@ -159,9 +159,19 @@ $("cancel").onclick = async () => {
     cancelArmed = true;
     $("cancel").textContent = "Delete partial file?";
     $("cancel").className = "btn confirm";
-    setTimeout(() => { cancelArmed = false; $("cancel").textContent = "Cancel"; $("cancel").className = "btn danger"; }, 4000);
+    $("cancel").setAttribute("aria-label", "Delete partial file? Click again to confirm");
+    $("cancel").title = "Click again to delete the partial file";
+    clearTimeout(cancelTimer);
+    cancelTimer = setTimeout(() => {
+      cancelArmed = false;
+      $("cancel").textContent = "Cancel";
+      $("cancel").className = "btn danger";
+      $("cancel").removeAttribute("aria-label");
+      $("cancel").title = "";
+    }, 4000);
     return;
   }
+  clearTimeout(cancelTimer);
   await cancelDownload().catch(() => {});
   closeProgress();
 };
