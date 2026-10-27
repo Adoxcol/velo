@@ -590,6 +590,16 @@ func TestOpenFileErrorsOnMissing(t *testing.T) {
 	if err := a.openFile(9999, true); err == nil {
 		t.Fatal("expected error for non-existent download folder")
 	}
+
+	// Test registered download whose file on disk is missing
+	missingPath := filepath.Join(t.TempDir(), "nonexistent.zip")
+	it := a.register(&engine.Download{Path: missingPath, Status: "done"})
+	if err := a.openFile(it.d.ID, false); err == nil {
+		t.Fatal("expected error when opening missing download file")
+	}
+	if err := a.openFile(it.d.ID, true); err == nil {
+		t.Fatal("expected error when showing missing download file in folder")
+	}
 }
 
 func BenchmarkTakePending(b *testing.B) {

@@ -784,6 +784,13 @@ func (a *app) openFile(id int, folder bool) error {
 	if s, _ := it.d.State(); s != "done" {
 		p += ".part"
 	}
+	if p == "" {
+		return errors.New("file path is empty")
+	}
+	// Security: Verify that the target file/path exists on disk before launching.
+	if _, err := os.Stat(p); err != nil {
+		return fmt.Errorf("file does not exist: %w", err)
+	}
 	go func() {
 		if folder {
 			_ = openInFolder(p)
