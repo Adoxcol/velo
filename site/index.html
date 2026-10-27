@@ -157,6 +157,33 @@
   @media (prefers-reduced-motion: reduce) { .segs i::after { animation: none; } }
 
   /* ---------- sections ---------- */
+  /* comparison + benchmark */
+  .cmp-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+  table.cmp { width: 100%; border-collapse: collapse; font-size: 15px; min-width: 640px; }
+  .cmp th, .cmp td { padding: 13px 16px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .cmp tr:last-child td { border-bottom: 0; }
+  .cmp thead th { font-size: 13px; color: var(--muted); font-weight: 600; background: var(--bg-2); }
+  .cmp thead th.us, .cmp td.us { background: var(--soft); }
+  .cmp thead th.us { color: var(--primary); }
+  .cmp td:first-child { font-weight: 600; }
+  .cmp .y { color: var(--ok); font-weight: 600; }
+  .cmp .n { color: var(--faint); }
+  .cmp small { display: block; color: var(--muted); font-weight: 400; font-size: 13px; }
+  .cmp-note { color: var(--muted); font-size: 13.5px; margin: 14px 2px 0; }
+  .bench { margin-top: 64px; }
+  .bench h3 { font-size: 22px; margin: 0 0 6px; }
+  .bench > p { color: var(--muted); margin: 0 0 22px; }
+  .bench .cmp-note { margin-top: 22px; }
+  .bars { display: grid; gap: 14px; }
+  .bar-row { display: grid; grid-template-columns: 210px 1fr 92px; gap: 14px; align-items: center; font-size: 15px; }
+  .bar-row .lbl small { display: block; color: var(--muted); font-size: 12.5px; }
+  .bar-row .track { height: 14px; background: var(--track); border-radius: 99px; overflow: hidden; }
+  .bar-row .fill { height: 100%; border-radius: 99px; background: var(--faint); }
+  .bar-row.us .fill { background: linear-gradient(90deg, var(--primary), var(--primary-2)); }
+  .bar-row.us .lbl { font-weight: 700; }
+  .bar-row .val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .bar-row .val small { display: block; color: var(--muted); font-weight: 400; font-size: 12.5px; }
+  @media (max-width: 640px) { .bar-row { grid-template-columns: 1fr 80px; } .bar-row .track { grid-column: 1 / -1; grid-row: 2; } }
   section { padding: 104px 0; }
   section.alt { background: var(--bg-2); }
   .head { max-width: 640px; margin-bottom: 52px; }
@@ -367,6 +394,7 @@
       <a href="#features">Features</a>
       <a href="#browser">Browser</a>
       <a href="#cli">CLI</a>
+      <a href="#compare">Compare</a>
       <a href="#faq">FAQ</a>
       <a href="/changelog">Changelog</a>
       <a href="https://github.com/Adoxcol/velo">GitHub</a>
@@ -528,7 +556,47 @@ veloctl get "https://example.com/file.zip"</code></pre>
   </div>
 </section>
 
-<section id="browser" class="alt">
+<section id="compare" class="alt">
+  <div class="wrap">
+    <div class="head center">
+      <div class="eyebrow">Compare</div>
+      <h2>How Velo compares</h2>
+      <p class="sub">Velo next to the download managers people usually ask about.</p>
+    </div>
+    <div class="cmp-wrap">
+      <table class="cmp">
+        <thead><tr><th></th><th class="us">Velo</th><th>Internet Download Manager</th><th>Free Download Manager</th><th>aria2 / Motrix</th></tr></thead>
+        <tbody>
+          <tr><td>Price</td><td class="us"><span class="y">Free</span></td><td>Paid <small>30-day trial</small></td><td><span class="y">Free</span></td><td><span class="y">Free</span></td></tr>
+          <tr><td>Open source</td><td class="us"><span class="y">Yes</span> <small>MIT</small></td><td><span class="n">No</span></td><td><span class="n">No</span></td><td><span class="y">Yes</span> <small>GPL / MIT</small></td></tr>
+          <tr><td>Connections per download</td><td class="us"><span class="y">Up to 32</span> <small>added automatically while it helps</small></td><td><span class="y">Up to 32</span></td><td><span class="y">Several</span></td><td><span class="y">Up to 16</span> <small>fixed count</small></td></tr>
+          <tr><td>Pause and resume after a restart</td><td class="us"><span class="y">Yes</span></td><td><span class="y">Yes</span></td><td><span class="y">Yes</span></td><td><span class="y">Yes</span></td></tr>
+          <tr><td>Takes over browser downloads</td><td class="us"><span class="y">Yes</span> <small>Chrome, Edge, Brave, Firefox</small></td><td><span class="y">Yes</span></td><td><span class="y">Yes</span></td><td>Via add-ons</td></tr>
+          <tr><td>Saves streaming video (HLS / DASH)</td><td class="us"><span class="y">Yes</span></td><td><span class="y">Yes</span></td><td>Some sites</td><td><span class="n">No</span></td></tr>
+          <tr><td>Refresh an expired link and continue</td><td class="us"><span class="y">Yes</span></td><td><span class="y">Yes</span></td><td><span class="n">Not checked</span></td><td><span class="n">No</span></td></tr>
+          <tr><td>Queues and scheduler</td><td class="us"><span class="y">Yes</span></td><td><span class="y">Yes</span></td><td><span class="y">Yes</span></td><td>Basic</td></tr>
+          <tr><td>Command line</td><td class="us"><span class="y">Yes</span> <small>veloctl on Windows, macOS, Linux</small></td><td>Limited</td><td><span class="n">No</span></td><td><span class="y">Yes</span></td></tr>
+          <tr><td>Desktop app runs on</td><td class="us">Windows</td><td>Windows</td><td>Windows, macOS, Linux, Android</td><td>Windows, macOS, Linux</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="cmp-note">Other products' features are taken from what they publish, as of October 2026, and weren't all tested by us. Spot a mistake? <a href="https://github.com/Adoxcol/velo/issues">Tell us on GitHub</a>.</p>
+
+    <div class="bench">
+      <h3>Speed test</h3>
+      <p>The same 32 MB file from GitHub's download servers, three runs per tool, on one home connection (October 2026). Average speed:</p>
+      <div class="bars">
+        <div class="bar-row us"><div class="lbl">Velo <small>automatic connections</small></div><div class="track"><div class="fill" style="width:100%"></div></div><div class="val">6.4 MB/s<small>4.8 s</small></div></div>
+        <div class="bar-row"><div class="lbl">aria2 <small>16 connections</small></div><div class="track"><div class="fill" style="width:83%"></div></div><div class="val">5.3 MB/s<small>5.9 s</small></div></div>
+        <div class="bar-row"><div class="lbl">aria2 <small>1 connection</small></div><div class="track"><div class="fill" style="width:7%"></div></div><div class="val">0.45 MB/s<small>69 s</small></div></div>
+        <div class="bar-row"><div class="lbl">curl <small>1 connection, like a browser</small></div><div class="track"><div class="fill" style="width:7%"></div></div><div class="val">0.45 MB/s<small>69 s</small></div></div>
+      </div>
+      <p class="cmp-note">Results depend on the server and your connection; servers that limit each connection gain the most. Internet Download Manager and Free Download Manager can't be scripted, so they aren't in this test yet.</p>
+    </div>
+  </div>
+</section>
+
+<section id="browser">
   <div class="wrap">
     <div class="split">
       <div class="text">
