@@ -224,3 +224,40 @@ func TestConcurrentDownloadsBothVerify(t *testing.T) {
 		}
 	}
 }
+
+// When the API refuses the check (rate limit), the release is found from the
+// web page's redirect and verified with its .sha256 asset.
+func TestRateLimitedCheckFallsBackToWeb(t *testing.T) {
+	body := []byte("installer")
+	sum := sha256.Sum256(body)
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/latest":
+			http.Error(w, "rate limited", http.StatusForbidden)
+		case "/releases/latest":
+			http.Redirect(w, r, srv.URL+"/releases/tag/v9.9.9", http.StatusFound)
+		case "/releases/download/v9.9.9/Velo-Setup-9.9.9.exe":
+			w.Write(body)
+		case "/releases/download/v9.9.9/Velo-Setup-9.9.9.exe.sha256":
+			fmt.Fprintf(w, "%s *Velo-Setup-9.9.9.exe\n", hex.EncodeToString(sum[:]))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+	oldAPI, oldWeb := API, Web
+	API, Web = srv.URL+"/api/latest", srv.URL+"/releases"
+	t.Cleanup(func() { API, Web = oldAPI, oldWeb })
+
+	rel, err := Latest(context.Background(), srv.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rel.Version != "9.9.9" {
+		t.Fatalf("version %q", rel.Version)
+	}
+	if _, err := Download(context.Background(), srv.Client(), rel, t.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+}

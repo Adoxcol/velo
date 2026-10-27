@@ -27,6 +27,11 @@ import (
 // API is the "latest release" endpoint (changed in tests).
 var API = "https://api.github.com/repos/Adoxcol/velo/releases/latest"
 
+// Web is the release page used when the API refuses the check (changed in
+// tests). GitHub allows 60 anonymous API calls an hour per address, which
+// other apps on the same connection also use; the web pages have no such limit.
+var Web = "https://github.com/Adoxcol/velo/releases"
+
 // MaxSize is the largest installer accepted.
 const MaxSize = 300 << 20
 
@@ -71,6 +76,11 @@ func Latest(ctx context.Context, client *http.Client) (*Release, error) {
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, ErrNoRelease
 	}
+	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
+		if rel, err := latestFromWeb(ctx, client); err == nil {
+			return rel, nil
+		}
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("release check: %s", resp.Status)
 	}
@@ -105,6 +115,33 @@ func Latest(ctx context.Context, client *http.Client) (*Release, error) {
 		return nil, fmt.Errorf("release %s has no checksum for its installer", gr.Tag)
 	}
 	return rel, nil
+}
+
+// latestFromWeb finds the newest release from where github.com's "latest"
+// page redirects to. The installer's checksum comes from its .sha256 asset.
+func latestFromWeb(ctx context.Context, client *http.Client) (*Release, error) {
+	req, err := http.NewRequestWithContext(ctx, "HEAD", Web+"/latest", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "Velo-updater")
+	c := *client
+	c.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	resp.Body.Close()
+	_, tag, ok := strings.Cut(resp.Header.Get("Location"), "/releases/tag/")
+	if !ok {
+		return nil, ErrNoRelease
+	}
+	ver := strings.TrimPrefix(tag, "v")
+	if _, ok := parse(ver); !ok {
+		return nil, fmt.Errorf("release tag %q isn't a version", tag)
+	}
+	url := Web + "/download/" + tag + "/Velo-Setup-" + ver + ".exe"
+	return &Release{Version: ver, URL: url, SumURL: url + ".sha256", Page: Web + "/tag/" + tag}, nil
 }
 
 func fetchSum(ctx context.Context, client *http.Client, u string) (string, error) {
