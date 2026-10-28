@@ -173,8 +173,10 @@ func urlPathName(raw string) string {
 		u = u[i+3+slash:]
 	}
 	b := path.Base(u)
-	if unescaped, err := url.PathUnescape(b); err == nil {
-		b = unescaped
+	if strings.IndexByte(b, '%') != -1 {
+		if unescaped, err := url.PathUnescape(b); err == nil {
+			b = unescaped
+		}
 	}
 	if b == "/" || b == "." {
 		return ""

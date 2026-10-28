@@ -29,3 +29,7 @@
 ## 2026-04-07 - Pre-parse origin page host in batch link processing
 **Learning:** Calling `sameHost(u, b.Page)` inside the batch insertion loop in `addBatch` repeatedly parsed `b.Page` with `url.Parse` for every batch URL. Pre-parsing the host string `pageHost := hostOf(b.Page)` once outside the loop reduces `addBatch` execution time by ~43% (1.76 ms vs 3.13 ms per 500 items) and eliminates N redundant `url.Parse` heap allocations per batch.
 **Action:** Pre-parse invariant URL hostnames outside URL iteration loops when comparing domain/host equality across batch collections.
+
+## 2026-04-08 - Fast-path percent escape check before url.PathUnescape
+**Learning:** Calling `url.PathUnescape` on every extracted URL path base during row rendering and filename extraction executes unescaping logic and heap string formatting even when no percent escapes (`%XX`) are present in typical filenames. Fast-pathing with `strings.IndexByte(b, '%') != -1` skips unescape processing for standard filenames, improving `urlPathName` execution speed by ~23% (373.9 ns vs 486.2 ns per batch of 5 URLs).
+**Action:** Always check for `%` before calling `url.PathUnescape` or `url.QueryUnescape` on high-frequency URL path and query string processing paths.
