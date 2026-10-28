@@ -373,6 +373,7 @@ func TestRefreshLinkClearsLoginsOnHostChange(t *testing.T) {
 		Pass:    "secret",
 	})
 	a.pause(id)
+	waitFor(t, "pause", func() bool { return statusOf(a, id) == "paused" && !a.get(id).running })
 
 	// Refreshing to a different host must clear logins/cookies.
 	if err := a.refreshLink(id, "https://new-host.example.com/file.zip"); err != nil {
