@@ -241,8 +241,8 @@ func (d *Download) RemainingGaps() [][2]float64 {
 }
 
 type state struct {
-	Req      Request    `json:"req"`
-	Total    int64      `json:"total"`
+	Req       Request    `json:"req"`
+	Total     int64      `json:"total"`
 	Segments  []*Segment `json:"segments"`
 	Validator string     `json:"validator,omitempty"`
 }
@@ -360,7 +360,13 @@ func fileName(r Request, resp *http.Response) string {
 	}
 	if name == "" {
 		if u, err := url.Parse(resp.Request.URL.String()); err == nil {
-			name, _ = url.PathUnescape(path.Base(u.Path))
+			base := path.Base(u.Path)
+			if strings.IndexByte(base, '%') != -1 {
+				if unescaped, err := url.PathUnescape(base); err == nil {
+					base = unescaped
+				}
+			}
+			name = base
 		}
 	}
 	return safeName(name, "download")

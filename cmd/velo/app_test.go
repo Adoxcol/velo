@@ -245,6 +245,23 @@ func TestBatchCookiesStayOnSameSite(t *testing.T) {
 	}
 }
 
+func BenchmarkURLPathName(b *testing.B) {
+	urls := []string{
+		"https://example.com/downloads/file123.zip",
+		"https://example.com/downloads/file%20name.zip?key=val#tag",
+		"http://example.com:8080/path/to/doc.pdf",
+		"https://cdn.example.org/assets/image.png?v=1.0",
+		"https://example.com/archive.tar.gz",
+	}
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, u := range urls {
+			_ = urlPathName(u)
+		}
+	}
+}
+
 // A download that loses the network waits and resumes by itself; a missing
 // file fails straight away.
 func TestRetriesAfterNetworkDrop(t *testing.T) {
