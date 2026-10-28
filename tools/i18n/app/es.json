@@ -338,5 +338,15 @@
   "Se abre tras Iniciar descarga en el diálogo de descarga, con velocidad, tiempo restante, Pausa y Cancelar.",
   "{0} h {1} min",
   "{0} min {1} s",
-  "{0} s"
+  "{0} s",
+  "Apertura automática desactivada",
+  "No se pudo guardar: {0}",
+  "Enlaces exportados a {0}",
+  "Nueva URL de descarga",
+  "Cargando videos de la lista de reproducción…",
+  "No se encontraron enlaces web (http:// o https://)",
+  "Abrir al finalizar",
+  "Abrir al finalizar ✓",
+  "Se abrirá al finalizar",
+  "Lista de reproducción de YouTube · haz clic en Descargar para seleccionar videos de la lista"
 ]

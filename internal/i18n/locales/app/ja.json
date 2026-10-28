@@ -285,7 +285,7 @@
  "When a download finishes or fails.": "ダウンロードが完了または失敗したとき。",
  "When all downloads finish": "すべてのダウンロードが完了したとき",
  "When you click a download link, Velo takes over and asks where to save it. Turn off to start downloads straight away.": "ダウンロードリンクをクリックすると、Veloが引き継ぎ、保存先を確認します。オフにするとすぐにダウンロードを開始します。",
- "Where should downloads go?": "ダウンロードの保存先",
+ "Where should downloads go?": "ダウンロードの保存先は？",
  "Windows language": "Windowsの言語",
  "Windows setting": "Windowsの設定",
  "Windows setting uses the proxy from Windows Settings, like your browser.": "Windowsの設定では、ブラウザと同様にWindowsの設定のプロキシを使用します。",
@@ -338,5 +338,15 @@
  "Opens after Start download in the download dialog, with speed, time left, Pause and Cancel.": "ダウンロードダイアログで「ダウンロードを開始」を押した後に開き、速度、残り時間、一時停止、キャンセルを表示します。",
  "{0} h {1} min": "{0} 時間 {1} 分",
  "{0} min {1} s": "{0} 分 {1} 秒",
- "{0} s": "{0} 秒"
+ "{0} s": "{0} 秒",
+ "Auto-open turned off": "自動開くをオフにしました",
+ "Couldn't save: {0}": "保存できませんでした: {0}",
+ "Exported links to {0}": "{0} にリンクを出力しました",
+ "Fresh download URL": "新しいダウンロードURL",
+ "Loading playlist videos…": "プレイリストの動画を読み込み中…",
+ "No web links (http:// or https://) found": "Webリンク (http:// または https://) が見つかりませんでした",
+ "Open when finished": "完了時に開く",
+ "Open when finished ✓": "完了時に開く ✓",
+ "Will open when finished": "完了時に開きます",
+ "YouTube Playlist · click Download to select videos from the playlist": "YouTubeプレイリスト · ［ダウンロード］をクリックして動画を選択します"
 }

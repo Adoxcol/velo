@@ -338,5 +338,15 @@
  "Opens after Start download in the download dialog, with speed, time left, Pause and Cancel.": "在下载对话框中点击“开始下载”后打开，显示速度、剩余时间，并可暂停或取消。",
  "{0} h {1} min": "{0} 小时 {1} 分钟",
  "{0} min {1} s": "{0} 分 {1} 秒",
- "{0} s": "{0} 秒"
+ "{0} s": "{0} 秒",
+ "Auto-open turned off": "已关闭自动打开",
+ "Couldn't save: {0}": "无法保存：{0}",
+ "Exported links to {0}": "已导出链接至 {0}",
+ "Fresh download URL": "新的下载 URL",
+ "Loading playlist videos…": "正在加载播放列表视频…",
+ "No web links (http:// or https://) found": "未找到网页链接 (http:// 或 https://)",
+ "Open when finished": "完成后打开",
+ "Open when finished ✓": "完成后打开 ✓",
+ "Will open when finished": "将在完成后打开",
+ "YouTube Playlist · click Download to select videos from the playlist": "YouTube 播放列表 · 点击“下载”选择列表中的视频"
 }

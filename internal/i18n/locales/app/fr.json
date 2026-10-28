@@ -338,5 +338,15 @@
  "Opens after Start download in the download dialog, with speed, time left, Pause and Cancel.": "S'ouvre après « Démarrer le téléchargement » dans la fenêtre de téléchargement, avec vitesse, temps restant, Pause et Annuler.",
  "{0} h {1} min": "{0} h {1} min",
  "{0} min {1} s": "{0} min {1} s",
- "{0} s": "{0} s"
+ "{0} s": "{0} s",
+ "Auto-open turned off": "Ouverture automatique désactivée",
+ "Couldn't save: {0}": "Impossible de sauvegarder : {0}",
+ "Exported links to {0}": "Liens exportés vers {0}",
+ "Fresh download URL": "Nouvelle URL de téléchargement",
+ "Loading playlist videos…": "Chargement des vidéos de la playlist…",
+ "No web links (http:// or https://) found": "Aucun lien web (http:// ou https://) trouvé",
+ "Open when finished": "Ouvrir une fois terminé",
+ "Open when finished ✓": "Ouvrir une fois terminé ✓",
+ "Will open when finished": "S'ouvrira une fois terminé",
+ "YouTube Playlist · click Download to select videos from the playlist": "Playlist YouTube · cliquez sur Télécharger pour sélectionner les vidéos de la playlist"
 }

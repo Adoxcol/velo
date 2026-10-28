@@ -338,5 +338,15 @@
   "Abre depois de Iniciar download na janela de download, com velocidade, tempo restante, Pausar e Cancelar.",
   "{0} h {1} min",
   "{0} min {1} s",
-  "{0} s"
+  "{0} s",
+  "Abertura automática desativada",
+  "Não foi possível salvar: {0}",
+  "Links exportados para {0}",
+  "Novo URL de download",
+  "Carregando vídeos da playlist…",
+  "Nenhum link web (http:// ou https://) encontrado",
+  "Abrir ao concluir",
+  "Abrir ao concluir ✓",
+  "Será aberto ao concluir",
+  "Playlist do YouTube · clique em Baixar para selecionar vídeos da playlist"
 ]
