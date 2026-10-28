@@ -1424,6 +1424,7 @@ $("#obNext").onclick = async () => {
   clearInterval(obTimer);
   await save((s) => (s.onboarded = true));
   $("#onboard").close();
+  maybeShowNews();
 };
 $("#obBack").onclick = () => { if (obStep) { obStep--; obShow(); } };
 $("#onboard").addEventListener("cancel", (e) => e.preventDefault()); // finish it with the buttons
@@ -1518,14 +1519,22 @@ loadSettings().then(async () => {
   await openBatch();
   maybeShowNews();
 });
-setInterval(maybeShowNews, 1500);
 appVersion().then((v) => ($("#verText").textContent = v));
+let showingUpdate = false;
 async function showUpdate() {
-  const u = await updateInfo();
-  $("#updStatus").textContent = u.checking ? "Checking…" : (u.status || "Not checked yet.");
-  $("#updInstall").hidden = !u.ready;
-  if (u.ready) $("#updInstall").textContent = `Install ${u.available}`;
-  $("#updCheck").disabled = u.checking;
+  if (showingUpdate) return;
+  showingUpdate = true;
+  try {
+    const u = await updateInfo();
+    $("#updStatus").textContent = u.status || (u.checking ? "Checking…" : "Not checked yet.");
+    $("#updInstall").hidden = !u.ready;
+    if (u.ready) $("#updInstall").textContent = `Install ${u.available}`;
+    $("#updCheck").disabled = u.checking;
+  } catch (e) {
+    console.error("Update info:", e);
+  } finally {
+    showingUpdate = false;
+  }
 }
 $("#dbgCopy").onclick = async () => {
   try { await copyText(await debugInfo()); toast("Debug info copied"); }

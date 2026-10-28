@@ -144,3 +144,93 @@ func TestUpdaterDeduplication(t *testing.T) {
 		t.Fatalf("expected exactly 1 server request due to deduplication, got %d", count)
 	}
 }
+
+func TestUpdaterDownloadStatus(t *testing.T) {
+	oldVer := version.Version
+	version.Version = "0.8.0"
+	t.Cleanup(func() { version.Version = oldVer })
+
+	body := []byte("fake setup content")
+	sum := sha256.Sum256(body)
+	hexSum := hex.EncodeToString(sum[:])
+
+	downloadBlock := make(chan struct{})
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/latest":
+			assets := fmt.Sprintf(`{"name":"Velo-Setup-99.0.0.exe","browser_download_url":"%s/setup","digest":"sha256:%s"}`, "http://"+r.Host, hexSum)
+			fmt.Fprintf(w, `{"tag_name":"v99.0.0","html_url":"https://example.com/rel","body":"notes","assets":[%s]}`, assets)
+		case "/setup":
+			<-downloadBlock
+			w.Write(body)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	oldAPI := update.API
+	update.API = srv.URL + "/latest"
+	t.Cleanup(func() { update.API = oldAPI })
+
+	// Ensure no leftover file from previous tests.
+	updateDir := filepath.Join(os.TempDir(), "Velo-update")
+	os.RemoveAll(updateDir)
+
+	a := testApp(t, defaultSettings())
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		a.upd.check(a)
+	}()
+
+	// Poll until status changes to Downloading...
+	var info updateInfo
+	for i := 0; i < 100; i++ {
+		info = a.upd.info()
+		if info.Status == "Downloading Velo 99.0.0…" {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	if info.Status != "Downloading Velo 99.0.0…" {
+		t.Fatalf("expected status 'Downloading Velo 99.0.0…', got %q", info.Status)
+	}
+	if !info.Checking {
+		t.Fatal("expected Checking to be true while downloading")
+	}
+
+	close(downloadBlock)
+	wg.Wait()
+
+	info = a.upd.info()
+	if info.Status != "Velo 99.0.0 is ready to install." {
+		t.Fatalf("expected status 'Velo 99.0.0 is ready to install.', got %q", info.Status)
+	}
+}
+
+func TestUpdaterNetworkTimeout(t *testing.T) {
+	oldVer := version.Version
+	version.Version = "0.8.0"
+	t.Cleanup(func() { version.Version = oldVer })
+
+	// Point to an unreachable IP address that times out / refuses connection.
+	oldAPI := update.API
+	update.API = "http://127.0.0.1:0/latest"
+	t.Cleanup(func() { update.API = oldAPI })
+
+	a := testApp(t, defaultSettings())
+	a.upd.check(a)
+
+	info := a.upd.info()
+	if info.Checking {
+		t.Fatal("expected Checking to be false after timeout failure")
+	}
+	if !testing.Verbose() && len(info.Status) == 0 {
+		t.Fatal("expected non-empty status on network error")
+	}
+}

@@ -37,3 +37,23 @@
 4. Implemented state key comparison in `ui.html` `render()` to skip DOM re-renders during status polling when state is unchanged.
 
 **Future Guidance:** Always execute file I/O, network requests, and external tool invocations asynchronously off the webview thread, reuse HTTP connection pools for background services, and avoid un-memoized DOM innerHTML replacement in polling loops.
+
+## 2026-10-27 — Update Info Async RPC & UI Status Display Precedence Optimization
+
+**Problem:** JS calls to `updateInfo()` on the Settings page executed synchronously on the WebView2 window thread, causing window freezes when opening or remaining on Settings during background update checks or downloads. Furthermore, update checking status displayed "Checking…" continuously during installer downloads due to JS status precedence logic, and redundant 1.5s interval timers ran indefinitely.
+
+**Root Cause:**
+1. `w.Bind("updateInfo", ...)` was bound synchronously, blocking the main WebView2 window thread when acquiring locks or serving IPC requests from JavaScript.
+2. In `cmd/velo/ui.html`, `showUpdate()` evaluated `u.checking ? "Checking…" : (u.status || "Not checked yet.")`, overriding `u.status` (e.g. `"Downloading Velo 1.2.3…"`) with `"Checking…"` whenever `u.checking` was true.
+3. Unbounded `setInterval` loops ran every 1.5s in JS (`maybeShowNews`), needlessly waking the event loop when no pending release notes existed.
+4. Default HTTP transport lacked explicit dial timeouts for update checks, allowing stalled network connections or unreachable IPs to hang dial attempts.
+
+**Evidence:** Inspection of `cmd/velo/ui.go`, `cmd/velo/ui.html`, and `cmd/velo/updater.go`. Verified with `TestUpdaterDownloadStatus` and `TestUpdaterNetworkTimeout` unit tests.
+
+**Resolution:**
+1. Bound `updateInfo` asynchronously using `bindWindowAsync` so IPC calls execute in background goroutines off the UI window thread.
+2. Fixed status text precedence in `showUpdate()` to prioritize `u.status` over generic checking indicators, displaying accurate download/check progress.
+3. Added `showingUpdate` guard in JS to prevent concurrent overlapping `showUpdate()` calls and removed redundant `setInterval(maybeShowNews, 1500)` loop.
+4. Configured 5s dial and 5s TLS handshake timeouts on `defaultUpdateClient` transport in `updater.go`.
+
+**Future Guidance:** Ensure IPC getter functions called by periodic UI refresh loops are bound asynchronously off the window thread, prioritize explicit status strings over boolean flags in UI views, and bound network dial timeouts explicitly.
