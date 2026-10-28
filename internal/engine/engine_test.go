@@ -502,3 +502,53 @@ func TestResumeRejectsChangedFile(t *testing.T) {
 		t.Fatalf("want changed-file error, got %v", err)
 	}
 }
+
+// A server that allows only a few connections and refuses the rest with 403
+// (not 429) still completes: refused extra connections are dropped.
+func TestRefusedExtraConnectionsAreDropped(t *testing.T) {
+	data := randomData(t, 8<<20)
+	var live atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Range") != "bytes=0-0" {
+			if n := live.Add(1); n > 2 {
+				live.Add(-1)
+				http.Error(w, "too many connections", http.StatusForbidden)
+				return
+			}
+			defer live.Add(-1)
+		}
+		http.ServeContent(&slowWriter{w, 2 << 20}, r, "file.bin", time.Time{}, bytes.NewReader(data))
+	}))
+	t.Cleanup(srv.Close)
+	d := &Download{Req: Request{URL: srv.URL + "/file.bin"}}
+	if err := New(t.TempDir()).Run(context.Background(), d); err != nil {
+		t.Fatal(err)
+	}
+	check(t, d, data)
+}
+
+// A server that stops answering partway through fails the download quickly,
+// with a message that says what happened.
+func TestServerGoneFailsQuickly(t *testing.T) {
+	data := randomData(t, 8<<20)
+	srv := httptest.NewUnstartedServer(nil)
+	srv.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeContent(&slowWriter{w, 512 << 10}, r, "file.bin", time.Time{}, bytes.NewReader(data))
+	})
+	srv.Start()
+	time.AfterFunc(500*time.Millisecond, func() { srv.Listener.Close(); srv.CloseClientConnections() })
+	t.Cleanup(srv.Close)
+	d := &Download{Req: Request{URL: srv.URL + "/file.bin"}}
+	start := time.Now()
+	err := New(t.TempDir()).Run(context.Background(), d)
+	t.Logf("after %v: %v", time.Since(start).Round(time.Millisecond), err)
+	if err == nil {
+		t.Fatal("want an error")
+	}
+	if !Transient(err) {
+		t.Errorf("a lost server should be retried later: %v", err)
+	}
+	if time.Since(start) > 30*time.Second {
+		t.Errorf("took %v to give up", time.Since(start))
+	}
+}

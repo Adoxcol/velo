@@ -30,6 +30,9 @@ var defaultUpdateClient = sync.OnceValue(func() *http.Client {
 	return &http.Client{Transport: tr}
 })
 
+// updateDir is where verified installers are saved (changed in tests).
+var updateDir = func() string { return filepath.Join(os.TempDir(), "Velo-update") }
+
 // updater keeps Velo up to date from GitHub Releases. With auto-update on
 // (the default) a verified update is installed when Velo is idle: nothing
 // downloading and the window closed. Otherwise the user is notified.
@@ -122,7 +125,7 @@ func (u *updater) check(a *app) {
 	u.mu.Unlock()
 	if !ready {
 		u.set("Downloading Velo " + rel.Version + "…")
-		path, err := update.Download(ctx, client, rel, filepath.Join(os.TempDir(), "Velo-update"))
+		path, err := update.Download(ctx, client, rel, updateDir())
 		if err != nil {
 			u.set("Update download failed: " + err.Error())
 			log.Printf("update download: %v", err)

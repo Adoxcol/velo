@@ -761,6 +761,16 @@ func (r *segmentRunner) worker(s *Segment) {
 				continue
 			}
 		}
+		if err != nil && refused(err) && r.d.active.Load() > 1 {
+			// The server won't take another connection (some answer 403 or
+			// drop it instead of 429). Others are working: give this part
+			// back to them and stop adding connections.
+			r.sawBusy.Store(true)
+			r.d.mu.Lock()
+			s.owned = false
+			r.d.mu.Unlock()
+			return
+		}
 		if err != nil {
 			r.errOnce.Do(func() {
 				r.err = err
@@ -931,6 +941,7 @@ func hostOf(s string) string {
 // when another connection steals part of it). Retries resume from s.Pos.
 func (e *Engine) fetch(ctx context.Context, d *Download, f *os.File, s *Segment) error {
 	var lastErr error
+	unreached := 0
 	for attempt := 0; attempt < 5; attempt++ {
 		if attempt > 0 {
 			select {
@@ -959,6 +970,11 @@ func (e *Engine) fetch(ctx context.Context, d *Download, f *os.File, s *Segment)
 				return ctx.Err()
 			}
 			lastErr = err
+			if unreachable(err) {
+				if unreached++; unreached >= 2 {
+					break // every try waits for a timeout; Velo resumes later instead
+				}
+			}
 			continue
 		}
 		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusServiceUnavailable {
@@ -993,7 +1009,36 @@ func (e *Engine) fetch(ctx context.Context, d *Download, f *os.File, s *Segment)
 			lastErr = io.ErrUnexpectedEOF
 		}
 	}
+	if unreachable(lastErr) {
+		return &unreachableError{lastErr}
+	}
 	return fmt.Errorf("segment failed: %w", lastErr)
+}
+
+// unreachable reports whether err means no connection could be made at all
+// (refused, timed out connecting, no route): the server is down, or is
+// blocking this computer.
+func unreachable(err error) bool {
+	var op *net.OpError
+	return errors.As(err, &op) && op.Op == "dial"
+}
+
+type unreachableError struct{ err error }
+
+func (e *unreachableError) Error() string {
+	return "can't connect to the server; it may be down or blocking this download"
+}
+func (e *unreachableError) Unwrap() error { return e.err }
+
+// refused reports whether a connection's error means the server turned that
+// connection away, rather than something wrong with the file or the disk.
+func refused(err error) bool {
+	var se *StatusError
+	if errors.As(err, &se) {
+		return se.Code == http.StatusForbidden || se.Code == http.StatusTooManyRequests || se.Code >= 500
+	}
+	var ne net.Error
+	return errors.As(err, &ne) || errors.Is(err, ErrStalled) || errors.Is(err, io.ErrUnexpectedEOF)
 }
 
 // copySeg writes body into f at s.Pos, stopping at s.End. Writes happen

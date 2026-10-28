@@ -46,7 +46,7 @@ func TestUpdaterCheckLifecycle(t *testing.T) {
 	a := testApp(t, defaultSettings())
 
 	// Create pre-existing update file so update.Download is instant.
-	updateDir := filepath.Join(os.TempDir(), "Velo-update")
+	updateDir := tempUpdateDir(t)
 	os.MkdirAll(updateDir, 0o700)
 	setupFile := filepath.Join(updateDir, "Velo-Setup-99.0.0.exe")
 	os.WriteFile(setupFile, body, 0o600)
@@ -175,7 +175,7 @@ func TestUpdaterDownloadStatus(t *testing.T) {
 	t.Cleanup(func() { update.API = oldAPI })
 
 	// Ensure no leftover file from previous tests.
-	updateDir := filepath.Join(os.TempDir(), "Velo-update")
+	updateDir := tempUpdateDir(t)
 	os.RemoveAll(updateDir)
 
 	a := testApp(t, defaultSettings())
@@ -233,4 +233,13 @@ func TestUpdaterNetworkTimeout(t *testing.T) {
 	if !testing.Verbose() && len(info.Status) == 0 {
 		t.Fatal("expected non-empty status on network error")
 	}
+}
+
+// tempUpdateDir points the updater at a throwaway folder for this test.
+func tempUpdateDir(t *testing.T) string {
+	dir := t.TempDir()
+	old := updateDir
+	updateDir = func() string { return dir }
+	t.Cleanup(func() { updateDir = old })
+	return dir
 }

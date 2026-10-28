@@ -20,3 +20,4 @@ Thumbs.db
 /brag-output*/
 
 .vercel
+tools/bench/.cache/
