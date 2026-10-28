@@ -90,8 +90,18 @@
 </header>
 <main>
   <div class="wrap">
+    <article class="rel" id="v0.8.27">
+      <div class="ver"><b>0.8.27</b><span>2026-10-28</span><br><span class="latest">Latest</span></div>
+      <div class="body">
+        <h3>Fixed</h3>
+        <ul>
+          <li><b>Servers that allow only a few connections no longer fail the download.</b> When a server refuses an extra connection (with 403, an error or by dropping it), Velo hands that part to the connections that are working and stops adding more.</li>
+          <li><b>A server that can&#39;t be reached fails in seconds, not minutes,</b> with the message &#34;can&#39;t connect to the server; it may be down or blocking this download&#34;. Velo still resumes by itself once the server is back.</li>
+        </ul>
+      </div>
+    </article>
     <article class="rel" id="v0.8.26">
-      <div class="ver"><b>0.8.26</b><span>2026-10-27</span><br><span class="latest">Latest</span></div>
+      <div class="ver"><b>0.8.26</b><span>2026-10-27</span></div>
       <div class="body">
         <h3>Fixed</h3>
         <ul>
