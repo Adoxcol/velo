@@ -7,6 +7,8 @@ All notable changes to Velo. The newest version is first.
 ### Fixed
 - **Servers that allow only a few connections no longer fail the download.** When a server refuses an extra connection (with 403, an error or by dropping it), Velo hands that part to the connections that are working and stops adding more.
 - **A server that can't be reached fails in seconds, not minutes,** with the message "can't connect to the server; it may be down or blocking this download". Velo still resumes by itself once the server is back.
+- HLS video downloads no longer send a site's cookies to other hosts the stream points to.
+- Checking for updates no longer holds up the Settings window.
 
 ## 0.8.26 — 2026-10-27
 

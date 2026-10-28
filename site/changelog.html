@@ -97,6 +97,8 @@
         <ul>
           <li><b>Servers that allow only a few connections no longer fail the download.</b> When a server refuses an extra connection (with 403, an error or by dropping it), Velo hands that part to the connections that are working and stops adding more.</li>
           <li><b>A server that can&#39;t be reached fails in seconds, not minutes,</b> with the message &#34;can&#39;t connect to the server; it may be down or blocking this download&#34;. Velo still resumes by itself once the server is back.</li>
+          <li>HLS video downloads no longer send a site&#39;s cookies to other hosts the stream points to.</li>
+          <li>Checking for updates no longer holds up the Settings window.</li>
         </ul>
       </div>
     </article>
