@@ -1187,7 +1187,7 @@ function renderQueues() {
   if ($("#qList").contains(document.activeElement) && document.activeElement.dataset.qf === "name") return; // don't redraw while renaming
   $("#qList").innerHTML = qs.length ? qs.map((q, i) => `<div class="panel qpanel" data-qi="${i}">
     <div class="qtop"><input data-qf="name" value="${escapeHtml(q.name)}" maxlength="40" title="Rename" aria-label="Queue name">
-      <button class="iconbtn" data-qdel="${i}" title="Delete queue" aria-label="Delete queue">${icon(I.trash)}</button></div>
+      <button class="iconbtn" data-qdel="${i}" title="Delete ${escapeHtml(q.name)} queue" aria-label="Delete ${escapeHtml(q.name)} queue">${icon(I.trash)}</button></div>
     <div class="opt"><div><div class="t">Only download during set hours</div></div>
       <span class="switch"><input type="checkbox" data-qf="enabled"${q.schedule.enabled ? " checked" : ""} aria-label="Only download during set hours for ${escapeHtml(q.name)}"><i></i></span></div>
     <div style="padding-top:12px" class="${q.schedule.enabled ? "" : "off"}">
@@ -1389,7 +1389,7 @@ const OB = [
     <li>${icon(I.media)}<span data-i18n-html><b>Grabs videos</b> (HLS and DASH streams) from pages you visit.</span></li>
     <li>${icon(I.clock)}<span data-i18n-html><b>Queues and schedules</b> downloads, with a speed limit when you need it.</span></li></ul></div>`,
   () => `<div class="ob"><h2>Where should downloads go?</h2><p>You can change this any time in Settings.</p>
-    <div class="field"><span class="lbl">Download folder</span><div class="inp ro"><input id="obDir" readonly value="${escapeHtml(S.downloadDir || defaultFolder)}"><button class="link" id="obDirChange">Change</button></div></div>
+    <div class="field"><span class="lbl">Download folder</span><div class="inp ro"><input id="obDir" readonly value="${escapeHtml(S.downloadDir || defaultFolder)}" aria-label="Download folder"><button class="link" id="obDirChange" aria-label="Change download folder">Change</button></div></div>
     <div class="opt"><div><div class="t">Sort into folders by type</div><div class="d">Video, Music, Images, Documents, E-books, Compressed, Disk images, Programs, Torrents and Fonts.</div></div><span class="switch"><input type="checkbox" id="obSort"${S.sortByType ? " checked" : ""} aria-label="Sort into folders by type"><i></i></span></div>
     <div class="opt"><div><div class="t">Start Velo with Windows</div><div class="d">So browser downloads and schedules always work.</div></div><span class="switch"><input type="checkbox" id="obAuto"${S.autostart ? " checked" : ""} aria-label="Start Velo with Windows"><i></i></span></div></div>`,
   async () => `<div class="ob"><h2>Connect your browser</h2><p>The Velo extension sends downloads and videos from your browser to Velo.</p>
