@@ -57,3 +57,23 @@
 4. Configured 5s dial and 5s TLS handshake timeouts on `defaultUpdateClient` transport in `updater.go`.
 
 **Future Guidance:** Ensure IPC getter functions called by periodic UI refresh loops are bound asynchronously off the window thread, prioritize explicit status strings over boolean flags in UI views, and bound network dial timeouts explicitly.
+
+## 2026-10-28 — Segment Write Lock Decoupling, Async RPCs & Toast Notification Responsiveness
+
+**Problem:** Download engine experienced mutex lock contention across parallel connection workers during segment file writes. In the UI, periodic status queries (`appStatus`, `debugInfo`, `refreshLink`, `pauseAll`, `resumeAll`, `clearDone`) and system notification calls ran synchronously on main threads, risking UI freezes.
+
+**Root Cause:**
+1. `copySeg` in `internal/engine/engine.go` held `d.mu.Lock()` during synchronous `f.WriteAt` disk writes, causing high mutex contention across 16+ segment workers.
+2. `toast.Show` called `Shell_NotifyIconW` directly on the caller thread, blocking background goroutines if Windows Shell RPCs stalled.
+3. Webview bindings `appStatus`, `debugInfo`, `refreshLink`, `pauseAll`, `resumeAll`, and `clearDone` were bound synchronously with `w.Bind`, executing on the main WebView2 window message thread.
+4. `saveHistory()` used `json.MarshalIndent`, allocating extra formatting buffers, and `restore()` ran glob searches on non-existent directories.
+
+**Evidence:** Benchmarks, code analysis in `internal/engine/engine.go`, `cmd/velo/notify.go`, `cmd/velo/ui.go`, `cmd/velo/history.go`, and `cmd/velo/ui.html`.
+
+**Resolution:**
+1. Decoupled file I/O from `d.mu` in `copySeg` by reserving range offsets under lock and running `f.WriteAt` un-locked with error rollback.
+2. Dispatched `Shell_NotifyIconW` balloon creation asynchronously on a background goroutine in `toast.Show`.
+3. Converted `appStatus`, `debugInfo`, `refreshLink`, `pauseAll`, `resumeAll`, and `clearDone` to `bindWindowAsync`.
+4. Replaced `json.MarshalIndent` with `json.Marshal` in `saveHistory()` and guarded `restore()` directory scanning with `os.Stat`.
+
+**Future Guidance:** Always reserve offset ranges under lock and perform file I/O outside mutex locks; wrap Windows Shell notification RPCs in async goroutines, and bind periodic UI RPC handlers using `bindWindowAsync`.

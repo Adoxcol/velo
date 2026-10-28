@@ -373,6 +373,30 @@ func (p *probeArgs) UnmarshalJSON(b []byte) error {
 	return json.Unmarshal(b, (*alias)(p))
 }
 
+type refreshLinkArgs struct {
+	ID  int    `json:"id"`
+	URL string `json:"url"`
+}
+
+func (r *refreshLinkArgs) UnmarshalJSON(b []byte) error {
+	var arr []any
+	if err := json.Unmarshal(b, &arr); err == nil {
+		if len(arr) > 0 {
+			if id, ok := arr[0].(float64); ok {
+				r.ID = int(id)
+			}
+		}
+		if len(arr) > 1 {
+			if u, ok := arr[1].(string); ok {
+				r.URL = u
+			}
+		}
+		return nil
+	}
+	type alias refreshLinkArgs
+	return json.Unmarshal(b, (*alias)(r))
+}
+
 func bind(w webview2.WebView, a *app, closed *atomic.Bool) {
 	bindWindowAsync(w, closed, "probe", func(p probeArgs) (engine.Info, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -389,13 +413,13 @@ func bind(w webview2.WebView, a *app, closed *atomic.Bool) {
 	bindWindowAsync(w, closed, "pendingReleaseNotes", func(_ any) (*releaseNotesView, error) { return a.pendingReleaseNotes() })
 	bindWindowAsync(w, closed, "dismissReleaseNotes", func(_ any) (bool, error) { return true, dismissReleaseNotes() })
 	bindWindowAsync(w, closed, "updateInfo", func(_ any) (updateInfo, error) { return a.upd.info(), nil })
-	w.Bind("debugInfo", func() string { return a.debugInfo() })
+	bindWindowAsync(w, closed, "debugInfo", func(_ any) (string, error) { return a.debugInfo(), nil })
 	w.Bind("languages", func() map[string]any {
 		return map[string]any{"list": i18n.Languages, "current": a.lang()}
 	})
 	w.Bind("setQueue", func(id int, q string) error { return a.setQueue(id, q) })
 	w.Bind("reorder", func(id int, how string) error { return a.reorder(id, how) })
-	w.Bind("refreshLink", func(id int, u string) error { return a.refreshLink(id, u) })
+	bindWindowAsync(w, closed, "refreshLink", func(r refreshLinkArgs) (bool, error) { return true, a.refreshLink(r.ID, r.URL) })
 	w.Bind("checkUpdate", func() { go a.upd.check(a) })
 	bindWindowAsync(w, closed, "installUpdate", func(_ any) (bool, error) { return true, a.upd.install(a) })
 	w.Bind("copyText", func(t string) error { return setClipboardText(t) })
@@ -404,7 +428,7 @@ func bind(w webview2.WebView, a *app, closed *atomic.Bool) {
 		return strings.TrimSpace(t)
 	})
 	w.Bind("connections", func() int { return a.eng.SegmentsDefault() })
-	w.Bind("appStatus", func() status { return a.status() })
+	bindWindowAsync(w, closed, "appStatus", func(_ any) (status, error) { return a.status(), nil })
 	w.Bind("getSettings", func() Settings { return a.getSettings() })
 	bindWindowAsync(w, closed, "setSettings", func(s Settings) (bool, error) { return true, a.setSettings(s) })
 	w.Bind("setSpeedLimit", func(kb int) error { return a.setSpeedLimit(kb) })
@@ -452,9 +476,9 @@ func bind(w webview2.WebView, a *app, closed *atomic.Bool) {
 	w.Bind("openFirefoxStore", func() error {
 		return exec.Command("rundll32", "url.dll,FileProtocolHandler", hostreg.FirefoxStoreURL).Start()
 	})
-	w.Bind("pauseAll", func() { a.all("pause") })
-	w.Bind("clearDone", func() int { return a.clearDone() })
-	w.Bind("resumeAll", func() { a.all("resume") })
+	bindWindowAsync(w, closed, "pauseAll", func(_ any) (bool, error) { a.all("pause"); return true, nil })
+	bindWindowAsync(w, closed, "clearDone", func(_ any) (int, error) { return a.clearDone(), nil })
+	bindWindowAsync(w, closed, "resumeAll", func(_ any) (bool, error) { a.all("resume"); return true, nil })
 	w.Bind("downloadDir", func() string { return a.eng.Dir() })
 	w.Bind("defaultDir", func() string { return a.defaultDir })
 	bindWindowAsync(w, closed, "itemPreview", func(id int) (thumbResult, error) { return a.itemPreview(id), nil })

@@ -647,6 +647,7 @@ function go(p) {
   });
   $$(".page").forEach((s) => s.classList.toggle("on", s.dataset.page === p));
   if (p === "settings" || p === "scheduler") loadSettings();
+  if (p === "settings") showUpdate();
   if (p === "extension") extStatusHTML().then((h) => ($("#extStatus").innerHTML = h));
   render();
 }
@@ -1520,16 +1521,20 @@ loadSettings().then(async () => {
   maybeShowNews();
 });
 appVersion().then((v) => ($("#verText").textContent = v));
-let showingUpdate = false;
+let showingUpdate = false, lastUpdCheckBusy = false;
 async function showUpdate() {
   if (showingUpdate) return;
   showingUpdate = true;
   try {
     const u = await updateInfo();
-    $("#updStatus").textContent = u.status || (u.checking ? "Checking…" : "Not checked yet.");
-    $("#updInstall").hidden = !u.ready;
-    if (u.ready) $("#updInstall").textContent = `Install ${u.available}`;
-    $("#updCheck").disabled = u.checking;
+    if (u) {
+      $("#updStatus").textContent = u.status || (u.checking ? "Checking…" : "Not checked yet.");
+      $("#updInstall").hidden = !u.ready;
+      if (u.ready) $("#updInstall").textContent = `Install ${u.available}`;
+      $("#updCheck").disabled = u.checking;
+      lastUpdCheckBusy = u.checking;
+    }
+    return u;
   } catch (e) {
     console.error("Update info:", e);
   } finally {
@@ -1543,11 +1548,12 @@ $("#dbgCopy").onclick = async () => {
 $("#updCheck").onclick = async () => {
   $("#updStatus").textContent = "Checking…";
   $("#updCheck").disabled = true;
+  lastUpdCheckBusy = true;
   await checkUpdate();
   showUpdate();
 };
 $("#updInstall").onclick = () => act(installUpdate);
-setInterval(() => { if (page === "settings") showUpdate(); }, 1500);
+setInterval(() => { if (page === "settings" || lastUpdCheckBusy) showUpdate(); }, 1500);
 refresh();
 setInterval(refresh, 1000);
 </script>
