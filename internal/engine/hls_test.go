@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -125,6 +126,70 @@ func TestHLSFragmentedMP4(t *testing.T) {
 	got, _ := os.ReadFile(d.Path)
 	if filepath.Base(d.Path) != "clip.mp4" || !bytes.HasPrefix(got, []byte("/high/init.mp4;")) {
 		t.Fatalf("want clip.mp4 starting with the init segment, got %s", filepath.Base(d.Path))
+	}
+}
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+func TestHLSClearsCredentialsOnCrossHost(t *testing.T) {
+	t.Setenv("PATH", "")
+	var srv2GotCookie, srv2GotAuth string
+	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/index.m3u8" {
+			fmt.Fprint(w, "#EXTM3U\n#EXTINF:4,\nseg0.ts\n#EXT-X-ENDLIST\n")
+			return
+		}
+		srv2GotCookie = r.Header.Get("Cookie")
+		srv2GotAuth = r.Header.Get("Authorization")
+		fmt.Fprint(w, "segment-data")
+	}))
+	t.Cleanup(srv2.Close)
+
+	srv1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/master.m3u8" {
+			fmt.Fprintf(w, "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=500000\nhttp://cdn.otherdomain.com/index.m3u8\n")
+			return
+		}
+	}))
+	t.Cleanup(srv1.Close)
+
+	srv1URL, _ := url.Parse(srv1.URL)
+	srv2URL, _ := url.Parse(srv2.URL)
+
+	eng := New(t.TempDir())
+	eng.Client.Transport = roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+		r := req.Clone(req.Context())
+		if req.URL.Host == "master.example.com" {
+			r.URL.Scheme = srv1URL.Scheme
+			r.URL.Host = srv1URL.Host
+		} else if req.URL.Host == "cdn.otherdomain.com" {
+			r.URL.Scheme = srv2URL.Scheme
+			r.URL.Host = srv2URL.Host
+		}
+		return http.DefaultTransport.RoundTrip(r)
+	})
+
+	d := &Download{Req: Request{
+		URL:     "http://master.example.com/master.m3u8",
+		Kind:    "hls",
+		Title:   "crosshost",
+		Cookies: "session=secret123",
+		User:    "alice",
+		Pass:    "secretpass",
+	}}
+	if err := eng.Run(context.Background(), d); err != nil {
+		t.Fatal(err)
+	}
+
+	if srv2GotCookie != "" {
+		t.Fatalf("cross-host request to srv2 received Cookie header: %q", srv2GotCookie)
+	}
+	if srv2GotAuth != "" {
+		t.Fatalf("cross-host request to srv2 received Authorization header: %q", srv2GotAuth)
 	}
 }
 
