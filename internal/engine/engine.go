@@ -241,8 +241,8 @@ func (d *Download) RemainingGaps() [][2]float64 {
 }
 
 type state struct {
-	Req      Request    `json:"req"`
-	Total    int64      `json:"total"`
+	Req       Request    `json:"req"`
+	Total     int64      `json:"total"`
 	Segments  []*Segment `json:"segments"`
 	Validator string     `json:"validator,omitempty"`
 }
