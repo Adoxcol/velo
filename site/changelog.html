@@ -90,8 +90,21 @@
 </header>
 <main>
   <div class="wrap">
+    <article class="rel" id="v0.8.28">
+      <div class="ver"><b>0.8.28</b><span>2026-10-28</span><br><span class="latest">Latest</span></div>
+      <div class="body">
+        <h3>Fixed</h3>
+        <ul>
+          <li><b>No more PDFs (or other files) that won&#39;t open because they are really a web page.</b> When a link has expired or needs you to sign in, many sites send a web page instead of the file. Velo used to save that page under the file&#39;s name; now it stops and says &#34;the server sent a web page instead of the file&#34;, so you can download it again from your browser.</li>
+          <li><b>The same goes for error messages that aren&#39;t web pages:</b> an XML or JSON error (such as Amazon S3&#39;s &#34;AccessDenied&#34; for an expired link), or an error page the server labelled as an ordinary file. Velo checks that PDFs, ZIPs and Office files, programs, installers, images, archives and videos start the way those files do, and says so instead of saving a broken file.</li>
+          <li>Missing and untranslated text in the interface filled in for all languages (#69).</li>
+          <li>Labels for screen readers on the first-run folder controls and on custom queues&#39; delete buttons (#66).</li>
+          <li>Slightly faster handling of file names from download links (#67).</li>
+        </ul>
+      </div>
+    </article>
     <article class="rel" id="v0.8.27">
-      <div class="ver"><b>0.8.27</b><span>2026-10-28</span><br><span class="latest">Latest</span></div>
+      <div class="ver"><b>0.8.27</b><span>2026-10-28</span></div>
       <div class="body">
         <h3>Fixed</h3>
         <ul>

@@ -6,6 +6,7 @@ All notable changes to Velo. The newest version is first.
 
 ### Fixed
 - **No more PDFs (or other files) that won't open because they are really a web page.** When a link has expired or needs you to sign in, many sites send a web page instead of the file. Velo used to save that page under the file's name; now it stops and says "the server sent a web page instead of the file", so you can download it again from your browser.
+- **The same goes for error messages that aren't web pages:** an XML or JSON error (such as Amazon S3's "AccessDenied" for an expired link), or an error page the server labelled as an ordinary file. Velo checks that PDFs, ZIPs and Office files, programs, installers, images, archives and videos start the way those files do, and says so instead of saving a broken file.
 - Missing and untranslated text in the interface filled in for all languages (#69).
 - Labels for screen readers on the first-run folder controls and on custom queues' delete buttons (#66).
 - Slightly faster handling of file names from download links (#67).

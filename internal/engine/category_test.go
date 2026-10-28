@@ -20,6 +20,7 @@ func TestCategoryOf(t *testing.T) {
 
 func TestSortByType(t *testing.T) {
 	data := randomData(t, 1<<20)
+	copy(data, "PK") // looks like a zip
 	srv, _ := testServer(t, data, 0, 0)
 	dir := t.TempDir()
 	e := New(dir)
@@ -86,6 +87,7 @@ func TestDownloadable(t *testing.T) {
 
 func TestProbeAndOverrides(t *testing.T) {
 	data := randomData(t, 3<<20)
+	copy(data, "%PDF") // looks like a PDF
 	srv, _ := testServer(t, data, 0, 0)
 	e := New(t.TempDir())
 	info, err := e.Probe(context.Background(), Request{URL: srv.URL + "/report.pdf"})

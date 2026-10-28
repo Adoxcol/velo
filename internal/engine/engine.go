@@ -14,6 +14,7 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -372,22 +373,83 @@ func fileName(r Request, resp *http.Response) string {
 	return safeName(name, "download")
 }
 
-// webPageInstead reports whether the server answered with an HTML page (a
-// sign-in or error page, an expired link) for a file whose name says it is
-// something else, such as a PDF. Saving it would leave a file nothing can open.
+// webPageInstead reports whether the server answered with a web page or an
+// error message (a sign-in page, an expired link, S3's XML "AccessDenied")
+// for a file whose name says it is something else, such as a PDF. Saving it
+// would leave a file nothing can open.
 func webPageInstead(resp *http.Response, name string) bool {
 	mt, _, _ := mime.ParseMediaType(resp.Header.Get("Content-Type"))
-	if mt != "text/html" && mt != "application/xhtml+xml" {
-		return false
+	ext := strings.ToLower(path.Ext(name))
+	switch mt {
+	case "text/html", "application/xhtml+xml":
+		switch ext {
+		case "", ".htm", ".html", ".xhtml", ".shtml", ".php", ".asp", ".aspx", ".jsp", ".cgi", ".txt":
+			return false
+		}
+		return true
+	case "application/xml", "text/xml", "application/json", "text/json":
+		_, binary := signatures[ext]
+		return binary || isVideo(ext)
 	}
-	switch strings.ToLower(path.Ext(name)) {
-	case "", ".htm", ".html", ".xhtml", ".shtml", ".php", ".asp", ".aspx", ".jsp", ".cgi", ".txt":
-		return false
-	}
-	return true
+	return false
 }
 
-var reservedNames =regexp.MustCompile(`(?i)^(con|prn|aux|nul|com[0-9¹²³]|lpt[0-9¹²³])(\.|$)`)
+// signatures are how common file types start, keyed by extension. A file
+// that starts differently is an error page the server mislabelled.
+var signatures = map[string]string{
+	".pdf": "%PDF",
+	".zip": "PK", ".docx": "PK", ".xlsx": "PK", ".pptx": "PK", ".jar": "PK", ".apk": "PK", ".epub": "PK", ".odt": "PK",
+	".exe": "MZ", ".dll": "MZ",
+	".msi": "\xd0\xcf\x11\xe0",
+	".png": "\x89PNG",
+	".jpg": "\xff\xd8\xff", ".jpeg": "\xff\xd8\xff",
+	".gif": "GIF8",
+	".7z":  "7z\xbc\xaf",
+	".rar": "Rar!",
+	".gz":  "\x1f\x8b", ".tgz": "\x1f\x8b",
+	".mkv": "\x1a\x45\xdf\xa3", ".webm": "\x1a\x45\xdf\xa3",
+}
+
+func isVideo(ext string) bool {
+	return ext == ".mp4" || ext == ".m4a" || ext == ".m4v" || ext == ".mov"
+}
+
+// wrongContent reports whether the file at p doesn't start the way files
+// named like name do. PDFs may have a little junk before %PDF; MP4 and MOV
+// files start with a 4-byte size and a box name such as "ftyp".
+func wrongContent(p, name string) bool {
+	ext := strings.ToLower(path.Ext(name))
+	sig, ok := signatures[ext]
+	if !ok && !isVideo(ext) {
+		return false
+	}
+	f, err := os.Open(p)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+	head := make([]byte, 1024)
+	n, _ := io.ReadFull(f, head)
+	head = head[:n]
+	switch {
+	case n == 0:
+		return false
+	case isVideo(ext):
+		if n < 8 {
+			return true
+		}
+		switch string(head[4:8]) {
+		case "ftyp", "moov", "mdat", "free", "skip", "wide", "styp", "moof", "pnot":
+			return false
+		}
+		return true
+	case ext == ".pdf":
+		return !bytes.Contains(head, []byte(sig))
+	}
+	return !bytes.HasPrefix(head, []byte(sig))
+}
+
+var reservedNames = regexp.MustCompile(`(?i)^(con|prn|aux|nul|com[0-9¹²³]|lpt[0-9¹²³])(\.|$)`)
 
 // safeName makes name (from a web server, so untrusted) a plain file name
 // inside the download folder: no path separators or "..", no Windows device
@@ -645,6 +707,10 @@ func (e *Engine) finish(d *Download, f *os.File, err error) error {
 		return err
 	}
 	os.Remove(statePath(d.Path))
+	if wrongContent(d.Path+".part", d.Path) {
+		os.Remove(d.Path + ".part")
+		return &StatusError{http.StatusUnsupportedMediaType, "the server sent something other than the file (probably an error page); the link may have expired or need you to sign in, so download it again from your browser"}
+	}
 	return os.Rename(d.Path+".part", d.Path)
 }
 

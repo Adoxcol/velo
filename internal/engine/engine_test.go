@@ -525,6 +525,39 @@ func TestWebPageInsteadOfFileFails(t *testing.T) {
 	}
 }
 
+// Error replies that aren't labelled as web pages are caught too: S3's XML
+// error, and an error page sent as a generic binary file.
+func TestErrorReplyInsteadOfFileFails(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/s3.zip":
+			w.Header().Set("Content-Type", "application/xml")
+			w.Write([]byte("<Error><Code>AccessDenied</Code></Error>"))
+		case "/real.zip":
+			w.Header().Set("Content-Type", "application/octet-stream")
+			w.Write([]byte("PK\x03\x04 rest of the zip"))
+		default:
+			w.Header().Set("Content-Type", "application/octet-stream")
+			w.Write([]byte("Access denied"))
+		}
+	}))
+	t.Cleanup(srv.Close)
+	dir := t.TempDir()
+	for _, name := range []string{"s3.zip", "report.pdf", "setup.exe", "clip.mp4"} {
+		err := New(dir).Run(context.Background(), &Download{Req: Request{URL: srv.URL + "/" + name}})
+		var se *StatusError
+		if !errors.As(err, &se) || se.Code != http.StatusUnsupportedMediaType {
+			t.Fatalf("%s: want error, got %v", name, err)
+		}
+	}
+	if left, _ := os.ReadDir(dir); len(left) != 0 {
+		t.Fatalf("left files behind: %v", left)
+	}
+	if err := New(dir).Run(context.Background(), &Download{Req: Request{URL: srv.URL + "/real.zip"}}); err != nil {
+		t.Fatalf("real zip: %v", err)
+	}
+}
+
 // A server that allows only a few connections and refuses the rest with 403
 // (not 429) still completes: refused extra connections are dropped.
 func TestRefusedExtraConnectionsAreDropped(t *testing.T) {
