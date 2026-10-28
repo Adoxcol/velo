@@ -865,7 +865,7 @@ function openMenu(anchor, r) {
     if (k === "openOnDone") toggleOpenOnDone(r.id).then((on) => { toast(on ? "Will open when finished" : "Auto-open turned off"); refresh(); }, (err) => toast(String(err), true));
     if (k === "folder") act(showInFolder, r.id);
     if (k === "copy") { copyText(r.url).then(() => toast("Link copied"), () => toast("Couldn't copy", true)); }
-    if (k === "export") { exportLinks([]).then((p) => p && toast("Exported links to " + p.split(/[\\/]/).pop()), (err) => toast(String(err), true)); }
+    if (k === "export") { exportLinks([]).then((p) => p && toast(`Exported links to ${p.split(/[\\/]/).pop()}`), (err) => toast(String(err), true)); }
     if (k === "pause") act(pause, r.id);
     if (k === "resume") act(resume, r.id);
     if (k === "remove") act(remove, r.id);
@@ -1499,7 +1499,7 @@ async function closeNews() {
   try {
     await dismissReleaseNotes();
     $("#newsDlg").close();
-  } catch (e) { toast("Couldn't save: " + e, true); }
+  } catch (e) { toast(`Couldn't save: ${e}`, true); }
 }
 $("#newsDone").onclick = closeNews;
 $("#newsDlg").addEventListener("cancel", (e) => { e.preventDefault(); closeNews(); });

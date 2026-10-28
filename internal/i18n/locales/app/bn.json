@@ -338,5 +338,15 @@
  "Opens after Start download in the download dialog, with speed, time left, Pause and Cancel.": "ডাউনলোড ডায়ালগে ডাউনলোড শুরু করলে খোলে — গতি, বাকি সময়, বিরতি ও বাতিলসহ।",
  "{0} h {1} min": "{0} ঘণ্টা {1} মিনিট",
  "{0} min {1} s": "{0} মিনিট {1} সেকেন্ড",
- "{0} s": "{0} সেকেন্ড"
+ "{0} s": "{0} সেকেন্ড",
+ "Auto-open turned off": "স্বয়ংক্রিয় খোলা বন্ধ করা হয়েছে",
+ "Couldn't save: {0}": "সংরক্ষণ করা যায়নি: {0}",
+ "Exported links to {0}": "{0} এ লিংক এক্সপোর্ট করা হয়েছে",
+ "Fresh download URL": "নতুন ডাউনলোড ইউআরএল",
+ "Loading playlist videos…": "প্লেলিস্টের ভিডিও লোড হচ্ছে…",
+ "No web links (http:// or https://) found": "কোনো ওয়েব লিংক (http:// বা https://) পাওয়া যায়নি",
+ "Open when finished": "শেষ হলে খুলুন",
+ "Open when finished ✓": "শেষ হলে খুলুন ✓",
+ "Will open when finished": "শেষ হলে খোলা হবে",
+ "YouTube Playlist · click Download to select videos from the playlist": "ইউটিউব প্লেলিস্ট · প্লেলিস্ট থেকে ভিডিও নির্বাচন করতে ডাউনলোডে ক্লিক করুন"
 }

@@ -338,5 +338,15 @@
   "Öffnet sich nach „Download starten“ im Download-Dialog, mit Geschwindigkeit, Restzeit, Pause und Abbrechen.",
   "{0} Std. {1} Min.",
   "{0} Min. {1} s",
-  "{0} s"
+  "{0} s",
+  "Automatisches Öffnen ausgeschaltet",
+  "Konnte nicht gespeichert werden: {0}",
+  "Links nach {0} exportiert",
+  "Neuer Download-URL",
+  "Playlist-Videos werden geladen…",
+  "Keine Weblinks (http:// oder https://) gefunden",
+  "Nach Fertigstellung öffnen",
+  "Nach Fertigstellung öffnen ✓",
+  "Wird nach Fertigstellung geöffnet",
+  "YouTube-Playlist · Klicken Sie auf Herunterladen, um Videos aus der Playlist auszuwählen"
 ]
