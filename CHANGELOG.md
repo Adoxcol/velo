@@ -2,6 +2,14 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.28 — 2026-10-28
+
+### Fixed
+- **No more PDFs (or other files) that won't open because they are really a web page.** When a link has expired or needs you to sign in, many sites send a web page instead of the file. Velo used to save that page under the file's name; now it stops and says "the server sent a web page instead of the file", so you can download it again from your browser.
+- Missing and untranslated text in the interface filled in for all languages (#69).
+- Labels for screen readers on the first-run folder controls and on custom queues' delete buttons (#66).
+- Slightly faster handling of file names from download links (#67).
+
 ## 0.8.27 — 2026-10-28
 
 ### Fixed

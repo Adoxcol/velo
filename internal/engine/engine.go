@@ -372,7 +372,22 @@ func fileName(r Request, resp *http.Response) string {
 	return safeName(name, "download")
 }
 
-var reservedNames = regexp.MustCompile(`(?i)^(con|prn|aux|nul|com[0-9¹²³]|lpt[0-9¹²³])(\.|$)`)
+// webPageInstead reports whether the server answered with an HTML page (a
+// sign-in or error page, an expired link) for a file whose name says it is
+// something else, such as a PDF. Saving it would leave a file nothing can open.
+func webPageInstead(resp *http.Response, name string) bool {
+	mt, _, _ := mime.ParseMediaType(resp.Header.Get("Content-Type"))
+	if mt != "text/html" && mt != "application/xhtml+xml" {
+		return false
+	}
+	switch strings.ToLower(path.Ext(name)) {
+	case "", ".htm", ".html", ".xhtml", ".shtml", ".php", ".asp", ".aspx", ".jsp", ".cgi", ".txt":
+		return false
+	}
+	return true
+}
+
+var reservedNames =regexp.MustCompile(`(?i)^(con|prn|aux|nul|com[0-9¹²³]|lpt[0-9¹²³])(\.|$)`)
 
 // safeName makes name (from a web server, so untrusted) a plain file name
 // inside the download folder: no path separators or "..", no Windows device
@@ -567,6 +582,10 @@ func (e *Engine) run(ctx context.Context, d *Download) error {
 		d.direct.Store(&u)
 	}
 	name := fileName(d.Req, resp)
+	if webPageInstead(resp, name) {
+		resp.Body.Close()
+		return &StatusError{http.StatusUnsupportedMediaType, "the server sent a web page instead of the file; the link may have expired or need you to sign in, so download it again from your browser"}
+	}
 	dir := e.targetDir(d.Req, name)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		resp.Body.Close()

@@ -503,6 +503,28 @@ func TestResumeRejectsChangedFile(t *testing.T) {
 	}
 }
 
+// A sign-in page served for a PDF link isn't saved as the PDF; a real page is.
+func TestWebPageInsteadOfFileFails(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte("<html>please sign in</html>"))
+	}))
+	t.Cleanup(srv.Close)
+	dir := t.TempDir()
+	err := New(dir).Run(context.Background(), &Download{Req: Request{URL: srv.URL + "/report.pdf"}})
+	var se *StatusError
+	if !errors.As(err, &se) || se.Code != http.StatusUnsupportedMediaType || Transient(err) {
+		t.Fatalf("want web-page error, got %v", err)
+	}
+	if left, _ := os.ReadDir(dir); len(left) != 0 {
+		t.Fatalf("left files behind: %v", left)
+	}
+	d := &Download{Req: Request{URL: srv.URL + "/page.html"}}
+	if err := New(dir).Run(context.Background(), d); err != nil {
+		t.Fatalf("html page: %v", err)
+	}
+}
+
 // A server that allows only a few connections and refuses the rest with 403
 // (not 429) still completes: refused extra connections are dropped.
 func TestRefusedExtraConnectionsAreDropped(t *testing.T) {
