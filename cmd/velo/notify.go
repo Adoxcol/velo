@@ -163,45 +163,47 @@ func (n *notifier) Show(title, body string, onClick func()) {
 	if n == nil || n.hwnd == 0 {
 		return
 	}
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	nid := notifyIconData{HWnd: n.hwnd, UID: 1, UCallbackMessage: wmNotify, HIcon: n.icon}
-	nid.CbSize = uint32(unsafe.Sizeof(nid))
-	copyUTF16(nid.SzTip[:], "Velo")
-	if !n.shown {
-		nid.UFlags = nifMessage | nifIcon | nifTip
-		if r, _, err := pShellNotifyIconW.Call(nimAdd, uintptr(unsafe.Pointer(&nid))); r == 0 {
-			log.Printf("notification icon: %v", err)
-			return
-		}
-		n.shown = true
-	}
-	nid.UFlags = nifInfo | nifIcon | nifTip | nifMessage
-	nid.DwInfoFlags = niifUser | niifLargeIcon // our icon is 32x32
-	nid.HBalloonIcon = n.icon
-	copyUTF16(nid.SzInfoTitle[:], title)
-	copyUTF16(nid.SzInfo[:], body)
-	if r, _, err := pShellNotifyIconW.Call(nimModify, uintptr(unsafe.Pointer(&nid))); r == 0 {
-		// Fall back to the standard info icon if a custom balloon icon is refused.
-		nid.DwInfoFlags, nid.HBalloonIcon = niifInfo, 0
-		if r, _, err2 := pShellNotifyIconW.Call(nimModify, uintptr(unsafe.Pointer(&nid))); r == 0 {
-			log.Printf("notification failed: %v / %v", err, err2)
-		} else {
-			log.Printf("notification shown with the standard icon (custom icon: %v)", err)
-		}
-	}
-	n.onClick = onClick
-	n.gen++
-	gen := n.gen
-	// Remove the helper icon once the notification has had time to be seen
-	// (clicks from the Action Center after that are ignored).
-	time.AfterFunc(20*time.Second, func() {
+	go func() {
 		n.mu.Lock()
 		defer n.mu.Unlock()
-		if n.gen == gen {
-			n.remove()
+		nid := notifyIconData{HWnd: n.hwnd, UID: 1, UCallbackMessage: wmNotify, HIcon: n.icon}
+		nid.CbSize = uint32(unsafe.Sizeof(nid))
+		copyUTF16(nid.SzTip[:], "Velo")
+		if !n.shown {
+			nid.UFlags = nifMessage | nifIcon | nifTip
+			if r, _, err := pShellNotifyIconW.Call(nimAdd, uintptr(unsafe.Pointer(&nid))); r == 0 {
+				log.Printf("notification icon: %v", err)
+				return
+			}
+			n.shown = true
 		}
-	})
+		nid.UFlags = nifInfo | nifIcon | nifTip | nifMessage
+		nid.DwInfoFlags = niifUser | niifLargeIcon // our icon is 32x32
+		nid.HBalloonIcon = n.icon
+		copyUTF16(nid.SzInfoTitle[:], title)
+		copyUTF16(nid.SzInfo[:], body)
+		if r, _, err := pShellNotifyIconW.Call(nimModify, uintptr(unsafe.Pointer(&nid))); r == 0 {
+			// Fall back to the standard info icon if a custom balloon icon is refused.
+			nid.DwInfoFlags, nid.HBalloonIcon = niifInfo, 0
+			if r, _, err2 := pShellNotifyIconW.Call(nimModify, uintptr(unsafe.Pointer(&nid))); r == 0 {
+				log.Printf("notification failed: %v / %v", err, err2)
+			} else {
+				log.Printf("notification shown with the standard icon (custom icon: %v)", err)
+			}
+		}
+		n.onClick = onClick
+		n.gen++
+		gen := n.gen
+		// Remove the helper icon once the notification has had time to be seen
+		// (clicks from the Action Center after that are ignored).
+		time.AfterFunc(20*time.Second, func() {
+			n.mu.Lock()
+			defer n.mu.Unlock()
+			if n.gen == gen {
+				n.remove()
+			}
+		})
+	}()
 }
 
 // remove deletes the helper tray icon; n.mu must be held.

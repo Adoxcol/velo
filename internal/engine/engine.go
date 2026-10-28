@@ -1132,9 +1132,9 @@ func refused(err error) bool {
 	return errors.As(err, &ne) || errors.Is(err, ErrStalled) || errors.Is(err, io.ErrUnexpectedEOF)
 }
 
-// copySeg writes body into f at s.Pos, stopping at s.End. Writes happen
-// under d.mu so a saved state never claims bytes that aren't on disk and a
-// concurrent steal can't move End below data being written.
+// copySeg writes body into f at s.Pos, stopping at s.End. Range reservation
+// occurs under d.mu while file I/O runs un-locked so concurrent segment
+// connections don't block each other during disk writes.
 func (d *Download) copySeg(ctx context.Context, lim *Limiter, f *os.File, s *Segment, body io.Reader) (bool, error) {
 	buf := make([]byte, 64<<10)
 	for {
@@ -1148,16 +1148,19 @@ func (d *Download) copySeg(ctx context.Context, lim *Limiter, f *os.File, s *Seg
 				d.mu.Unlock()
 				return true, nil
 			}
-			if left := s.End - s.Pos + 1; int64(n) > left {
+			pos := s.Pos
+			if left := s.End - pos + 1; int64(n) > left {
 				n = int(left)
 			}
-			_, werr := f.WriteAt(buf[:n], s.Pos)
-			if werr == nil {
-				s.Pos += int64(n)
-			}
+			s.Pos += int64(n)
 			done := s.Pos > s.End
 			d.mu.Unlock()
+
+			_, werr := f.WriteAt(buf[:n], pos)
 			if werr != nil {
+				d.mu.Lock()
+				s.Pos -= int64(n)
+				d.mu.Unlock()
 				return false, werr
 			}
 			d.Done.Add(int64(n))

@@ -87,7 +87,7 @@ func (a *app) saveHistory() {
 	a.lastSnap = snap
 	a.mu.Unlock()
 
-	b, err := json.MarshalIndent(snap, "", " ")
+	b, err := json.Marshal(snap)
 	if err != nil {
 		return
 	}
@@ -139,14 +139,19 @@ func (a *app) restore() {
 	seenDir := map[string]bool{}
 	skip := map[string]bool{}
 	for _, d := range dirs {
+		if d == "" {
+			continue
+		}
 		key := strings.ToLower(filepath.Clean(d))
 		if seenDir[key] {
 			continue
 		}
 		seenDir[key] = true
-		for _, p := range engine.FindPaused(d) {
-			paused = append(paused, p)
-			skip[p.Path] = true
+		if fi, err := os.Stat(d); err == nil && fi.IsDir() {
+			for _, p := range engine.FindPaused(d) {
+				paused = append(paused, p)
+				skip[p.Path] = true
+			}
 		}
 	}
 	a.loadHistory(entries, skip)
