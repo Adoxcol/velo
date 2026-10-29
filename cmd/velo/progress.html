@@ -66,10 +66,10 @@
   <div class="state" id="state" role="status" aria-live="polite"></div>
 </div>
 <div class="foot">
-  <button class="main" id="openMain">Open Velo</button>
-  <button class="btn" id="hide">Hide</button>
-  <button class="btn" id="pause">Pause</button>
-  <button class="btn danger" id="cancel">Cancel</button>
+  <button class="main" id="openMain" title="Open Velo main window" aria-label="Open Velo main window">Open Velo</button>
+  <button class="btn" id="hide" title="Hide progress window" aria-label="Hide progress window">Hide</button>
+  <button class="btn" id="pause" title="Pause download" aria-label="Pause download">Pause</button>
+  <button class="btn danger" id="cancel" title="Cancel download" aria-label="Cancel download">Cancel</button>
 </div>
 
 <script>
@@ -144,7 +144,11 @@ async function tick() {
   else if (r.status === "queued") st.textContent = "Waiting in the queue";
   else st.textContent = "Starting…";
   const pausable = r.status === "downloading" || r.status === "queued";
-  $("pause").textContent = pausable ? "Pause" : (r.status === "error" ? "Retry" : "Resume");
+  const pauseText = pausable ? "Pause" : (r.status === "error" ? "Retry" : "Resume");
+  $("pause").textContent = pauseText;
+  const pauseLabel = pauseText + " download";
+  $("pause").title = pauseLabel;
+  $("pause").setAttribute("aria-label", pauseLabel);
   $("pause").hidden = r.status === "verifying";
   $("pause").className = "btn" + (pausable ? "" : " primary");
   $("pause").dataset.mode = pausable ? "pause" : "resume";
@@ -166,8 +170,8 @@ $("cancel").onclick = async () => {
       cancelArmed = false;
       $("cancel").textContent = "Cancel";
       $("cancel").className = "btn danger";
-      $("cancel").removeAttribute("aria-label");
-      $("cancel").title = "";
+      $("cancel").setAttribute("aria-label", "Cancel download");
+      $("cancel").title = "Cancel download";
     }, 4000);
     return;
   }
