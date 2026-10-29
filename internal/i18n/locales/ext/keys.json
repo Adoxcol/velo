@@ -57,5 +57,16 @@
   "Video file",
   "Video stream",
   "{0} options",
-  "Velo: {0}"
+  "Velo: {0}",
+  "Audio only (MP3)",
+  "Best audio + video",
+  "Best quality",
+  "Full HD",
+  "MP3 audio",
+  "MP4 video",
+  "Video + audio",
+  "Video · 1080p",
+  "Video · 480p",
+  "Video · 720p",
+  "Video · {0}p"
 ]

@@ -57,5 +57,16 @@
  "Video file": "ভিডিও ফাইল",
  "Video stream": "ভিডিও স্ট্রিম",
  "{0} options": "{0}টি বিকল্প",
- "Velo: {0}": "Velo: {0}"
+ "Velo: {0}": "Velo: {0}",
+ "Audio only (MP3)": "শুধু অডিও (MP3)",
+ "Best audio + video": "সেরা অডিও + ভিডিও",
+ "Best quality": "সেরা গুণমান",
+ "Full HD": "ফুল এইচডি",
+ "MP3 audio": "MP3 অডিও",
+ "MP4 video": "MP4 ভিডিও",
+ "Video + audio": "ভিডিও + অডিও",
+ "Video · 1080p": "ভিডিও · 1080p",
+ "Video · 480p": "ভিডিও · 480p",
+ "Video · 720p": "ভিডিও · 720p",
+ "Video · {0}p": "ভিডিও · {0}p"
 }

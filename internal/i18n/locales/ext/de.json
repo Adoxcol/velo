@@ -57,5 +57,16 @@
  "Video file": "Videodatei",
  "Video stream": "Videostream",
  "{0} options": "{0} Optionen",
- "Velo: {0}": "Velo: {0}"
+ "Velo: {0}": "Velo: {0}",
+ "Audio only (MP3)": "Nur Audio (MP3)",
+ "Best audio + video": "Beste Audio- + Videoqualität",
+ "Best quality": "Beste Qualität",
+ "Full HD": "Full HD",
+ "MP3 audio": "MP3-Audio",
+ "MP4 video": "MP4-Video",
+ "Video + audio": "Video + Audio",
+ "Video · 1080p": "Video · 1080p",
+ "Video · 480p": "Video · 480p",
+ "Video · 720p": "Video · 720p",
+ "Video · {0}p": "Video · {0}p"
 }

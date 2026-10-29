@@ -57,5 +57,16 @@
  "Arquivo de vídeo",
  "Vídeo em streaming",
  "{0} opções",
- "Velo: {0}"
+ "Velo: {0}",
+ "Apenas áudio (MP3)",
+ "Melhor áudio + vídeo",
+ "Melhor qualidade",
+ "Full HD",
+ "Áudio MP3",
+ "Vídeo MP4",
+ "Vídeo + áudio",
+ "Vídeo · 1080p",
+ "Vídeo · 480p",
+ "Vídeo · 720p",
+ "Vídeo · {0}p"
 ]
