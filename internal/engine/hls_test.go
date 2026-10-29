@@ -240,6 +240,57 @@ func BenchmarkConcat(b *testing.B) {
 	}
 }
 
+func TestAttrs(t *testing.T) {
+	tests := []struct {
+		input string
+		want  map[string]string
+	}{
+		{
+			input: `#EXT-X-STREAM-INF:BANDWIDTH=3000000,RESOLUTION=1920x1080,CODECS="avc1.64002a,mp4a.40.2"`,
+			want: map[string]string{
+				"BANDWIDTH":  "3000000",
+				"RESOLUTION": "1920x1080",
+				"CODECS":     "avc1.64002a,mp4a.40.2",
+			},
+		},
+		{
+			input: `#EXT-X-KEY:METHOD=AES-128,URI="https://example.com/key.bin",IV=0x1234567890abcdef`,
+			want: map[string]string{
+				"METHOD": "AES-128",
+				"URI":    "https://example.com/key.bin",
+				"IV":     "0x1234567890abcdef",
+			},
+		},
+		{
+			input: `#EXT-X-MAP:URI="init.mp4"`,
+			want: map[string]string{
+				"URI": "init.mp4",
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		got := attrs(tc.input)
+		if len(got) != len(tc.want) {
+			t.Errorf("attrs(%q) returned %d items, want %d", tc.input, len(got), len(tc.want))
+		}
+		for k, v := range tc.want {
+			if got[k] != v {
+				t.Errorf("attrs(%q)[%q] = %q, want %q", tc.input, k, got[k], v)
+			}
+		}
+	}
+}
+
+func BenchmarkAttrs(b *testing.B) {
+	line := `#EXT-X-STREAM-INF:BANDWIDTH=3000000,RESOLUTION=1920x1080,CODECS="avc1.64002a,mp4a.40.2"`
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = attrs(line)
+	}
+}
+
 func BenchmarkParseMedia(b *testing.B) {
 	u := "https://cdn.example.com/stream/video/index.m3u8?token=xyz123"
 	text := vodPlaylist(1000)(u)

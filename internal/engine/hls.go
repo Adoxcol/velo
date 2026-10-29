@@ -13,7 +13,6 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -84,12 +83,43 @@ func resolve(base, ref string) string {
 	return resolveURL(b, ref)
 }
 
-var attrRe = regexp.MustCompile(`([A-Z0-9-]+)=("[^"]*"|[^,]*)`)
-
 func attrs(s string) map[string]string {
 	m := map[string]string{}
-	for _, kv := range attrRe.FindAllStringSubmatch(s, -1) {
-		m[kv[1]] = strings.Trim(kv[2], `"`)
+	for len(s) > 0 {
+		eq := strings.IndexByte(s, '=')
+		if eq <= 0 {
+			break
+		}
+		key := s[:eq]
+		if idx := strings.LastIndexAny(key, ",:"); idx != -1 {
+			key = key[idx+1:]
+		}
+		key = strings.TrimSpace(key)
+		rest := s[eq+1:]
+		var val string
+		if len(rest) > 0 && rest[0] == '"' {
+			rest = rest[1:]
+			endQ := strings.IndexByte(rest, '"')
+			if endQ == -1 {
+				val = rest
+				s = ""
+			} else {
+				val = rest[:endQ]
+				s = rest[endQ+1:]
+			}
+		} else {
+			comma := strings.IndexByte(rest, ',')
+			if comma == -1 {
+				val = strings.TrimSpace(rest)
+				s = ""
+			} else {
+				val = strings.TrimSpace(rest[:comma])
+				s = rest[comma+1:]
+			}
+		}
+		if key != "" {
+			m[key] = val
+		}
 	}
 	return m
 }

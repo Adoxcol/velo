@@ -33,3 +33,7 @@
 ## 2026-04-08 - Fast-path percent escape check before url.PathUnescape
 **Learning:** Calling `url.PathUnescape` on every extracted URL path base during row rendering and filename extraction executes unescaping logic and heap string formatting even when no percent escapes (`%XX`) are present in typical filenames. Fast-pathing with `strings.IndexByte(b, '%') != -1` skips unescape processing for standard filenames, improving `urlPathName` execution speed by ~23% (373.9 ns vs 486.2 ns per batch of 5 URLs).
 **Action:** Always check for `%` before calling `url.PathUnescape` or `url.QueryUnescape` on high-frequency URL path and query string processing paths.
+
+## 2026-04-09 - Fast manual string scanning for HLS tag attributes
+**Learning:** Parsing key-value pairs in HLS stream tag lines (e.g. `#EXT-X-STREAM-INF:BANDWIDTH=...`, `#EXT-X-KEY:...`) using `regexp.FindAllStringSubmatch` creates significant regex execution overhead and multiple heap slice allocations per tag. Replacing regexp matching with linear string scanning (`strings.IndexByte` / `strings.LastIndexAny`) speeds up `attrs()` execution time by ~8.1x (547.9 ns vs 4,439 ns) and cuts memory allocations by 52% (336 B vs 699 B per call).
+**Action:** Replace regular expressions with linear string slicing when parsing structured key=value tag lines in stream manifests or protocol headers.
