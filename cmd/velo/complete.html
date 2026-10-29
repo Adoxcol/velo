@@ -59,10 +59,10 @@
 <div class="err" id="err" role="status" aria-live="polite"></div>
 <div class="foot">
   <label class="check"><input type="checkbox" id="never"> Don't show this again</label>
-  <button class="btn" id="close" title="Close window" aria-label="Close window">Close</button>
-  <button class="btn" id="folder" title="Open download folder" aria-label="Open download folder">Open folder</button>
-  <button class="btn" id="with" title="Open file with application" aria-label="Open file with application">Open with…</button>
-  <button class="btn primary" id="open" title="Open file" aria-label="Open file">Open</button>
+  <button class="btn" id="close">Close</button>
+  <button class="btn" id="folder">Open folder</button>
+  <button class="btn" id="with">Open with…</button>
+  <button class="btn primary" id="open">Open</button>
 </div>
 
 <script>
@@ -98,13 +98,6 @@ async function load() {
   $("folder").disabled = acting;
   const noFileMsg = !cur.exists ? "The file was moved or deleted" : "";
   $("open").title = $("with").title = noFileMsg;
-  if (!cur.exists) {
-    $("open").setAttribute("aria-label", "Open (file was moved or deleted)");
-    $("with").setAttribute("aria-label", "Open with (file was moved or deleted)");
-  } else {
-    $("open").setAttribute("aria-label", "Open file");
-    $("with").setAttribute("aria-label", "Open file with application");
-  }
   const cat = cur.category || "Other";
   $("tile").className = "tile t-" + cat.replace(/\W/g, "");
   let inner = `<svg class="i" viewBox="0 0 24 24">${ICON[cat] || ICON.Other}</svg>`;
@@ -142,13 +135,6 @@ async function act(fn) {
       $("folder").disabled = false;
       const noFileMsg = !cur?.exists ? "The file was moved or deleted" : "";
       $("open").title = $("with").title = noFileMsg;
-      if (!cur?.exists) {
-        $("open").setAttribute("aria-label", "Open (file was moved or deleted)");
-        $("with").setAttribute("aria-label", "Open with (file was moved or deleted)");
-      } else {
-        $("open").setAttribute("aria-label", "Open file");
-        $("with").setAttribute("aria-label", "Open file with application");
-      }
     }
   }
 }
