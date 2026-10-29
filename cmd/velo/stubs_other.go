@@ -49,3 +49,4 @@ func (a *app) videoToolsStatus() videoToolsState {
 	return videoToolsState{Tools: make([]videoToolInfo, 3)}
 }
 func (a *app) installVideoTools() error { return nil }
+func (a *app) openWith(id int) error    { return errors.New("not supported") }

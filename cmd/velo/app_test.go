@@ -620,6 +620,27 @@ func TestOpenFileErrorsOnMissing(t *testing.T) {
 	}
 }
 
+func TestOpenWithErrorsOnMissing(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows only")
+	}
+	a := testApp(t, defaultSettings())
+	if err := a.openWith(9999); err == nil {
+		t.Fatal("expected error for non-existent download ID")
+	}
+
+	missingPath := filepath.Join(t.TempDir(), "nonexistent.zip")
+	it := a.register(&engine.Download{Path: missingPath, Status: "done"})
+	if err := a.openWith(it.d.ID); err == nil {
+		t.Fatal("expected error when openWith called on missing download file")
+	}
+
+	emptyItem := a.register(&engine.Download{Path: "", Status: "done"})
+	if err := a.openWith(emptyItem.d.ID); err == nil {
+		t.Fatal("expected error when openWith called on empty download path")
+	}
+}
+
 func BenchmarkTakePending(b *testing.B) {
 	a := &app{pending: make(map[int]pendingDL)}
 	const count = 50
