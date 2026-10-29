@@ -28,7 +28,9 @@ func openInFolder(targetPath string) error {
 	// COM initialization belongs to the OS thread: keep this goroutine on one
 	// thread so CoUninitialize runs where CoInitializeEx did.
 	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
+	// No UnlockOSThread: the thread exits with the goroutine, taking any
+	// hidden windows (shell, COM, WebView2) with it instead of leaving them
+	// on a pooled thread that never reads messages and stalls input.
 	clean := filepath.Clean(targetPath)
 	p16, err := syscall.UTF16PtrFromString(clean)
 	if err != nil {
@@ -61,7 +63,9 @@ func openInFolder(targetPath string) error {
 // in File Explorer using the native ShellExecuteW API.
 func openPath(targetPath string) error {
 	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
+	// No UnlockOSThread: the thread exits with the goroutine, taking any
+	// hidden windows (shell, COM, WebView2) with it instead of leaving them
+	// on a pooled thread that never reads messages and stalls input.
 	hr, _, _ := pCoInitializeEx.Call(0, 0x6)
 	if hr == 0 || hr == 1 {
 		defer pCoUninitialize.Call()

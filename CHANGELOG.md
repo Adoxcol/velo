@@ -2,6 +2,11 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.29 — 2026-10-29
+
+### Fixed
+- **Velo's windows no longer stop responding to clicks after a "Download complete" box.** Showing a file's preview could leave a hidden Windows helper window on a thread that never handled input, which froze clicks and keys in every Velo window while they kept drawing. Velo now ends those threads when they finish, so nothing is left behind.
+
 ## 0.8.28 — 2026-10-28
 
 ### Fixed

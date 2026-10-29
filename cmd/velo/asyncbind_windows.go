@@ -20,7 +20,9 @@ func bindWindowAsync[A, R any](w webview2.WebView, closed *atomic.Bool, name str
 			// Shell icon providers may use COM. Workers need their own
 			// apartment, initialized and released on the same OS thread.
 			runtime.LockOSThread()
-			defer runtime.UnlockOSThread()
+			// No UnlockOSThread: the thread exits with the goroutine, taking any
+			// hidden windows (shell, COM, WebView2) with it instead of leaving them
+			// on a pooled thread that never reads messages and stalls input.
 			hr, _, _ := pCoInitializeEx.Call(0, 0x6)
 			if hr == 0 || hr == 1 {
 				defer pCoUninitialize.Call()

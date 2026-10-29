@@ -57,7 +57,9 @@ func showProgress(a *app, id int) {
 	progOpen[id] = true
 	go func() {
 		runtime.LockOSThread()
-		defer runtime.UnlockOSThread()
+		// No UnlockOSThread: the thread exits with the goroutine, taking any
+		// hidden windows (shell, COM, WebView2) with it instead of leaving them
+		// on a pooled thread that never reads messages and stalls input.
 		w := webview2.NewWithOptions(webview2.WebViewOptions{
 			DataPath: filepath.Join(ipc.Dir(), "webview"),
 			WindowOptions: webview2.WindowOptions{
