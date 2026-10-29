@@ -410,6 +410,8 @@ func TestRefreshLinkClearsLoginsOnHostChange(t *testing.T) {
 	if it.d.Req.User != "bob" || it.d.Req.Pass != "pass456" || it.d.Req.Cookies != "session=456" {
 		t.Fatalf("credentials were wrongly cleared on same host: %+v", it.d.Req)
 	}
+	a.pause(id)
+	waitFor(t, "pause at end", func() bool { return statusOf(a, id) == "paused" && !a.get(id).running })
 }
 
 func TestQueueOrder(t *testing.T) {

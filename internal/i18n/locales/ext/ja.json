@@ -57,5 +57,16 @@
  "Video file": "動画ファイル",
  "Video stream": "動画ストリーム",
  "{0} options": "{0} 個のオプション",
- "Velo: {0}": "Velo: {0}"
+ "Velo: {0}": "Velo: {0}",
+ "Audio only (MP3)": "音声のみ (MP3)",
+ "Best audio + video": "最高品質の音声 + 動画",
+ "Best quality": "最高画質",
+ "Full HD": "フルHD",
+ "MP3 audio": "MP3音声",
+ "MP4 video": "MP4動画",
+ "Video + audio": "動画 + 音声",
+ "Video · 1080p": "動画 · 1080p",
+ "Video · 480p": "動画 · 480p",
+ "Video · 720p": "動画 · 720p",
+ "Video · {0}p": "動画 · {0}p"
 }
