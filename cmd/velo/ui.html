@@ -777,17 +777,17 @@ function render(force = false) {
     const rows = rowsFor(page);
     const showChips = page === "home" || page === "downloads";
     const qChips = page === "queue" && S?.queues?.length
-      ? `<div class="chips">${[["*", "All queues"], ["", "Main"], ...S.queues.map((q) => [q.id, q.name])].map(([id, n]) => `<button class="chip${qFilter === id ? " on" : ""}" data-qfilter="${escapeHtml(id)}">${escapeHtml(n)}</button>`).join("")}</div>` : "";
+      ? `<div class="chips">${[["*", "All queues"], ["", "Main"], ...S.queues.map((q) => [q.id, q.name])].map(([id, n]) => `<button class="chip${qFilter === id ? " on" : ""}" data-qfilter="${escapeHtml(id)}" aria-pressed="${qFilter === id}">${escapeHtml(n)}</button>`).join("")}</div>` : "";
     const doneRows = data.filter((r) => r.status === "done");
     const cChips = page === "completed"
-      ? `<div class="chips" style="align-items:center"><button class="chip${cFilter === "all" ? " on" : ""}" data-cfilter="all">All (${doneRows.length})</button><button class="chip${cFilter === "media" ? " on" : ""}" data-cfilter="media">Video/Audio (${doneRows.filter(isMedia).length})</button>${doneRows.length ? `<button class="iconbtn" style="margin-left:auto" data-bulk="clear" title="Clear completed" aria-label="Clear completed downloads">${icon(I.trash)}</button>` : ""}</div>` : "";
+      ? `<div class="chips" style="align-items:center"><button class="chip${cFilter === "all" ? " on" : ""}" data-cfilter="all" aria-pressed="${cFilter === "all"}">All (${doneRows.length})</button><button class="chip${cFilter === "media" ? " on" : ""}" data-cfilter="media" aria-pressed="${cFilter === "media"}">Video/Audio (${doneRows.filter(isMedia).length})</button>${doneRows.length ? `<button class="iconbtn" style="margin-left:auto" data-bulk="clear" title="Clear completed" aria-label="Clear completed downloads">${icon(I.trash)}</button>` : ""}</div>` : "";
     const counts = Object.fromEntries(FILTERS.map(([f]) => [f, f === "all" ? data.length : f === "media" ? data.filter(isMedia).length : data.filter((r) => statusOf(r) === f).length]));
     host.innerHTML = (page === "home" ? `<div class="listhead"><h3>Downloads (${data.length})</h3><div class="acts">
         <button class="btn" data-bulk="add">${icon(I.plus)}Add</button>
         <button class="iconbtn" data-bulk="resumeAll" title="Resume all" aria-label="Resume all">${icon(I.play)}</button>
         <button class="iconbtn" data-bulk="pauseAll" title="Pause all" aria-label="Pause all">${icon(I.pause)}</button>
         <button class="iconbtn" data-bulk="clear" title="Clear completed" aria-label="Clear completed downloads">${icon(I.trash)}</button></div></div>` : "") +
-      qChips + cChips + (showChips ? `<div class="chips">${FILTERS.map(([f, l]) => `<button class="chip${filter === f ? " on" : ""}" data-filter="${f}">${l} (${counts[f]})</button>`).join("")}</div>` : "") +
+      qChips + cChips + (showChips ? `<div class="chips">${FILTERS.map(([f, l]) => `<button class="chip${filter === f ? " on" : ""}" data-filter="${f}" aria-pressed="${filter === f}">${l} (${counts[f]})</button>`).join("")}</div>` : "") +
       (rows.length ? `<div class="list">${rows.map(card).join("")}</div>` : emptyFor(page));
   }
   const active = data.filter((r) => r.status === "downloading").length;
@@ -1331,7 +1331,7 @@ function extIconHTML(name, cat) {
 function bRender() {
   const rows = bVisible();
   $("#bChips").innerHTML = BCHIPS.filter(([k]) => k === "files" || k === "all" || batch.links.some((l) => l.category === k))
-    .map(([k, l]) => `<button class="chip${bCat === k ? " on" : ""}" data-bcat="${k}">${l} <span style="opacity:.6">${batch.links.filter((x) => bInCat(x, k)).length}</span></button>`).join("");
+    .map(([k, l]) => `<button class="chip${bCat === k ? " on" : ""}" data-bcat="${k}" aria-pressed="${bCat === k}">${l} <span style="opacity:.6">${batch.links.filter((x) => bInCat(x, k)).length}</span></button>`).join("");
   $("#bList").innerHTML = rows.length ? rows.map((l) => {
     const cat = l.category || "Other";
     return `<label class="brow" title="${escapeHtml(l.url)}"><input type="checkbox" data-u="${escapeHtml(l.url)}"${bSel.has(l.url) ? " checked" : ""}>

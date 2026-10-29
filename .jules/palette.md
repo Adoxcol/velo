@@ -17,3 +17,8 @@
 
 **Learning:** When an action button transitions to a multi-step confirmation state (such as "Delete partial file?"), updating visible button text alone leaves screen readers and tooltip hovers uninformed of the destructive confirmation context.
 **Action:** Update both `aria-label` and `title` when entering a multi-step confirmation state on action buttons, and clear timer handles cleanly on subsequent clicks or timeouts.
+
+## 2025-04-02 - ARIA Pressed Attributes on Filter Chip Toggles
+
+**Learning:** Velo uses `.chip` button elements as interactive toggle filters for list categories, queues, and batch downloads. Without `aria-pressed="true|false"`, screen reader users cannot perceive which filter chip is currently active.
+**Action:** Always include `aria-pressed="${isActive}"` on `.chip` filter buttons when rendering or updating category and list filters.
