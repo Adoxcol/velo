@@ -6,6 +6,9 @@ All notable changes to Velo. The newest version is first.
 
 ### Fixed
 - **Velo's windows no longer stop responding to clicks after a "Download complete" box.** Showing a file's preview could leave a hidden Windows helper window on a thread that never handled input, which froze clicks and keys in every Velo window while they kept drawing. Velo now ends those threads when they finish, so nothing is left behind.
+- "Open with…" from the Download complete box checks the file is still there first (#74).
+- Downloads write to disk with less waiting between connections, and the app stays more responsive while showing notifications (#72); faster reading of video stream playlists (#75).
+- Filter buttons tell screen readers whether they're on (#73).
 
 ## 0.8.28 — 2026-10-28
 

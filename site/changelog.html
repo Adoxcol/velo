@@ -96,6 +96,9 @@
         <h3>Fixed</h3>
         <ul>
           <li><b>Velo&#39;s windows no longer stop responding to clicks after a &#34;Download complete&#34; box.</b> Showing a file&#39;s preview could leave a hidden Windows helper window on a thread that never handled input, which froze clicks and keys in every Velo window while they kept drawing. Velo now ends those threads when they finish, so nothing is left behind.</li>
+          <li>&#34;Open with…&#34; from the Download complete box checks the file is still there first (#74).</li>
+          <li>Downloads write to disk with less waiting between connections, and the app stays more responsive while showing notifications (#72); faster reading of video stream playlists (#75).</li>
+          <li>Filter buttons tell screen readers whether they&#39;re on (#73).</li>
         </ul>
       </div>
     </article>
