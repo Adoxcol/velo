@@ -5,6 +5,7 @@ package main
 import (
 	_ "embed"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -69,6 +70,13 @@ func (a *app) openWith(id int) error {
 		return errors.New("no such download")
 	}
 	p, _ := it.d.Info()
+	if p == "" {
+		return errors.New("file path is empty")
+	}
+	// Security: Verify that the target file exists on disk before launching.
+	if _, err := os.Stat(p); err != nil {
+		return fmt.Errorf("file does not exist: %w", err)
+	}
 	return exec.Command("rundll32", "shell32.dll,OpenAs_RunDLL", p).Start()
 }
 
