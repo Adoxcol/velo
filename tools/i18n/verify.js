@@ -53,15 +53,48 @@ function verifyGroup(group) {
 verifyGroup("app");
 verifyGroup("ext");
 
+// Check language parity between app and ext groups
+const appLangs = fs.readdirSync("tools/i18n/app").filter(f => f.endsWith(".json")).map(f => f.replace(".json", "")).sort();
+const extLangs = fs.readdirSync("tools/i18n/ext").filter(f => f.endsWith(".json")).map(f => f.replace(".json", "")).sort();
+
+if (JSON.stringify(appLangs) !== JSON.stringify(extLangs)) {
+  console.error(`[FAIL] Mismatch between app languages [${appLangs.join(", ")}] and ext languages [${extLangs.join(", ")}]`);
+  failed = true;
+}
+
 // Check Go i18n Languages list parity
 const i18nGo = fs.readFileSync("internal/i18n/i18n.go", "utf8");
-const appLangs = fs.readdirSync("tools/i18n/app").filter(f => f.endsWith(".json")).map(f => f.replace(".json", ""));
 appLangs.forEach(lang => {
   if (lang !== "en" && !i18nGo.includes(`"${lang}"`)) {
     console.error(`[FAIL] Language "${lang}" is in tools/i18n/app but not registered in internal/i18n/i18n.go`);
     failed = true;
   }
 });
+
+// Check built locale json files in internal/i18n/locales
+["app", "ext"].forEach(group => {
+  const keys = JSON.parse(fs.readFileSync(`internal/i18n/locales/${group}/keys.json`, "utf8"));
+  const langs = group === "app" ? appLangs : extLangs;
+  langs.forEach(lang => {
+    const builtFile = `internal/i18n/locales/${group}/${lang}.json`;
+    if (!fs.existsSync(builtFile)) {
+      console.error(`[FAIL] Missing compiled locale file: ${builtFile}`);
+      failed = true;
+      return;
+    }
+    const dict = JSON.parse(fs.readFileSync(builtFile, "utf8"));
+    if (Object.keys(dict).length !== keys.length) {
+      console.error(`[FAIL] ${builtFile} compiled count (${Object.keys(dict).length}) does not match key count (${keys.length})`);
+      failed = true;
+    }
+  });
+});
+
+// Check built extension i18n bundle
+if (!fs.existsSync("extension/i18n.js")) {
+  console.error("[FAIL] Missing extension/i18n.js bundle");
+  failed = true;
+}
 
 if (failed) {
   console.error("Localization verification failed.");

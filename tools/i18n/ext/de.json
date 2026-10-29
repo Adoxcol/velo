@@ -57,5 +57,16 @@
  "Videodatei",
  "Videostream",
  "{0} Optionen",
- "Velo: {0}"
+ "Velo: {0}",
+ "Nur Audio (MP3)",
+ "Beste Audio- + Videoqualität",
+ "Beste Qualität",
+ "Full HD",
+ "MP3-Audio",
+ "MP4-Video",
+ "Video + Audio",
+ "Video · 1080p",
+ "Video · 480p",
+ "Video · 720p",
+ "Video · {0}p"
 ]

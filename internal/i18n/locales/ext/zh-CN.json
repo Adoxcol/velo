@@ -57,5 +57,16 @@
  "Video file": "视频文件",
  "Video stream": "视频流",
  "{0} options": "{0} 个选项",
- "Velo: {0}": "Velo：{0}"
+ "Velo: {0}": "Velo：{0}",
+ "Audio only (MP3)": "仅音频 (MP3)",
+ "Best audio + video": "最佳音视频",
+ "Best quality": "最佳画质",
+ "Full HD": "全高清",
+ "MP3 audio": "MP3 音频",
+ "MP4 video": "MP4 视频",
+ "Video + audio": "视频 + 音频",
+ "Video · 1080p": "视频 · 1080p",
+ "Video · 480p": "视频 · 480p",
+ "Video · 720p": "视频 · 720p",
+ "Video · {0}p": "视频 · {0}p"
 }
