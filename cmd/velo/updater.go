@@ -33,16 +33,21 @@ var defaultUpdateClient = sync.OnceValue(func() *http.Client {
 // updateDir is where verified installers are saved (changed in tests).
 var updateDir = func() string { return filepath.Join(os.TempDir(), "Velo-update") }
 
+// updateCacheTTL bounds how recently a check must have run to reuse cached metadata.
+var updateCacheTTL = 60 * time.Second
+
 // updater keeps Velo up to date from GitHub Releases. With auto-update on
 // (the default) a verified update is installed when Velo is idle: nothing
 // downloading and the window closed. Otherwise the user is notified.
 type updater struct {
-	mu         sync.Mutex
-	status     string // shown in Settings → Advanced
-	busy       bool   // true when check or update download is running
-	release    *update.Release
-	downloaded string // verified installer, ready to run
-	notified   string // version we already notified about
+	mu          sync.Mutex
+	status      string // shown in Settings → Advanced
+	busy        bool   // true when check or update download is running
+	release     *update.Release
+	downloaded  string    // verified installer, ready to run
+	notified    string    // version we already notified about
+	lastChecked time.Time // when update.Latest was last queried
+	lastErr     error
 }
 
 type updateInfo struct {
@@ -77,6 +82,35 @@ func (u *updater) check(a *app) {
 		u.mu.Unlock()
 		return
 	}
+	if time.Since(u.lastChecked) < updateCacheTTL && !u.lastChecked.IsZero() {
+		rel := u.release
+		err := u.lastErr
+		u.mu.Unlock()
+		if errors.Is(err, update.ErrNoRelease) {
+			u.set("No releases published yet.")
+			return
+		}
+		if err != nil {
+			u.set("Couldn't check for updates: " + err.Error())
+			return
+		}
+		if rel == nil || !update.Newer(rel.Version, version.Version) {
+			u.set("Velo is up to date.")
+			return
+		}
+		u.mu.Lock()
+		u.busy = true
+		u.mu.Unlock()
+		defer func() {
+			u.mu.Lock()
+			u.busy = false
+			u.mu.Unlock()
+		}()
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Hour)
+		defer cancel()
+		u.handleRelease(ctx, defaultUpdateClient(), a, rel)
+		return
+	}
 	u.busy = true
 	u.status = "Checking for updates…"
 	u.mu.Unlock()
@@ -91,7 +125,6 @@ func (u *updater) check(a *app) {
 		u.set("Updates are off in development builds.")
 		return
 	}
-	_, portable := ipc.Portable()
 	// No overall time limit: update.Download resumes after interruptions and
 	// only gives up when the connection stalls, so slow links still update.
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Hour)
@@ -100,6 +133,14 @@ func (u *updater) check(a *app) {
 	checkCtx, cancelCheck := context.WithTimeout(ctx, 15*time.Second)
 	rel, err := update.Latest(checkCtx, client)
 	cancelCheck()
+
+	u.mu.Lock()
+	if err == nil || errors.Is(err, update.ErrNoRelease) {
+		u.lastChecked = time.Now()
+		u.lastErr = err
+	}
+	u.mu.Unlock()
+
 	switch {
 	case errors.Is(err, update.ErrNoRelease):
 		u.set("No releases published yet.")
@@ -112,6 +153,11 @@ func (u *updater) check(a *app) {
 		u.set("Velo is up to date.")
 		return
 	}
+	u.handleRelease(ctx, client, a, rel)
+}
+
+func (u *updater) handleRelease(ctx context.Context, client *http.Client, a *app, rel *update.Release) {
+	_, portable := ipc.Portable()
 	if portable { // the installer would install a second, normal copy
 		u.mu.Lock()
 		u.release = rel
