@@ -22,3 +22,8 @@
 
 **Learning:** Velo uses `.chip` button elements as interactive toggle filters for list categories, queues, and batch downloads. Without `aria-pressed="true|false"`, screen reader users cannot perceive which filter chip is currently active.
 **Action:** Always include `aria-pressed="${isActive}"` on `.chip` filter buttons when rendering or updating category and list filters.
+
+## 2025-05-10 - File Context in Download Card Action Buttons
+
+**Learning:** Card action buttons (`Pause`, `Resume`, `Show in folder`, `Cancel`) rendered inside download lists are ambiguous to screen reader users if given generic ARIA labels without target item context.
+**Action:** Include the file name in card action `aria-label`s (e.g. `Pause ${escapeHtml(fileName)}`) to ensure screen readers announce specific target context for each action.

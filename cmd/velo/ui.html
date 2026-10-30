@@ -707,35 +707,36 @@ function card(r) {
   const cat = r.category || "Other";
   const pct = r.status === "done" ? 100 : Math.min(r.percent, 100);
   const known = r.total > 0;
+  const fileName = r.file || "download";
   let meta = "", right = "", acts = "";
   if (r.status === "downloading") {
     meta = `<span>${known ? size(r.done) + " / " + size(r.total) : size(r.done)}</span>` +
       (known || r.kind ? `<span class="dot">${pct.toFixed(0)}%</span>` : "") +
       `<span class="dot">${size(r.speed)}/s</span>` + (r.connections > 1 ? `<span class="dot">${r.connections} connections</span>` : "");
     if (known && r.speed > 0) right = `<span class="left">${eta((r.total - r.done) / r.speed)} left</span>`;
-    acts = `<button class="iconbtn" data-act="pause" title="Pause" aria-label="Pause">${icon(I.pause)}</button>`;
+    acts = `<button class="iconbtn" data-act="pause" title="Pause" aria-label="Pause ${escapeHtml(fileName)}">${icon(I.pause)}</button>`;
   } else if (r.status === "done") {
     const bytes = r.total > 0 ? r.total : r.done;
     meta = `<span>${bytes > 0 ? size(bytes) : "Size unknown"}</span><span class="dot">${r.finished ? ago(r.finished) : "Done"}</span>`;
     // The badge sits with the buttons so they share one centred row.
     acts = `<span class="badge ok done-badge"${r.verified ? ' title="Checksum verified"' : ""}>${icon(I.check)}${r.verified ? "Verified" : "Completed"}</span>` +
-      `<button class="iconbtn" data-act="folder" title="Show in folder" aria-label="Show in folder">${icon(I.folder)}</button>`;
+      `<button class="iconbtn" data-act="folder" title="Show in folder" aria-label="Show ${escapeHtml(fileName)} in folder">${icon(I.folder)}</button>`;
   } else if (r.status === "error") {
     meta = `<span class="badge err" title="${escapeHtml(r.error || "")}">${escapeHtml(shorten(r.error || "Failed", 80))}</span>`;
     if (/yt-dlp|ffmpeg|video extraction failed/i.test(r.error || "")) {
       acts = `<button class="btn" style="padding:5px 10px;font-size:12px" data-act="vtools" title="Install or update yt-dlp, ffmpeg and Deno">Fix video tools</button>`;
     }
-    acts += `<button class="iconbtn" data-act="resume" title="Retry" aria-label="Retry">${icon(I.retry)}</button>`;
+    acts += `<button class="iconbtn" data-act="resume" title="Retry" aria-label="Retry ${escapeHtml(fileName)}">${icon(I.retry)}</button>`;
   } else {
     const label = r.status === "verifying" ? "Checking checksum…" : r.retrying ? (r.retryIn > 0 ? "Connection lost · retrying in " + r.retryIn + "s" : "Reconnecting…")
       : r.status === "queued" ? "Waiting in queue" : "Paused";
     meta = `<span>${known ? size(r.done) + " / " + size(r.total) : r.done ? size(r.done) : "Not started"}</span>` +
       (pct > 0 ? `<span class="dot">${pct.toFixed(0)}%</span>` : "") + `<span class="dot badge warn" title="${escapeHtml(r.retrying ? r.error || "" : "")}">${label}</span>`;
-    acts = r.status === "paused" ? `<button class="iconbtn" data-act="resume" title="Resume" aria-label="Resume">${icon(I.play)}</button>`
-                                 : `<button class="iconbtn" data-act="pause" title="Hold" aria-label="Hold">${icon(I.pause)}</button>`;
+    acts = r.status === "paused" ? `<button class="iconbtn" data-act="resume" title="Resume" aria-label="Resume ${escapeHtml(fileName)}">${icon(I.play)}</button>`
+                                 : `<button class="iconbtn" data-act="pause" title="Hold" aria-label="Hold ${escapeHtml(fileName)}">${icon(I.pause)}</button>`;
   }
   acts += r.status === "done" ? `<button class="iconbtn" data-act="more" title="More" aria-label="More options">${icon(I.more)}</button>`
-                              : `<button class="iconbtn" data-act="cancel" title="Cancel" aria-label="Cancel download">${icon(I.x)}</button>`;
+                              : `<button class="iconbtn" data-act="cancel" title="Cancel" aria-label="Cancel ${escapeHtml(fileName)}">${icon(I.x)}</button>`;
   const fresh = !seenIds.has(r.id);
   seenIds.add(r.id);
   const progressAttrs = `role="progressbar" aria-label="Download progress" aria-valuemin="0" aria-valuemax="100"${r.total > 0 ? ` aria-valuenow="${Math.floor(pct)}" aria-valuetext="${Math.floor(pct)}%"` : ""}`;
@@ -1165,7 +1166,11 @@ async function startVideoToolsInstall() {
 }
 $("#vtoolsBtn").onclick = startVideoToolsInstall;
 function showSec(id) {
-  $$("#snav button").forEach((b) => b.classList.toggle("on", b.dataset.secGo === id));
+  $$("#snav button").forEach((b) => {
+    const active = b.dataset.secGo === id;
+    b.classList.toggle("on", active);
+    if (active) b.setAttribute("aria-current", "true"); else b.removeAttribute("aria-current");
+  });
   $$(".sec").forEach((s) => s.classList.toggle("on", s.dataset.sec === id));
   if (id === "video") loadVideoTools();
 }
