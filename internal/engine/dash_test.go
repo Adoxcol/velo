@@ -176,3 +176,13 @@ func BenchmarkDashTemplateEval(b *testing.B) {
 		_ = dt.eval(rep, int64(i), int64(i*1000))
 	}
 }
+
+func BenchmarkParseISODuration(b *testing.B) {
+	durations := []string{"PT10S", "PT1H2M3.5S", "P1DT1S", "PT2M"}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_, _ = parseISODuration(durations[i%len(durations)])
+	}
+}
