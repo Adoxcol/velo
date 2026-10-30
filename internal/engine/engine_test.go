@@ -338,17 +338,17 @@ func TestSafeName(t *testing.T) {
 
 func TestStateFileHasNoCookies(t *testing.T) {
 	dir := t.TempDir()
-	d := &Download{Req: Request{URL: "http://x/f", Cookies: "session=secret"}, Total: 10, Path: filepath.Join(dir, "f"),
+	d := &Download{Req: Request{URL: "http://x/f", Cookies: "session=secret", User: "alice", Pass: "secretpass"}, Total: 10, Path: filepath.Join(dir, "f"),
 		segs: []*Segment{{Pos: 0, End: 9}}}
 	if err := d.saveState(); err != nil {
 		t.Fatal(err)
 	}
 	b, _ := os.ReadFile(statePath(d.Path))
-	if bytes.Contains(b, []byte("secret")) {
-		t.Fatalf("cookies written to %s: %s", statePath(d.Path), b)
+	if bytes.Contains(b, []byte("secret")) || bytes.Contains(b, []byte("alice")) || bytes.Contains(b, []byte("secretpass")) {
+		t.Fatalf("sensitive credentials written to %s: %s", statePath(d.Path), b)
 	}
-	if d.Req.Cookies == "" {
-		t.Fatal("saveState cleared the live download's cookies")
+	if d.Req.Cookies == "" || d.Req.User == "" || d.Req.Pass == "" {
+		t.Fatal("saveState cleared the live download's credentials")
 	}
 }
 

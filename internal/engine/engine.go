@@ -253,7 +253,7 @@ func statePath(p string) string { return p + ".part.json" }
 func (d *Download) saveState() error {
 	d.mu.Lock()
 	st := state{Req: d.Req, Total: d.Total, Validator: d.Validator}
-	st.Req.Cookies, st.Req.Pass = "", "" // this file sits in the download folder: keep logins out of it
+	st.Req.Cookies, st.Req.User, st.Req.Pass = "", "", "" // this file sits in the download folder: keep logins out of it
 	for _, s := range d.segs {
 		if s.Pos <= s.End {
 			c := *s
