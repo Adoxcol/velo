@@ -94,3 +94,20 @@
 2. Implemented a 60-second TTL cache (`updateCacheTTL`) for update release metadata in `updater.go` to eliminate redundant GitHub API calls on rapid manual re-checks.
 
 **Future Guidance:** Ensure all webview handlers performing file I/O, sync condition waiting, Win32 system APIs, or environment lookups execute asynchronously off the UI thread via `bindWindowAsync`, and cache external API queries with short TTLs.
+
+## 2026-10-30 — Comprehensive Auxiliary Window Async IPC Migration & API Update Check Failover
+
+**Problem:** Polling loops and actions in auxiliary windows (`Velo Mini`, `Progress`, `Download File Info`, `Download Complete`) and main window functions (`copyText`, `finishBatch`, `openStore`) executed synchronous WebView2 `w.Bind` calls on UI message loop threads. In particular, clicking cancel in the Progress window executed `remove()` synchronously, calling `a.cond().Wait()` on the UI thread and freezing the Progress window. Additionally, update checks on rate-limited or sluggish API connections waited up to 15 seconds before falling back to web scraping.
+
+**Root Cause:**
+1. IPC RPCs across `mini.go` (`appStatus`, `getSettings`, `itemPreview`, `pause`, `resume`, `hideMini`, `miniMoved`), `progress.go` (`progressInfo`, `pauseDownload`, `resumeDownload`, `cancelDownload`, `getSettings`), `capture.go` (`nextPending`, `pendingCount`, `dropPending`, `addDownload`, `folderFor`, `categoryOf`, `getSettings`), `complete.go` (`getSettings`), and `ui.go` (`getSettings`, `takeBatch`, `nextPending`, `dropPending`, `finishBatch`, `extensionSeen`, `copyText`, `openStore`, `openFirefoxStore`) were bound synchronously with `w.Bind`.
+2. Periodic 500ms and 1s status polling in `progress.html` and `mini.html` executed on the main UI thread, and `cancelDownload` called `remove()` synchronously while holding locks and waiting for engine workers to stop.
+3. `update.Latest()` did not bound the `api.github.com` request with a shorter timeout, stalling for up to 15s on slow API responses before trying `latestFromWeb()`.
+
+**Evidence:** Code inspection of `cmd/velo/mini.go`, `cmd/velo/progress.go`, `cmd/velo/capture.go`, `cmd/velo/complete.go`, `cmd/velo/ui.go`, and `internal/update/update.go`.
+
+**Resolution:**
+1. Migrated all remaining synchronous RPC bindings in `mini.go`, `progress.go`, `capture.go`, `complete.go`, and `ui.go` to `bindWindowAsync` and created a `finishBatchArgs` argument unmarshaler for `finishBatch`.
+2. Bounded the `api.github.com` request in `update.Latest()` to 5 seconds so rate-limited or stalled API calls quickly fall back to `latestFromWeb()`.
+
+**Future Guidance:** Ensure every WebView2 window component binds all state-querying, lock-acquiring, or file I/O RPCs asynchronously with `bindWindowAsync`, and use short explicit sub-timeouts for API calls that have secondary fallback mechanisms.

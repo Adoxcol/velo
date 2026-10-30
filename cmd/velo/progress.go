@@ -80,14 +80,14 @@ func showProgress(a *app, id int) {
 		pSetWindowLongPtr.Call(hwnd, index(gwlStyle), style&^(wsThickFrame|wsMaximizeBox))
 		pSetWindowPos.Call(hwnd, 0, 0, 0, 0, 0, 0x1|0x2|0x4|swpFrameChanged) // NOSIZE|NOMOVE|NOZORDER
 
-		w.Bind("progressID", func() int { return id })
-		w.Bind("progressInfo", func() *row { return a.progressRow(id) })
-		w.Bind("pauseDownload", func() error { return a.pause(id) })
-		w.Bind("resumeDownload", func() error { return a.resume(id) })
-		w.Bind("cancelDownload", func() error { return a.remove(id) })
 		var closed atomic.Bool
+		w.Bind("progressID", func() int { return id })
+		bindWindowAsync(w, &closed, "progressInfo", func(_ any) (*row, error) { return a.progressRow(id), nil })
+		bindWindowAsync(w, &closed, "pauseDownload", func(_ any) (bool, error) { return true, a.pause(id) })
+		bindWindowAsync(w, &closed, "resumeDownload", func(_ any) (bool, error) { return true, a.resume(id) })
+		bindWindowAsync(w, &closed, "cancelDownload", func(_ any) (bool, error) { return true, a.remove(id) })
 		bindWindowAsync(w, &closed, "fileTypeIcon", func(name string) (thumbResult, error) { return a.fileTypeIcon(name), nil })
-		w.Bind("getSettings", func() Settings { return a.getSettings() })
+		bindWindowAsync(w, &closed, "getSettings", func(_ any) (Settings, error) { return a.getSettings(), nil })
 		w.Bind("openMain", func() { go a.show() })
 		w.Bind("closeProgress", func() { go closeProgress(id) })
 		w.SetHtml(i18n.Inject(progressHTML, a.lang()))

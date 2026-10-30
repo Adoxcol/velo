@@ -62,7 +62,9 @@ type ghRelease struct {
 
 // Latest returns the newest published release.
 func Latest(ctx context.Context, client *http.Client) (*Release, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", API, nil)
+	apiCtx, cancelAPI := context.WithTimeout(ctx, 5*time.Second)
+	defer cancelAPI()
+	req, err := http.NewRequestWithContext(apiCtx, "GET", API, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -70,6 +72,9 @@ func Latest(ctx context.Context, client *http.Client) (*Release, error) {
 	req.Header.Set("User-Agent", "Velo-updater")
 	resp, err := client.Do(req)
 	if err != nil {
+		if rel, werr := latestFromWeb(ctx, client); werr == nil {
+			return rel, nil
+		}
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -77,11 +82,14 @@ func Latest(ctx context.Context, client *http.Client) (*Release, error) {
 		return nil, ErrNoRelease
 	}
 	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
-		if rel, err := latestFromWeb(ctx, client); err == nil {
+		if rel, werr := latestFromWeb(ctx, client); werr == nil {
 			return rel, nil
 		}
 	}
 	if resp.StatusCode != http.StatusOK {
+		if rel, werr := latestFromWeb(ctx, client); werr == nil {
+			return rel, nil
+		}
 		return nil, fmt.Errorf("release check: %s", resp.Status)
 	}
 	var gr ghRelease
