@@ -127,7 +127,7 @@ func showComplete(a *app, id int) {
 		bindWindowAsync(w, &closed, "completeInfo", func(_ int) (*completeView, error) { return a.completeInfo(), nil })
 		bindWindowAsync(w, &closed, "itemPreview", func(id int) (thumbResult, error) { return a.itemPreview(id), nil })
 		bindWindowAsync(w, &closed, "fileTypeIcon", func(name string) (thumbResult, error) { return a.fileTypeIcon(name), nil })
-		w.Bind("getSettings", func() Settings { return a.getSettings() })
+		bindWindowAsync(w, &closed, "getSettings", func(_ any) (Settings, error) { return a.getSettings(), nil })
 		bindWindowAsync(w, &closed, "openDone", func(id int) (bool, error) { return true, a.openFile(id, false) })
 		bindWindowAsync(w, &closed, "openDoneWith", func(id int) (bool, error) { return true, a.openWith(id) })
 		bindWindowAsync(w, &closed, "showDoneInFolder", func(id int) (bool, error) { return true, a.openFile(id, true) })

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 	"unsafe"
@@ -117,14 +118,15 @@ func showMini(a *app) {
 		x, y := miniPlace(a.getSettings().MiniPos)
 		pSetWindowPos.Call(hwnd, hwndTopmost, uintptr(x), uintptr(y), miniW, miniH, swpNoActivate|swpFrameChanged|swpShowWindow)
 
-		w.Bind("appStatus", func() status { return a.status() })
-		w.Bind("getSettings", func() Settings { return a.getSettings() })
-		w.Bind("itemPreview", func(id int) thumbResult { return a.itemPreview(id) })
-		w.Bind("pause", func(id int) error { return a.pause(id) })
-		w.Bind("resume", func(id int) error { return a.resume(id) })
+		var closed atomic.Bool
+		bindWindowAsync(w, &closed, "appStatus", func(_ any) (status, error) { return a.status(), nil })
+		bindWindowAsync(w, &closed, "getSettings", func(_ any) (Settings, error) { return a.getSettings(), nil })
+		bindWindowAsync(w, &closed, "itemPreview", func(id int) (thumbResult, error) { return a.itemPreview(id), nil })
+		bindWindowAsync(w, &closed, "pause", func(id int) (bool, error) { return true, a.pause(id) })
+		bindWindowAsync(w, &closed, "resume", func(id int) (bool, error) { return true, a.resume(id) })
 		w.Bind("openMain", func() { go a.show() })
 		// mode "now": until these downloads finish; "never": turn Velo Mini off.
-		w.Bind("hideMini", func(mode string) {
+		bindWindowAsync(w, &closed, "hideMini", func(mode string) (bool, error) {
 			if mode == "never" {
 				a.updateSettings(func(s *Settings) { s.ShowMini = false })
 			} else {
@@ -133,23 +135,26 @@ func showMini(a *app) {
 				a.mu.Unlock()
 			}
 			go closeMini()
+			return true, nil
 		})
 		w.Bind("dragMini", func() { // the window has no title bar: drag it from anywhere
 			pReleaseCapture.Call()
 			pPostMessage.Call(hwnd, wmNCLButtonDown, htCaption, 0)
 		})
-		w.Bind("miniMoved", func() { // after a drag: remember where it is
+		bindWindowAsync(w, &closed, "miniMoved", func(_ any) (bool, error) { // after a drag: remember where it is
 			var r rect
 			pGetWindowRect.Call(hwnd, uintptr(unsafe.Pointer(&r)))
 			pos := [2]int{int(r.L), int(r.T)}
 			if cur := a.getSettings().MiniPos; cur == nil || *cur != pos {
 				a.updateSettings(func(s *Settings) { s.MiniPos = &pos })
 			}
+			return true, nil
 		})
 		w.SetHtml(i18n.Inject(miniHTML, a.lang()))
 		mini = w
 		miniMu.Unlock()
 		w.Run()
+		closed.Store(true)
 		miniMu.Lock()
 		mini = nil
 		miniMu.Unlock()

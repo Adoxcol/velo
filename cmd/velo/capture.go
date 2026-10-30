@@ -81,21 +81,25 @@ func showCapture(a *app) {
 		// Always on top, like a browser download prompt.
 		pSetWindowPos.Call(hwnd, hwndTopmost, 0, 0, 0, 0, 0x1|0x2|swpFrameChanged) // SWP_NOSIZE|SWP_NOMOVE
 
-		w.Bind("nextPending", func() *pendingView { return a.nextPendingDL() })
-		w.Bind("pendingCount", func() int { a.mu.Lock(); defer a.mu.Unlock(); return len(a.pending) })
-		w.Bind("dropPending", func(id int) { a.takePending(id) })
-		w.Bind("addDownload", func(o addOptions) (int, error) {
+		var closed atomic.Bool
+		bindWindowAsync(w, &closed, "nextPending", func(_ any) (*pendingView, error) { return a.nextPendingDL(), nil })
+		bindWindowAsync(w, &closed, "pendingCount", func(_ any) (int, error) {
+			a.mu.Lock()
+			defer a.mu.Unlock()
+			return len(a.pending), nil
+		})
+		bindWindowAsync(w, &closed, "dropPending", func(id int) (bool, error) { a.takePending(id); return true, nil })
+		bindWindowAsync(w, &closed, "addDownload", func(o addOptions) (int, error) {
 			id, err := a.addWith(o)
 			if err == nil && o.Start && a.getSettings().ProgressWindow {
 				showProgress(a, id) // IDM-style progress window for this download
 			}
 			return id, err
 		})
-		w.Bind("folderFor", func(name string) string { return a.eng.FolderFor(engine.SafeName(name)) })
-		w.Bind("categoryOf", func(name string) string { return engine.CategoryOf(name) })
-		var closed atomic.Bool
+		bindWindowAsync(w, &closed, "folderFor", func(name string) (string, error) { return a.eng.FolderFor(engine.SafeName(name)), nil })
+		bindWindowAsync(w, &closed, "categoryOf", func(name string) (string, error) { return engine.CategoryOf(name), nil })
 		bindWindowAsync(w, &closed, "fileTypeIcon", func(name string) (thumbResult, error) { return a.fileTypeIcon(name), nil })
-		w.Bind("getSettings", func() Settings { return a.getSettings() })
+		bindWindowAsync(w, &closed, "getSettings", func(_ any) (Settings, error) { return a.getSettings(), nil })
 		w.Bind("openMain", func() { go a.show() })
 		w.Bind("closeDialog", func() { go closeCapture(true) })
 		w.Bind("pickFolder", func(start string) (string, error) {
