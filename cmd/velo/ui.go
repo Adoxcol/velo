@@ -399,13 +399,89 @@ func (r *refreshLinkArgs) UnmarshalJSON(b []byte) error {
 	return json.Unmarshal(b, (*alias)(r))
 }
 
+type setQueueArgs struct {
+	ID    int    `json:"id"`
+	Queue string `json:"queue"`
+}
+
+func (s *setQueueArgs) UnmarshalJSON(b []byte) error {
+	var arr []any
+	if err := json.Unmarshal(b, &arr); err == nil {
+		if len(arr) > 0 {
+			if id, ok := arr[0].(float64); ok {
+				s.ID = int(id)
+			}
+		}
+		if len(arr) > 1 {
+			if q, ok := arr[1].(string); ok {
+				s.Queue = q
+			}
+		}
+		return nil
+	}
+	type alias setQueueArgs
+	return json.Unmarshal(b, (*alias)(s))
+}
+
+type reorderArgs struct {
+	ID  int    `json:"id"`
+	How string `json:"how"`
+}
+
+func (r *reorderArgs) UnmarshalJSON(b []byte) error {
+	var arr []any
+	if err := json.Unmarshal(b, &arr); err == nil {
+		if len(arr) > 0 {
+			if id, ok := arr[0].(float64); ok {
+				r.ID = int(id)
+			}
+		}
+		if len(arr) > 1 {
+			if how, ok := arr[1].(string); ok {
+				r.How = how
+			}
+		}
+		return nil
+	}
+	type alias reorderArgs
+	return json.Unmarshal(b, (*alias)(r))
+}
+
+type loadBatchLinksArgs struct {
+	URLs   []string `json:"urls"`
+	Source string   `json:"source"`
+}
+
+func (l *loadBatchLinksArgs) UnmarshalJSON(b []byte) error {
+	var arr []any
+	if err := json.Unmarshal(b, &arr); err == nil {
+		if len(arr) > 0 {
+			if rawSlice, ok := arr[0].([]any); ok {
+				for _, v := range rawSlice {
+					if s, ok := v.(string); ok {
+						l.URLs = append(l.URLs, s)
+					}
+				}
+			}
+		}
+		if len(arr) > 1 {
+			if s, ok := arr[1].(string); ok {
+				l.Source = s
+			}
+		}
+		return nil
+	}
+	type alias loadBatchLinksArgs
+	return json.Unmarshal(b, (*alias)(l))
+}
+
 func bind(w webview2.WebView, a *app, closed *atomic.Bool) {
 	bindWindowAsync(w, closed, "probe", func(p probeArgs) (engine.Info, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
 		return a.eng.Probe(ctx, engine.Request{URL: strings.TrimSpace(p.URL), User: p.User, Pass: p.Pass})
 	})
-	w.Bind("addDownload", func(o addOptions) (int, error) { return a.addWith(o) })
+	bindWindowAsync(w, closed, "addDownload", func(o addOptions) (int, error) { return a.addWith(o) })
 	w.Bind("takeBatch", func() *batchView { return a.takeBatch() })
 	w.Bind("nextPending", func() *pendingView { return a.nextPendingDL() })
 	w.Bind("dropPending", func(id int) { a.takePending(id) })
@@ -419,22 +495,22 @@ func bind(w webview2.WebView, a *app, closed *atomic.Bool) {
 	w.Bind("languages", func() map[string]any {
 		return map[string]any{"list": i18n.Languages, "current": a.lang()}
 	})
-	w.Bind("setQueue", func(id int, q string) error { return a.setQueue(id, q) })
-	w.Bind("reorder", func(id int, how string) error { return a.reorder(id, how) })
+	bindWindowAsync(w, closed, "setQueue", func(s setQueueArgs) (bool, error) { return true, a.setQueue(s.ID, s.Queue) })
+	bindWindowAsync(w, closed, "reorder", func(r reorderArgs) (bool, error) { return true, a.reorder(r.ID, r.How) })
 	bindWindowAsync(w, closed, "refreshLink", func(r refreshLinkArgs) (bool, error) { return true, a.refreshLink(r.ID, r.URL) })
 	w.Bind("checkUpdate", func() { go a.upd.check(a) })
 	bindWindowAsync(w, closed, "installUpdate", func(_ any) (bool, error) { return true, a.upd.install(a) })
 	w.Bind("copyText", func(t string) error { return setClipboardText(t) })
-	w.Bind("pasteText", func() string {
+	bindWindowAsync(w, closed, "pasteText", func(_ any) (string, error) {
 		t, _ := clipboardText()
-		return strings.TrimSpace(t)
+		return strings.TrimSpace(t), nil
 	})
 	w.Bind("connections", func() int { return a.eng.SegmentsDefault() })
 	bindWindowAsync(w, closed, "appStatus", func(_ any) (status, error) { return a.status(), nil })
 	w.Bind("getSettings", func() Settings { return a.getSettings() })
 	bindWindowAsync(w, closed, "setSettings", func(s Settings) (bool, error) { return true, a.setSettings(s) })
-	w.Bind("setSpeedLimit", func(kb int) error { return a.setSpeedLimit(kb) })
-	w.Bind("add", func(rawURL string) (int, error) {
+	bindWindowAsync(w, closed, "setSpeedLimit", func(kb int) (bool, error) { return true, a.setSpeedLimit(kb) })
+	bindWindowAsync(w, closed, "add", func(rawURL string) (int, error) {
 		u := strings.ToLower(rawURL)
 		if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
 			return 0, errors.New("enter a link starting with http:// or https://")
@@ -446,11 +522,11 @@ func bind(w webview2.WebView, a *app, closed *atomic.Bool) {
 		}
 		return id, nil
 	})
-	w.Bind("pause", func(id int) error { return a.pause(id) })
-	w.Bind("resume", func(id int) error { return a.resume(id) })
-	w.Bind("remove", func(id int) error { return a.remove(id) })
+	bindWindowAsync(w, closed, "pause", func(id int) (bool, error) { return true, a.pause(id) })
+	bindWindowAsync(w, closed, "resume", func(id int) (bool, error) { return true, a.resume(id) })
+	bindWindowAsync(w, closed, "remove", func(id int) (bool, error) { return true, a.remove(id) })
 	bindWindowAsync(w, closed, "deleteFile", func(id int) (bool, error) { return true, a.deleteFile(id) })
-	w.Bind("toggleOpenOnDone", func(id int) (bool, error) { return a.toggleOpenOnDone(id) })
+	bindWindowAsync(w, closed, "toggleOpenOnDone", func(id int) (bool, error) { return a.toggleOpenOnDone(id) })
 	bindWindowAsync(w, closed, "expandPlaylist", func(url string) (int, error) { return a.expandPlaylistToBatch(url) })
 	bindWindowAsync(w, closed, "exportLinks", func(ids []int) (string, error) {
 		txt := a.exportLinks(ids)
@@ -466,8 +542,8 @@ func bind(w webview2.WebView, a *app, closed *atomic.Bool) {
 		}
 		return path, nil
 	})
-	w.Bind("loadBatchLinks", func(urls []string, source string) int { return a.loadBatchLinks(urls, source) })
-	w.Bind("videoToolsStatus", func() videoToolsState { return a.videoToolsStatus() })
+	bindWindowAsync(w, closed, "loadBatchLinks", func(l loadBatchLinksArgs) (int, error) { return a.loadBatchLinks(l.URLs, l.Source), nil })
+	bindWindowAsync(w, closed, "videoToolsStatus", func(_ any) (videoToolsState, error) { return a.videoToolsStatus(), nil })
 	bindWindowAsync(w, closed, "installVideoTools", func(_ any) (bool, error) { return true, a.installVideoTools() })
 	bindWindowAsync(w, closed, "openFile", func(id int) (bool, error) { return true, a.openFile(id, false) })
 	bindWindowAsync(w, closed, "showInFolder", func(id int) (bool, error) { return true, a.openFile(id, true) })

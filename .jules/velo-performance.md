@@ -77,3 +77,20 @@
 4. Replaced `json.MarshalIndent` with `json.Marshal` in `saveHistory()` and guarded `restore()` directory scanning with `os.Stat`.
 
 **Future Guidance:** Always reserve offset ranges under lock and perform file I/O outside mutex locks; wrap Windows Shell notification RPCs in async goroutines, and bind periodic UI RPC handlers using `bindWindowAsync`.
+
+## 2026-10-29 — Complete WebView Async Binding Migration & Update Metadata Caching
+
+**Problem:** Cancelling or removing downloads, adding links, queueing items, setting speed limits, querying video tool status, or reading clipboard text caused window freezes because their WebView2 IPC handlers executed synchronously on the main UI window message thread. Additionally, rapid manual update checks sent redundant HTTP requests to GitHub Releases API.
+
+**Root Cause:**
+1. `remove`, `addDownload`, `add`, `pause`, `resume`, `setQueue`, `reorder`, `setSpeedLimit`, `pasteText`, `videoToolsStatus`, `loadBatchLinks`, and `toggleOpenOnDone` were bound using synchronous `w.Bind`. In particular, `remove()` called `a.cond().Wait()` while waiting for running downloads to cancel, completely stalling the WebView2 UI message loop.
+2. `videoToolsStatus()` executed executable file stats and PATH lookups synchronously on the UI thread when polled every 700ms during video tool installation.
+3. `updater.check` executed fresh HTTP GET requests to GitHub Releases API on every check invocation without short-term caching.
+
+**Evidence:** Code inspection of `cmd/velo/ui.go` and `cmd/velo/updater.go`; verified with `TestUpdaterCacheTTL` and unit tests in `cmd/velo/updater_test.go`.
+
+**Resolution:**
+1. Converted all remaining I/O, lock-heavy, Win32 API, and process-aware WebView2 RPC handlers (`remove`, `addDownload`, `add`, `pause`, `resume`, `setQueue`, `reorder`, `setSpeedLimit`, `pasteText`, `videoToolsStatus`, `loadBatchLinks`, `toggleOpenOnDone`) to `bindWindowAsync` with custom argument unmarshalers (`setQueueArgs`, `reorderArgs`, `loadBatchLinksArgs`).
+2. Implemented a 60-second TTL cache (`updateCacheTTL`) for update release metadata in `updater.go` to eliminate redundant GitHub API calls on rapid manual re-checks.
+
+**Future Guidance:** Ensure all webview handlers performing file I/O, sync condition waiting, Win32 system APIs, or environment lookups execute asynchronously off the UI thread via `bindWindowAsync`, and cache external API queries with short TTLs.

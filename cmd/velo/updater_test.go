@@ -235,6 +235,38 @@ func TestUpdaterNetworkTimeout(t *testing.T) {
 	}
 }
 
+func TestUpdaterCacheTTL(t *testing.T) {
+	oldVer := version.Version
+	version.Version = "0.8.0"
+	t.Cleanup(func() { version.Version = oldVer })
+
+	var requestCount atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount.Add(1)
+		assets := `{"name":"Velo-Setup-0.8.0.exe","browser_download_url":"http://example.com/setup","digest":"sha256:0000000000000000000000000000000000000000000000000000000000000000"}`
+		fmt.Fprintf(w, `{"tag_name":"v0.8.0","html_url":"https://example.com/rel","body":"notes","assets":[%s]}`, assets)
+	}))
+	t.Cleanup(srv.Close)
+
+	oldAPI := update.API
+	update.API = srv.URL + "/latest"
+	t.Cleanup(func() { update.API = oldAPI })
+
+	a := testApp(t, defaultSettings())
+
+	// First check hits the server
+	a.upd.check(a)
+	if count := requestCount.Load(); count != 1 {
+		t.Fatalf("expected 1 server request on first check, got %d", count)
+	}
+
+	// Immediate second check should use cached result
+	a.upd.check(a)
+	if count := requestCount.Load(); count != 1 {
+		t.Fatalf("expected cached check to avoid new request, got %d", count)
+	}
+}
+
 // tempUpdateDir points the updater at a throwaway folder for this test.
 func tempUpdateDir(t *testing.T) string {
 	dir := t.TempDir()
