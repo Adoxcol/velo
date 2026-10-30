@@ -114,22 +114,101 @@ func merge(set, rep *mpdTemplate) *mpdTemplate {
 	return &m
 }
 
-var isoDur = regexp.MustCompile(`^P(?:(\d+(?:\.\d+)?)D)?(?:T(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?)?$`)
-
-// parseISODuration parses durations like "PT1H2M3.5S" into seconds.
+// parseISODuration parses ISO 8601 durations like "PT1H2M3.5S", "P1DT1S", "PT10S" into seconds.
+// Optimization: Direct linear string scanning replaces regexp.FindStringSubmatch to eliminate
+// regular expression compilation/execution overhead and submatch slice allocations.
 func parseISODuration(s string) (float64, error) {
-	m := isoDur.FindStringSubmatch(strings.TrimSpace(s))
-	if m == nil || s == "P" || s == "PT" {
-		return 0, fmt.Errorf("bad duration %q", s)
+	raw := s
+	s = strings.TrimSpace(s)
+	if len(s) < 3 || s[0] != 'P' {
+		return 0, fmt.Errorf("bad duration %q", raw)
 	}
-	secs := 0.0
-	for i, mult := range []float64{86400, 3600, 60, 1} {
-		if m[i+1] != "" {
-			v, _ := strconv.ParseFloat(m[i+1], 64)
-			secs += v * mult
+
+	idx := 1
+	inTime := false
+	var days, hours, mins, secs float64
+	var seenD, seenH, seenM, seenS bool
+	hasComponent := false
+
+	for idx < len(s) {
+		if s[idx] == 'T' {
+			if inTime {
+				return 0, fmt.Errorf("bad duration %q", raw)
+			}
+			inTime = true
+			idx++
+			if idx >= len(s) {
+				break
+			}
+		}
+
+		start := idx
+		hasDecimal := false
+		for idx < len(s) && ((s[idx] >= '0' && s[idx] <= '9') || (s[idx] == '.' && !hasDecimal)) {
+			if s[idx] == '.' {
+				hasDecimal = true
+			}
+			idx++
+		}
+
+		if start == idx || idx >= len(s) {
+			return 0, fmt.Errorf("bad duration %q", raw)
+		}
+
+		numStr := s[start:idx]
+		v, err := strconv.ParseFloat(numStr, 64)
+		if err != nil {
+			return 0, fmt.Errorf("bad duration %q", raw)
+		}
+
+		designator := s[idx]
+		idx++
+
+		if !inTime {
+			if designator == 'D' {
+				if seenD {
+					return 0, fmt.Errorf("bad duration %q", raw)
+				}
+				days = v
+				seenD = true
+				hasComponent = true
+			} else {
+				return 0, fmt.Errorf("bad duration %q", raw)
+			}
+		} else {
+			switch designator {
+			case 'H':
+				if seenH || seenM || seenS {
+					return 0, fmt.Errorf("bad duration %q", raw)
+				}
+				hours = v
+				seenH = true
+				hasComponent = true
+			case 'M':
+				if seenM || seenS {
+					return 0, fmt.Errorf("bad duration %q", raw)
+				}
+				mins = v
+				seenM = true
+				hasComponent = true
+			case 'S':
+				if seenS {
+					return 0, fmt.Errorf("bad duration %q", raw)
+				}
+				secs = v
+				seenS = true
+				hasComponent = true
+			default:
+				return 0, fmt.Errorf("bad duration %q", raw)
+			}
 		}
 	}
-	return secs, nil
+
+	if !hasComponent || idx != len(s) {
+		return 0, fmt.Errorf("bad duration %q", raw)
+	}
+
+	return days*86400 + hours*3600 + mins*60 + secs, nil
 }
 
 type dashVarKind int

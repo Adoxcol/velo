@@ -37,3 +37,7 @@
 ## 2026-04-09 - Fast manual string scanning for HLS tag attributes
 **Learning:** Parsing key-value pairs in HLS stream tag lines (e.g. `#EXT-X-STREAM-INF:BANDWIDTH=...`, `#EXT-X-KEY:...`) using `regexp.FindAllStringSubmatch` creates significant regex execution overhead and multiple heap slice allocations per tag. Replacing regexp matching with linear string scanning (`strings.IndexByte` / `strings.LastIndexAny`) speeds up `attrs()` execution time by ~8.1x (547.9 ns vs 4,439 ns) and cuts memory allocations by 52% (336 B vs 699 B per call).
 **Action:** Replace regular expressions with linear string slicing when parsing structured key=value tag lines in stream manifests or protocol headers.
+
+## 2026-10-30 - Replace regex in ISO 8601 duration parsing with direct linear string scanning
+**Learning:** Using `regexp.FindStringSubmatch` to parse ISO 8601 duration strings (`PT1H2M3.5S`, `P1DT1S`) in DASH manifest loading creates regex evaluation overhead and heap slice allocations for submatches. Replacing regexp matching with a single-pass linear string scanner reduces execution time from ~807 ns/op to ~68.8 ns/op (~11.7x faster) and completely eliminates heap allocations (0 B/op).
+**Action:** Replace regular expression submatch extractions with linear pointer string scanning when parsing standard structured strings (like ISO 8601 durations).
