@@ -266,7 +266,9 @@ func (d *Download) saveState() error {
 		return err
 	}
 	tmp := statePath(d.Path) + ".tmp"
-	if err := os.WriteFile(tmp, b, 0o644); err != nil {
+	// Security: Restrict state file permissions to 0600 (owner only) to protect download URLs,
+	// referrers, and destination paths on multi-user systems.
+	if err := os.WriteFile(tmp, b, 0o600); err != nil {
 		return err
 	}
 	return os.Rename(tmp, statePath(d.Path))
