@@ -7,8 +7,10 @@ import (
 	"syscall"
 )
 
-func runInstaller(path string) error {
-	cmd := exec.Command(path, "/S", "/update")
+var execCommand = exec.Command
+
+func defaultRunInstaller(path string) error {
+	cmd := execCommand(path, "/S", "/update")
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	return cmd.Start()
 }

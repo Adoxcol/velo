@@ -332,6 +332,9 @@ func fileSHA256(path string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
+// runInstaller executes the installer binary. Swapped in tests.
+var runInstaller = defaultRunInstaller
+
 // Install starts the verified installer silently; it closes Velo, replaces
 // it and starts the new version.
 func Install(path string) error {

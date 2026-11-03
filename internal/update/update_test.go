@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -259,5 +260,69 @@ func TestRateLimitedCheckFallsBackToWeb(t *testing.T) {
 	}
 	if _, err := Download(context.Background(), srv.Client(), rel, t.TempDir()); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestInstallDelegation(t *testing.T) {
+	orig := runInstaller
+	t.Cleanup(func() { runInstaller = orig })
+
+	var calledPath string
+	runInstaller = func(path string) error {
+		calledPath = path
+		return nil
+	}
+
+	targetPath := "/path/to/Velo-Setup-1.0.0.exe"
+	if err := Install(targetPath); err != nil {
+		t.Fatalf("Install returned error: %v", err)
+	}
+	if calledPath != targetPath {
+		t.Fatalf("runInstaller received %q, want %q", calledPath, targetPath)
+	}
+
+	expectedErr := errors.New("installer execution failed")
+	runInstaller = func(path string) error {
+		return expectedErr
+	}
+	if err := Install(targetPath); !errors.Is(err, expectedErr) {
+		t.Fatalf("Install error = %v, want %v", err, expectedErr)
+	}
+}
+
+func TestDefaultRunInstaller(t *testing.T) {
+	origExec := execCommand
+	t.Cleanup(func() { execCommand = origExec })
+
+	var recordedName string
+	var recordedArgs []string
+
+	// Mock execCommand by executing a dummy command or inspecting arguments.
+	// We point to a non-existent binary to verify arguments and start failure.
+	err := defaultRunInstaller("/nonexistent/velo-setup.exe")
+	if err == nil {
+		t.Fatal("expected defaultRunInstaller to fail on nonexistent executable")
+	}
+
+	// Verify command invocation arguments via execCommand mock
+	execCommand = func(name string, arg ...string) *exec.Cmd {
+		recordedName = name
+		recordedArgs = append([]string(nil), arg...)
+		// Return a command that fails to start cleanly so no background processes spawn
+		return origExec("/nonexistent/installer/binary")
+	}
+
+	_ = defaultRunInstaller("C:\\path\\Velo-Setup.exe")
+	if recordedName != "C:\\path\\Velo-Setup.exe" {
+		t.Fatalf("execCommand binary = %q, want %q", recordedName, "C:\\path\\Velo-Setup.exe")
+	}
+	expectedArgs := []string{"/S", "/update"}
+	if len(recordedArgs) != len(expectedArgs) {
+		t.Fatalf("expected args %v, got %v", expectedArgs, recordedArgs)
+	}
+	for i, arg := range expectedArgs {
+		if recordedArgs[i] != arg {
+			t.Fatalf("expected arg[%d] to be %q, got %q", i, arg, recordedArgs[i])
+		}
 	}
 }
