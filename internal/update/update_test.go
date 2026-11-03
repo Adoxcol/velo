@@ -261,3 +261,69 @@ func TestRateLimitedCheckFallsBackToWeb(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestInstallMock(t *testing.T) {
+	orig := runInstaller
+	defer func() { runInstaller = orig }()
+
+	var calledWith string
+	var runCount int
+	runInstaller = func(path string) error {
+		calledWith = path
+		runCount++
+		return nil
+	}
+
+	testPath := filepath.Join(t.TempDir(), "Velo-Setup-1.0.0.exe")
+	if err := Install(testPath); err != nil {
+		t.Fatalf("Install(%q) returned unexpected error: %v", testPath, err)
+	}
+	if runCount != 1 {
+		t.Fatalf("expected runInstaller to be called once, got %d", runCount)
+	}
+	if calledWith != testPath {
+		t.Fatalf("expected runInstaller called with %q, got %q", testPath, calledWith)
+	}
+
+	// Test error propagation
+	expectedErr := errors.New("failed to launch installer")
+	runInstaller = func(path string) error {
+		return expectedErr
+	}
+	if err := Install(testPath); !errors.Is(err, expectedErr) {
+		t.Fatalf("expected error %v, got %v", expectedErr, err)
+	}
+}
+
+func TestInstallDefaultRealExecution(t *testing.T) {
+	// Tests calling Install with defaultRunInstaller on a nonexistent file
+	nonexistent := filepath.Join(t.TempDir(), "nonexistent_installer.exe")
+	if err := Install(nonexistent); err == nil {
+		t.Fatal("expected error executing nonexistent installer, got nil")
+	}
+
+	if runtime.GOOS != "windows" {
+		// On non-Windows platforms, create a mock executable script to verify
+		// that defaultRunInstaller runs the process with expected arguments.
+		recordFile := filepath.Join(t.TempDir(), "args.txt")
+		scriptPath := filepath.Join(t.TempDir(), "fake_installer.sh")
+		scriptContent := fmt.Sprintf("#!/bin/sh\necho \"$@\" > %q\n", recordFile)
+		if err := os.WriteFile(scriptPath, []byte(scriptContent), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := Install(scriptPath); err != nil {
+			t.Fatalf("Install on valid executable failed: %v", err)
+		}
+		// Give the started process a moment to run and write args.txt
+		var recorded []byte
+		for start := time.Now(); time.Since(start) < 2*time.Second; time.Sleep(10 * time.Millisecond) {
+			if b, err := os.ReadFile(recordFile); err == nil && len(b) > 0 {
+				recorded = b
+				break
+			}
+		}
+		if string(bytes.TrimSpace(recorded)) != "/S /update" {
+			t.Fatalf("expected arguments '/S /update', got %q", string(recorded))
+		}
+	}
+}

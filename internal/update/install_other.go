@@ -4,7 +4,9 @@ package update
 
 import "os/exec"
 
-func runInstaller(path string) error {
+var runInstaller = defaultRunInstaller
+
+func defaultRunInstaller(path string) error {
 	cmd := exec.Command(path, "/S", "/update")
 	return cmd.Start()
 }
