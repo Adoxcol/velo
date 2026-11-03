@@ -515,13 +515,13 @@ func bind(w webview2.WebView, a *app, closed *atomic.Bool) {
 	bindWindowAsync(w, closed, "dropPending", func(id int) (bool, error) { a.takePending(id); return true, nil })
 	bindWindowAsync(w, closed, "finishBatch", func(f finishBatchArgs) (int, error) { return a.finishBatch(f.URLs, f.Start), nil })
 	bindWindowAsync(w, closed, "extensionSeen", func(_ any) (int64, error) { return a.extensionSeen(), nil })
-	w.Bind("appVersion", func() string { return version.Version })
+	bindWindowAsync(w, closed, "appVersion", func(_ any) (string, error) { return version.Version, nil })
 	bindWindowAsync(w, closed, "pendingReleaseNotes", func(_ any) (*releaseNotesView, error) { return a.pendingReleaseNotes() })
 	bindWindowAsync(w, closed, "dismissReleaseNotes", func(_ any) (bool, error) { return true, dismissReleaseNotes() })
 	bindWindowAsync(w, closed, "updateInfo", func(_ any) (updateInfo, error) { return a.upd.info(), nil })
 	bindWindowAsync(w, closed, "debugInfo", func(_ any) (string, error) { return a.debugInfo(), nil })
-	w.Bind("languages", func() map[string]any {
-		return map[string]any{"list": i18n.Languages, "current": a.lang()}
+	bindWindowAsync(w, closed, "languages", func(_ any) (map[string]any, error) {
+		return map[string]any{"list": i18n.Languages, "current": a.lang()}, nil
 	})
 	bindWindowAsync(w, closed, "setQueue", func(s setQueueArgs) (bool, error) { return true, a.setQueue(s.ID, s.Queue) })
 	bindWindowAsync(w, closed, "reorder", func(r reorderArgs) (bool, error) { return true, a.reorder(r.ID, r.How) })
@@ -533,7 +533,7 @@ func bind(w webview2.WebView, a *app, closed *atomic.Bool) {
 		t, _ := clipboardText()
 		return strings.TrimSpace(t), nil
 	})
-	w.Bind("connections", func() int { return a.eng.SegmentsDefault() })
+	bindWindowAsync(w, closed, "connections", func(_ any) (int, error) { return a.eng.SegmentsDefault(), nil })
 	bindWindowAsync(w, closed, "appStatus", func(_ any) (status, error) { return a.status(), nil })
 	bindWindowAsync(w, closed, "getSettings", func(_ any) (Settings, error) { return a.getSettings(), nil })
 	bindWindowAsync(w, closed, "setSettings", func(s Settings) (bool, error) { return true, a.setSettings(s) })
@@ -585,8 +585,8 @@ func bind(w webview2.WebView, a *app, closed *atomic.Bool) {
 	bindWindowAsync(w, closed, "pauseAll", func(_ any) (bool, error) { a.all("pause"); return true, nil })
 	bindWindowAsync(w, closed, "clearDone", func(_ any) (int, error) { return a.clearDone(), nil })
 	bindWindowAsync(w, closed, "resumeAll", func(_ any) (bool, error) { a.all("resume"); return true, nil })
-	w.Bind("downloadDir", func() string { return a.eng.Dir() })
-	w.Bind("defaultDir", func() string { return a.defaultDir })
+	bindWindowAsync(w, closed, "downloadDir", func(_ any) (string, error) { return a.eng.Dir(), nil })
+	bindWindowAsync(w, closed, "defaultDir", func(_ any) (string, error) { return a.defaultDir, nil })
 	bindWindowAsync(w, closed, "itemPreview", func(id int) (thumbResult, error) { return a.itemPreview(id), nil })
 	bindWindowAsync(w, closed, "fileTypeIcon", func(name string) (thumbResult, error) { return a.fileTypeIcon(name), nil })
 	// Runs on the window's thread, so the picker is modal to it.

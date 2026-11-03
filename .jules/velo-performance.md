@@ -111,3 +111,18 @@
 2. Bounded the `api.github.com` request in `update.Latest()` to 5 seconds so rate-limited or stalled API calls quickly fall back to `latestFromWeb()`.
 
 **Future Guidance:** Ensure every WebView2 window component binds all state-querying, lock-acquiring, or file I/O RPCs asynchronously with `bindWindowAsync`, and use short explicit sub-timeouts for API calls that have secondary fallback mechanisms.
+
+## 2026-11-03 — Complete Main Window Async IPC Migration (`languages`, `appVersion`, `connections`, `downloadDir`, `defaultDir`)
+
+**Problem:** Opening Settings, Onboarding, or Add Download triggered synchronous `w.Bind` calls on the main WebView2 window thread. In particular, `languages()` serialized and formatted the full language dictionary synchronously on the UI message thread, while `downloadDir()` and `defaultDir()` queried filesystem and engine paths directly on the window thread.
+
+**Root Cause:**
+1. `appVersion`, `languages`, `connections`, `downloadDir`, and `defaultDir` were bound synchronously using `w.Bind`, executing closures on the WebView2 UI message loop and risking main thread frame drops and sluggish page switches.
+2. In particular, `languages()` marshals a slice of language definitions with localization lookups (`a.lang()`) whenever Settings or Onboarding initializes.
+
+**Evidence:** Code inspection of `cmd/velo/ui.go` and `cmd/velo/ui.html`. Verified across Go test suite and Node test suite.
+
+**Resolution:**
+1. Converted `appVersion`, `languages`, `connections`, `downloadDir`, and `defaultDir` in `cmd/velo/ui.go` to `bindWindowAsync` so execution occurs off the UI thread in background goroutines.
+
+**Future Guidance:** Maintain 100% asynchronous IPC binding coverage across all WebView2 windows for all information retrieval calls, ensuring the UI thread only processes window events and render updates.
