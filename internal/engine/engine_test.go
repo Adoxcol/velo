@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -349,6 +350,15 @@ func TestStateFileHasNoCookies(t *testing.T) {
 	}
 	if d.Req.Cookies == "" || d.Req.User == "" || d.Req.Pass == "" {
 		t.Fatal("saveState cleared the live download's credentials")
+	}
+	if runtime.GOOS != "windows" {
+		fi, err := os.Stat(statePath(d.Path))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if perm := fi.Mode().Perm(); perm != 0o600 {
+			t.Fatalf("state file permissions = %o, want 0600", perm)
+		}
 	}
 }
 
