@@ -2,6 +2,20 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.30 — 2026-11-04
+
+### Fixed
+- **Files that servers send compressed now download correctly.** Some sites, such as Overwolf's Outplayed installer, store a file gzip-compressed and expect the downloader to unpack it, as browsers do. Velo saved the compressed bytes, and since 0.8.28 reported "the server sent something other than the file". Velo now unpacks these files when they finish.
+- A download rejected for its contents no longer keeps retrying a partial file that is already gone.
+- Saved download progress no longer contains the username for password-protected links (#80), and only your account can read those files (#87).
+- Update checks fall back to the release page sooner when GitHub's API is slow or failing, and repeated checks within a minute reuse the last answer (#77, #81).
+
+### Improved
+- Velo's windows do more work in the background, so slow tasks hold up the interface less (#77, #81, #85).
+- Faster loading of DASH video manifests (#79).
+- More complete and corrected translations (#76, #82), and clearer screen reader labels on download cards and the settings menu (#78).
+- Stronger security headers on the website (#83), and more tests for installing updates (#84).
+
 ## 0.8.29 — 2026-10-29
 
 ### Fixed

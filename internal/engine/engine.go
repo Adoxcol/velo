@@ -15,6 +15,7 @@ package engine
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -118,6 +119,9 @@ type Download struct {
 	// first response. Every range request sends it as If-Range, so a file
 	// that changed on the server since is never stitched into the old one.
 	Validator string
+	// Gzipped means the server sent the file compressed (Content-Encoding:
+	// gzip); it is unpacked when complete, as a browser would.
+	Gzipped bool
 
 	mu     sync.Mutex
 	segs   []*Segment
@@ -246,13 +250,14 @@ type state struct {
 	Total     int64      `json:"total"`
 	Segments  []*Segment `json:"segments"`
 	Validator string     `json:"validator,omitempty"`
+	Gzipped   bool       `json:"gzipped,omitempty"`
 }
 
 func statePath(p string) string { return p + ".part.json" }
 
 func (d *Download) saveState() error {
 	d.mu.Lock()
-	st := state{Req: d.Req, Total: d.Total, Validator: d.Validator}
+	st := state{Req: d.Req, Total: d.Total, Validator: d.Validator, Gzipped: d.Gzipped}
 	st.Req.Cookies, st.Req.User, st.Req.Pass = "", "", "" // this file sits in the download folder: keep logins out of it
 	for _, s := range d.segs {
 		if s.Pos <= s.End {
@@ -285,7 +290,7 @@ func Load(stateFile string) (*Download, error) {
 		return nil, err
 	}
 	d := &Download{Req: st.Req, Total: st.Total, Ranged: true, Status: "paused",
-		Path: strings.TrimSuffix(stateFile, ".part.json"), segs: st.Segments, Validator: st.Validator}
+		Path: strings.TrimSuffix(stateFile, ".part.json"), segs: st.Segments, Validator: st.Validator, Gzipped: st.Gzipped}
 	if d.isStream() { // progress is recounted from <file>.parts when resumed
 		d.Ranged, d.segs = false, nil
 		return d, nil
@@ -590,9 +595,12 @@ func (e *Engine) Run(ctx context.Context, d *Download) error {
 		d.Status, d.Err = "error", err
 		return err
 	}
-	if err != nil && !d.isStream() && (d.segs == nil || !d.Ranged) {
+	var se *StatusError
+	rejected := errors.As(err, &se) && se.Code == http.StatusUnsupportedMediaType
+	if err != nil && !d.isStream() && (d.segs == nil || !d.Ranged || rejected) {
 		// Nothing resumable yet (stopped while probing) or the server can't
-		// resume: drop the partial file and start over next time.
+		// resume, or what it sent was rejected: drop the partial file and start
+		// over next time.
 		if d.Path != "" {
 			os.Remove(d.Path + ".part")
 		}
@@ -662,6 +670,7 @@ func (e *Engine) run(ctx context.Context, d *Download) error {
 	d.mu.Lock()
 	d.Total, d.Ranged = total, ranged
 	d.Validator = validator(resp)
+	d.Gzipped = gzipEncoded(resp, name)
 	d.Path = uniquePath(dir, name)
 	d.mu.Unlock()
 	f, err := os.Create(d.Path + ".part")
@@ -696,6 +705,54 @@ func (e *Engine) run(ctx context.Context, d *Download) error {
 	return e.finish(d, f, e.segmented(ctx, d, f))
 }
 
+// gzipEncoded reports whether the file itself arrives gzip-compressed. A name
+// ending in .gz or .tgz is left alone: there the compressed file is the download.
+func gzipEncoded(resp *http.Response, name string) bool {
+	switch strings.ToLower(resp.Header.Get("Content-Encoding")) {
+	case "gzip", "x-gzip":
+	default:
+		return false
+	}
+	ext := strings.ToLower(path.Ext(name))
+	return ext != ".gz" && ext != ".tgz"
+}
+
+// gunzipPart unpacks the completed .part file in place.
+func (d *Download) gunzipPart() error {
+	part := d.Path + ".part"
+	in, err := os.Open(part)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	zr, err := gzip.NewReader(in)
+	if err != nil {
+		return err
+	}
+	tmp := part + ".unpack"
+	out, err := os.Create(tmp)
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmp)
+	n, err := io.Copy(out, zr)
+	if cerr := out.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		return err
+	}
+	in.Close()
+	if err := os.Rename(tmp, part); err != nil {
+		return err
+	}
+	d.mu.Lock()
+	d.Total = n
+	d.mu.Unlock()
+	d.Done.Store(n)
+	return nil
+}
+
 // finish closes f; on success renames .part to the final name and drops the
 // state file, on pause/error saves the state for a later resume.
 func (e *Engine) finish(d *Download, f *os.File, err error) error {
@@ -709,6 +766,12 @@ func (e *Engine) finish(d *Download, f *os.File, err error) error {
 		return err
 	}
 	os.Remove(statePath(d.Path))
+	if d.Gzipped {
+		if err := d.gunzipPart(); err != nil {
+			os.Remove(d.Path + ".part")
+			return &StatusError{http.StatusUnsupportedMediaType, "the server sent a damaged compressed file: " + err.Error()}
+		}
+	}
 	if wrongContent(d.Path+".part", d.Path) {
 		os.Remove(d.Path + ".part")
 		return &StatusError{http.StatusUnsupportedMediaType, "the server sent something other than the file (probably an error page); the link may have expired or need you to sign in, so download it again from your browser"}

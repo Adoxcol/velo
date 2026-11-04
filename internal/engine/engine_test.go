@@ -2,6 +2,7 @@ package engine
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -565,6 +566,51 @@ func TestErrorReplyInsteadOfFileFails(t *testing.T) {
 	}
 	if err := New(dir).Run(context.Background(), &Download{Req: Request{URL: srv.URL + "/real.zip"}}); err != nil {
 		t.Fatalf("real zip: %v", err)
+	}
+}
+
+// A file stored compressed (Content-Encoding: gzip) is unpacked, in pieces or
+// not; a real .gz stays as it is. A rejected file restarts instead of resuming.
+func TestGzipEncodedFileIsUnpacked(t *testing.T) {
+	data := append([]byte("MZ"), randomData(t, 1<<20)...)
+	var zipped bytes.Buffer
+	zw := gzip.NewWriter(&zipped)
+	zw.Write(data)
+	zw.Close()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Encoding", "gzip")
+		http.ServeContent(w, r, "x", time.Time{}, bytes.NewReader(zipped.Bytes()))
+	}))
+	t.Cleanup(srv.Close)
+	dir := t.TempDir()
+	d := &Download{Req: Request{URL: srv.URL + "/setup.exe"}}
+	if err := New(dir).Run(context.Background(), d); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := os.ReadFile(d.Path); !bytes.Equal(got, data) {
+		t.Fatalf("not unpacked: %d bytes", len(got))
+	}
+	if d.Total != int64(len(data)) || d.Done.Load() != int64(len(data)) {
+		t.Fatalf("size %d done %d", d.Total, d.Done.Load())
+	}
+	gz := &Download{Req: Request{URL: srv.URL + "/backup.gz"}}
+	if err := New(dir).Run(context.Background(), gz); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := os.ReadFile(gz.Path); !bytes.Equal(got, zipped.Bytes()) {
+		t.Fatal(".gz was changed")
+	}
+
+	bad := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeContent(w, r, "x", time.Time{}, bytes.NewReader([]byte("Access denied, not a program")))
+	}))
+	t.Cleanup(bad.Close)
+	b := &Download{Req: Request{URL: bad.URL + "/setup.exe"}}
+	if err := New(dir).Run(context.Background(), b); err == nil {
+		t.Fatal("want error")
+	}
+	if b.segs != nil || b.Path != "" {
+		t.Fatalf("would resume a deleted file: %+v", b.segs)
 	}
 }
 
