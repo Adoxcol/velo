@@ -170,7 +170,7 @@ jobs:
         include:
           - runner: ubuntu-latest
             target: linux
-          - runner: macos-latest
+          - runner: macos-15
             target: darwin
     runs-on: ${{ matrix.runner }}
     steps:
