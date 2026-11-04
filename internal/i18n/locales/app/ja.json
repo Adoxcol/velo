@@ -339,7 +339,7 @@
  "{0} h {1} min": "{0} 時間 {1} 分",
  "{0} min {1} s": "{0} 分 {1} 秒",
  "{0} s": "{0} 秒",
- "Auto-open turned off": "自動開くをオフにしました",
+ "Auto-open turned off": "自動オープンをオフにしました",
  "Couldn't save: {0}": "保存できませんでした: {0}",
  "Exported links to {0}": "{0} にリンクを出力しました",
  "Fresh download URL": "新しいダウンロードURL",
