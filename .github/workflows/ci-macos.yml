@@ -1,0 +1,30 @@
+# Separate from CI: macOS runners are often unavailable, and a job that never
+# starts fails its whole workflow, even with continue-on-error.
+name: CI (macOS)
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  portable-cli-macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Test portable engine and CLI
+        run: go test -race ./internal/engine ./internal/ipc ./cmd/veloctl
+      - name: Vet portable packages
+        run: go vet ./internal/engine ./internal/ipc ./cmd/veloctl
+      - name: Build both architectures
+        run: |
+          GOARCH=amd64 CGO_ENABLED=0 go build -o bin/veloctl-amd64 ./cmd/veloctl
+          GOARCH=arm64 CGO_ENABLED=0 go build -o bin/veloctl-arm64 ./cmd/veloctl
