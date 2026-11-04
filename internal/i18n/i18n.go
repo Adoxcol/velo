@@ -31,6 +31,7 @@ var Languages = []Language{
 	{"es", "Español"},
 	{"fr", "Français"},
 	{"hi", "हिन्दी"},
+	{"it", "Italiano"},
 	{"ja", "日本語"},
 	{"pt-BR", "Português (Brasil)"},
 	{"zh-CN", "简体中文"},
