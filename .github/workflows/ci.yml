@@ -41,7 +41,10 @@ jobs:
           git diff --exit-code site/changelog.html
 
   portable-cli:
+    # macOS runners are often unavailable; that should not fail the run.
+    continue-on-error: ${{ matrix.os == 'macos-latest' }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
