@@ -10,9 +10,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -325,5 +327,26 @@ func TestInstallDefaultRealExecution(t *testing.T) {
 		if string(bytes.TrimSpace(recorded)) != "/S /update" {
 			t.Fatalf("expected arguments '/S /update', got %q", string(recorded))
 		}
+	}
+}
+
+// The silent-install arguments are built separately per platform, so check
+// them on every platform, Windows included.
+func TestInstallerArguments(t *testing.T) {
+	orig := execCommand
+	t.Cleanup(func() { execCommand = orig })
+
+	var name string
+	var args []string
+	missing := filepath.Join(t.TempDir(), "missing.exe")
+	execCommand = func(n string, a ...string) *exec.Cmd {
+		name, args = n, a
+		return orig(missing) // fails to start, so nothing actually runs
+	}
+	if err := defaultRunInstaller("Velo-Setup.exe"); err == nil {
+		t.Fatal("expected the missing command to fail to start")
+	}
+	if name != "Velo-Setup.exe" || strings.Join(args, " ") != "/S /update" {
+		t.Fatalf("ran %q with %q, want Velo-Setup.exe with /S /update", name, args)
 	}
 }

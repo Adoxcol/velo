@@ -9,8 +9,11 @@ import (
 
 var runInstaller = defaultRunInstaller
 
+// execCommand builds the installer command. Swapped in tests.
+var execCommand = exec.Command
+
 func defaultRunInstaller(path string) error {
-	cmd := exec.Command(path, "/S", "/update")
+	cmd := execCommand(path, "/S", "/update")
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	return cmd.Start()
 }
