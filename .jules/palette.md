@@ -27,3 +27,8 @@
 
 **Learning:** Card action buttons (`Pause`, `Resume`, `Show in folder`, `Cancel`) rendered inside download lists are ambiguous to screen reader users if given generic ARIA labels without target item context.
 **Action:** Include the file name in card action `aria-label`s (e.g. `Pause ${escapeHtml(fileName)}`) to ensure screen readers announce specific target context for each action.
+
+## 2025-05-24 - Target Context for Secondary and Auxiliary Card Action Buttons
+
+**Learning:** Secondary actions on list items (such as "More options" dropdown triggers and inline error recovery buttons like "Fix video tools") can easily be overlooked when adding item context, leaving screen readers announcing ambiguous controls across multiple cards.
+**Action:** Always append the target item name to `aria-label` attributes for secondary and troubleshooting buttons in list cards (e.g. `More options for ${escapeHtml(fileName)}`, `Fix video tools for ${escapeHtml(fileName)}`).
