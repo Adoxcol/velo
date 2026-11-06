@@ -26,16 +26,34 @@ func (e *ChecksumError) Error() string {
 // prefixed like "sha256:" or followed by a file name (as in .sha256 files),
 // and returns it normalised. The algorithm is told by its length.
 func ParseChecksum(s string) (string, error) {
+	// Performance optimization: Slice whitespace and prefixes directly without allocating
+	// token slices via strings.Fields.
 	s = strings.TrimSpace(s)
-	if f := strings.Fields(s); len(f) > 0 {
-		s = f[0]
+	if i := strings.IndexAny(s, " \t\r\n"); i >= 0 {
+		s = s[:i]
 	}
 	if i := strings.IndexByte(s, ':'); i >= 0 {
 		s = s[i+1:]
 	}
-	s = strings.ToLower(s)
-	if _, err := hex.DecodeString(s); err != nil || checksumAlgo(s) == "" {
+	if checksumAlgo(s) == "" {
 		return "", errors.New("checksum must be an MD5, SHA-1, SHA-256 or SHA-512 in hex")
+	}
+
+	// Validate hex characters in a single pass, avoiding hex.DecodeString allocation,
+	// and only call strings.ToLower if uppercase hex runes are present.
+	hasUpper := false
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') {
+			continue
+		} else if c >= 'A' && c <= 'F' {
+			hasUpper = true
+		} else {
+			return "", errors.New("checksum must be an MD5, SHA-1, SHA-256 or SHA-512 in hex")
+		}
+	}
+	if hasUpper {
+		s = strings.ToLower(s)
 	}
 	return s, nil
 }
