@@ -41,3 +41,7 @@
 ## 2026-10-30 - Replace regex in ISO 8601 duration parsing with direct linear string scanning
 **Learning:** Using `regexp.FindStringSubmatch` to parse ISO 8601 duration strings (`PT1H2M3.5S`, `P1DT1S`) in DASH manifest loading creates regex evaluation overhead and heap slice allocations for submatches. Replacing regexp matching with a single-pass linear string scanner reduces execution time from ~807 ns/op to ~68.8 ns/op (~11.7x faster) and completely eliminates heap allocations (0 B/op).
 **Action:** Replace regular expression submatch extractions with linear pointer string scanning when parsing standard structured strings (like ISO 8601 durations).
+
+## 2026-11-06 - Zero-allocation slicing and linear hex scanning in ParseChecksum
+**Learning:** Calling `strings.Fields(s)`, `hex.DecodeString(s)`, and unconditional `strings.ToLower(s)` to parse and validate checksum strings causes multiple heap allocations and buffer copies per checksum check. Replacing `strings.Fields` with index-based whitespace slicing (`strings.IndexAny(s, " \t\r\n")`), validating hex characters with a single-pass ASCII scan, and conditionally lowercasing only when uppercase runes are found cuts latency from ~2,035 ns/op to ~832 ns/op (~59% faster) and drops allocations from 9 allocs/op (272 B) to 1 alloc/op (64 B).
+**Action:** Use index slicing instead of `strings.Fields` when extracting single leading tokens, and prefer single-pass ASCII validation over `hex.DecodeString` when only verifying string hex validity.

@@ -159,3 +159,21 @@ func BenchmarkVerifyChecksum(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkParseChecksum(b *testing.B) {
+	inputs := []string{
+		"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		"SHA256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		"  SHA256:E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855  ubuntu.iso \n",
+		"d41d8cd98f00b204e9800998ecf8427e *sample.bin",
+	}
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, in := range inputs {
+			if _, err := ParseChecksum(in); err != nil {
+				b.Fatal(err)
+			}
+		}
+	}
+}
