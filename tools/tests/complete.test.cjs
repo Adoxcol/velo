@@ -8,7 +8,16 @@ function dialog() {
   const elements = new Map();
   const calls = [];
   const element = id => {
-    if (!elements.has(id)) elements.set(id, { disabled: false, checked: false, textContent: '' });
+    if (!elements.has(id)) elements.set(id, {
+      disabled: false,
+      checked: false,
+      textContent: '',
+      attributes: {},
+      setAttribute(k, v) { this.attributes[k] = String(v); },
+      getAttribute(k) { return this.attributes[k]; },
+      focus() {},
+      parentElement: { title: '' },
+    });
     return elements.get(id);
   };
   const context = vm.createContext({
@@ -74,4 +83,22 @@ test('Close displays a settings save failure instead of silently failing', async
   d.context.closeComplete = async () => { throw new Error('settings could not be saved'); };
   await d.element('close').onclick();
   assert.equal(d.element('err').textContent, 'settings could not be saved');
+});
+
+test('completion sets contextual ARIA labels on action buttons', async () => {
+  const d = dialog();
+  d.context.completeInfo = async () => ({
+    id: 99,
+    name: 'ubuntu-24.04-desktop.iso',
+    dir: '/downloads',
+    size: 6000000000,
+    exists: true,
+  });
+  d.context.itemPreview = async () => ({});
+  d.context.fileTypeIcon = async () => ({});
+  d.context.veloSetHTML = () => {};
+  await d.context.load();
+  assert.equal(d.element('open').getAttribute('aria-label'), 'Open ubuntu-24.04-desktop.iso');
+  assert.equal(d.element('with').getAttribute('aria-label'), 'Open ubuntu-24.04-desktop.iso with…');
+  assert.equal(d.element('folder').getAttribute('aria-label'), 'Open folder containing ubuntu-24.04-desktop.iso');
 });
