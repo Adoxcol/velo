@@ -32,3 +32,8 @@
 
 **Learning:** Secondary actions on list items (such as "More options" dropdown triggers and inline error recovery buttons like "Fix video tools") can easily be overlooked when adding item context, leaving screen readers announcing ambiguous controls across multiple cards.
 **Action:** Always append the target item name to `aria-label` attributes for secondary and troubleshooting buttons in list cards (e.g. `More options for ${escapeHtml(fileName)}`, `Fix video tools for ${escapeHtml(fileName)}`).
+
+## 2025-06-12 - Target Context on Standalone Completion Dialog Action Buttons
+
+**Learning:** Standalone dialogs that display a single finished item (such as Velo's "Download complete" prompt) often use concise action buttons ("Open", "Open with…", "Open folder"). When navigating with screen readers or virtual cursor, these generic verbs lack the file context present on visual inspection.
+**Action:** Dynamically set contextual `aria-label`s on completion action buttons using the target file name (e.g., `Open ${cur.name}`, `Open ${cur.name} with…`, `Open folder containing ${cur.name}`).
