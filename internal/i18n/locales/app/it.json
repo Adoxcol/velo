@@ -295,7 +295,7 @@
  "from your browser": "dal tuo browser",
  "from {0}": "da {0}",
  "just now": "proprio ora",
- "{0} file": "{0} file",
+ "{0} file": "file {0}",
  "Shut down gives a 1-minute warning (<code>shutdown /a</code> cancels).": "Lo spegnimento mostra un preavviso di 1 minuto (<code>shutdown /a</code> annulla).",
  "Open <code>chrome://extensions</code> or <code>edge://extensions</code> and turn on <b>Developer mode</b>.": "Apri <code>chrome://extensions</code> o <code>edge://extensions</code> e attiva la <b>Modalità sviluppatore</b>.",
  "Click <b>Load unpacked</b> and choose the <code>extension</code> folder in Velo's install folder.": "Fai clic su <b>Carica estensione non compattata</b> e scegli la cartella <code>extension</code> nella cartella di installazione di Velo.",

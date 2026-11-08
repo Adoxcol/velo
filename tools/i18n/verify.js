@@ -38,12 +38,30 @@ function verifyGroup(group) {
         failed = true;
         return;
       }
+      if (v !== v.trim()) {
+        console.error(`[FAIL] ${group}/${lang} #${i + 1} has untrimmed leading or trailing whitespace: "${v}"`);
+        failed = true;
+      }
       if (holes(k) !== holes(v)) {
         console.error(`[FAIL] ${group}/${lang} #${i + 1} placeholders differ:\n  Source: ${k}\n  Target: ${v}`);
         failed = true;
       }
       if (tags(k) !== tags(v)) {
         console.error(`[FAIL] ${group}/${lang} #${i + 1} HTML tags differ:\n  Source: ${k}\n  Target: ${v}`);
+        failed = true;
+      }
+
+      // Verify punctuation consistency (ellipsis, question marks, colons)
+      if (k.endsWith("…") && !v.endsWith("…") && !v.endsWith("...")) {
+        console.error(`[FAIL] ${group}/${lang} #${i + 1} missing ellipsis:\n  Source: ${k}\n  Target: ${v}`);
+        failed = true;
+      }
+      if (k.endsWith("?") && !v.endsWith("?") && !v.endsWith("？")) {
+        console.error(`[FAIL] ${group}/${lang} #${i + 1} missing question mark:\n  Source: ${k}\n  Target: ${v}`);
+        failed = true;
+      }
+      if (k.endsWith(":") && !v.endsWith(":") && !v.endsWith("：") && !v.endsWith(": ")) {
+        console.error(`[FAIL] ${group}/${lang} #${i + 1} missing colon:\n  Source: ${k}\n  Target: ${v}`);
         failed = true;
       }
     });
