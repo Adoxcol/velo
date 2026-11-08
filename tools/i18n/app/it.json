@@ -295,7 +295,7 @@
  "dal tuo browser",
  "da {0}",
  "proprio ora",
- "{0} file",
+ "file {0}",
  "Lo spegnimento mostra un preavviso di 1 minuto (<code>shutdown /a</code> annulla).",
  "Apri <code>chrome://extensions</code> o <code>edge://extensions</code> e attiva la <b>Modalità sviluppatore</b>.",
  "Fai clic su <b>Carica estensione non compattata</b> e scegli la cartella <code>extension</code> nella cartella di installazione di Velo.",

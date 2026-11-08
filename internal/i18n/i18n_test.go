@@ -30,8 +30,16 @@ func TestResolveAndMatch(t *testing.T) {
 	if Resolve("bn") != "bn" || Resolve("xx") == "xx" {
 		t.Error("Resolve should keep supported codes and reject others")
 	}
+	for _, l := range Languages {
+		if Resolve(l.Code) != l.Code {
+			t.Errorf("Resolve(%q) = %q, want %q", l.Code, Resolve(l.Code), l.Code)
+		}
+	}
 	if T("bn", "Settings") == "Settings" || T("bn", "no such string") != "no such string" {
 		t.Error("T")
+	}
+	if T("it", "{0} file") != "file {0}" {
+		t.Errorf("T(\"it\", \"{0} file\") = %q, want %q", T("it", "{0} file"), "file {0}")
 	}
 }
 
