@@ -31,6 +31,10 @@ type Job struct {
 	Title     string `json:"title"`  // page title, used to name videos
 	Source    string `json:"source"` // "capture" = a download the browser started
 	Size      int64  `json:"size"`   // size the browser reported, if known
+	// Origin is where the browser started before being redirected to URL,
+	// with that site's cookies (see engine.Request.Origin).
+	Origin        string `json:"origin,omitempty"`
+	OriginCookies string `json:"originCookies,omitempty"`
 }
 
 type Reply struct {

@@ -90,8 +90,22 @@
 </header>
 <main>
   <div class="wrap">
+    <article class="rel" id="v0.8.31">
+      <div class="ver"><b>0.8.31</b><span>2026-11-08</span><br><span class="latest">Latest</span></div>
+      <div class="body">
+        <h3>Fixed</h3>
+        <ul>
+          <li><b>Canvas files now download.</b> Canvas, and other sites that sign you in and then send the browser on to a separate file server, gave &#34;server returned 401 Unauthorized&#34;. Velo was handed a file-server link that only the browser could use. When that link refuses Velo, it now starts again from the link you clicked and gets its own. This needs the updated browser extension.</li>
+        </ul>
+        <h3>Changed</h3>
+        <ul>
+          <li>The Chrome and Edge extension no longer downloads from YouTube, to follow the Chrome Web Store&#39;s rules. This includes YouTube pages, embedded YouTube videos and direct YouTube media links. The Firefox add-on is unchanged.</li>
+          <li>Italian is now available in the app and the extension (#88), and some Hindi and Japanese text is corrected.</li>
+        </ul>
+      </div>
+    </article>
     <article class="rel" id="v0.8.30">
-      <div class="ver"><b>0.8.30</b><span>2026-11-04</span><br><span class="latest">Latest</span></div>
+      <div class="ver"><b>0.8.30</b><span>2026-11-04</span></div>
       <div class="body">
         <h3>Fixed</h3>
         <ul>

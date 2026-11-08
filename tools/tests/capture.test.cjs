@@ -18,21 +18,23 @@ function worker(firefox, reply = { ok: true }) {
   const chrome = {
     downloads,
     runtime: {
+      getManifest: () => firefox ? { browser_specific_settings: { gecko: { id: 'velo@test' } } } : {},
       onInstalled: event('installed'), onMessage: event('message'),
       async sendNativeMessage(host, message) { sent.push(message); return reply; },
     },
     storage: { local: { async get(defaults) { return defaults; } } },
-    cookies: { async getAll() { return []; } },
+    cookies: { async getAll({ url }) { return new URL(url).hostname === 'school.instructure.com' ? [{ name: 'session', value: 'canvas' }] : []; } },
     contextMenus: { onClicked: event('menu') },
     webRequest: { onHeadersReceived: event('headers') },
     tabs: { onUpdated: event('updated'), onRemoved: event('removed') },
   };
   const context = vm.createContext({ chrome, URL, navigator: { userAgent: 'test' }, console: { warn() {} } });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../../extension/policy.js'), 'utf8'), context);
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../../extension/background.js'), 'utf8'), context);
   return {
     sent, actions,
-    async capture(filename, url = 'https://example.com/download?id=1') {
-      const item = { id: 7, filename, url, state: 'in_progress', totalBytes: 1024 };
+    async capture(filename, url = 'https://example.com/download?id=1', finalUrl) {
+      const item = { id: 7, filename, url, finalUrl, state: 'in_progress', totalBytes: 1024 };
       if (firefox) await listeners.created(item);
       else listeners.filename(item, () => actions.push(['suggest']));
       // Drain async settings, cookie lookup and native-host replies.
@@ -40,6 +42,13 @@ function worker(firefox, reply = { ok: true }) {
     },
   };
 }
+
+test('Chrome leaves YouTube media downloads in the browser', async () => {
+  const w = worker(false);
+  await w.capture('video.mp4', 'https://rr1.googlevideo.com/videoplayback');
+  assert.equal(w.sent.length, 0);
+  assert.ok(w.actions.some(([action]) => action === 'suggest'));
+});
 
 for (const firefox of [true, false]) {
   const browser = firefox ? 'Firefox' : 'Chrome';
@@ -68,5 +77,21 @@ for (const firefox of [true, false]) {
     assert.equal(w.sent.length, 1);
     assert.ok(!w.actions.some(([action]) => action === 'cancel'));
     assert.ok(w.actions.some(([action]) => action === (firefox ? 'resume' : 'suggest')));
+  });
+}
+
+for (const firefox of [true, false]) {
+  test(`${firefox ? 'Firefox' : 'Chrome'} sends where a redirected download started, with that site's cookies`, async () => {
+    const w = worker(firefox);
+    await w.capture('lesson.pptx', 'https://school.instructure.com/files/1/download', 'https://cdn.inst-fs-sin-prod.inscloudgate.net/abc/lesson.pptx?token=browser');
+    assert.equal(w.sent.length, 1);
+    assert.equal(w.sent[0].url, 'https://cdn.inst-fs-sin-prod.inscloudgate.net/abc/lesson.pptx?token=browser');
+    assert.equal(w.sent[0].cookies, '');
+    assert.equal(w.sent[0].origin, 'https://school.instructure.com/files/1/download');
+    assert.equal(w.sent[0].originCookies, 'session=canvas');
+
+    const direct = worker(firefox);
+    await direct.capture('archive.zip');
+    assert.equal(direct.sent[0].origin, undefined); // not redirected: nothing extra
   });
 }

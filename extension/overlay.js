@@ -4,6 +4,7 @@ try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = br
 // "Download with Velo" button on videos (top-right of the video while the
 // pointer is over it), with a menu of every quality/file found on the page.
 (() => {
+  if (veloPolicy.blocked(location.href) || veloPolicy.blocked(document.referrer)) return;
   if (window.__veloOverlay) return;
   // No button on sites Velo doesn't support (their own protected players).
   if (/(^|\.)(netflix\.com|disneyplus\.com|primevideo\.com|hulu\.com|max\.com|spotify\.com)$/i.test(location.hostname)) return;

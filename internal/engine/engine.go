@@ -49,6 +49,11 @@ type Request struct {
 	Checksum                                    string `json:",omitempty"`
 	Queue                                       string `json:",omitempty"` // named queue ID; "" = the main queue // expected MD5/SHA-1/SHA-256/SHA-512 (hex), checked when done
 	Format                                      string `json:",omitempty"` // video quality: "" (best), "1080p", "720p", "480p", "audio"
+	// Origin is the link the browser started from when it was redirected to
+	// URL, with that site's cookies. Some sites (Canvas, for one) redirect to
+	// a file server with a token only the browser may use; when URL is
+	// refused, Velo starts again from Origin and follows the redirect itself.
+	Origin, OriginCookies string `json:",omitempty"`
 }
 
 // Segment is the byte range [Pos, End] still to fetch. Guarded by Download.mu.
@@ -258,7 +263,7 @@ func statePath(p string) string { return p + ".part.json" }
 func (d *Download) saveState() error {
 	d.mu.Lock()
 	st := state{Req: d.Req, Total: d.Total, Validator: d.Validator, Gzipped: d.Gzipped}
-	st.Req.Cookies, st.Req.User, st.Req.Pass = "", "", "" // this file sits in the download folder: keep logins out of it
+	st.Req.Cookies, st.Req.User, st.Req.Pass, st.Req.OriginCookies = "", "", "", "" // this file sits in the download folder: keep logins out of it
 	for _, s := range d.segs {
 		if s.Pos <= s.End {
 			c := *s
@@ -627,14 +632,13 @@ func (e *Engine) run(ctx context.Context, d *Download) error {
 		return e.finish(d, f, e.segmented(ctx, d, f))
 	}
 
-	req, err := e.newReq(ctx, d.Req)
+	r := d.Req
+	resp, err := e.openFirst(ctx, &r)
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Range", "bytes=0-0")
-	resp, err := e.Client.Do(req)
-	if err != nil {
-		return err
+	if r.URL != d.Req.URL {
+		d.SetRequest(r)
 	}
 	total, ranged := int64(-1), false
 	if resp.StatusCode == http.StatusPartialContent {
@@ -703,6 +707,30 @@ func (e *Engine) run(ctx context.Context, d *Download) error {
 		d.segs = append(d.segs, &Segment{Pos: i * size, End: end})
 	}
 	return e.finish(d, f, e.segmented(ctx, d, f))
+}
+
+// openFirst makes the first request for r (a one-byte range). If the server
+// refuses it and the browser was redirected there from r.Origin, it starts
+// again from r.Origin with that site's cookies, and r becomes that request.
+func (e *Engine) openFirst(ctx context.Context, r *Request) (*http.Response, error) {
+	for {
+		req, err := e.newReq(ctx, *r)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Range", "bytes=0-0")
+		resp, err := e.Client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		refused := resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden
+		if !refused || r.Origin == "" || r.Origin == r.URL {
+			return resp, nil
+		}
+		resp.Body.Close()
+		r.URL, r.Cookies = r.Origin, r.OriginCookies
+		r.Origin, r.OriginCookies = "", ""
+	}
 }
 
 // gzipEncoded reports whether the file itself arrives gzip-compressed. A name

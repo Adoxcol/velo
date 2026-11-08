@@ -576,6 +576,7 @@ func (a *app) refreshLink(id int, newURL string) error {
 	if hostOf(req.URL) != hostOf(newURL) {
 		req.Cookies, req.User, req.Pass = "", "", "" // the old site's login isn't for the new one
 	}
+	req.Origin, req.OriginCookies = "", "" // the new link replaces where the browser started
 	req.URL = newURL
 	_, total := d.Info()
 	if total > 0 {

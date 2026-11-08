@@ -1,6 +1,7 @@
 // Velo browser integration (MV3 service worker; an event page in Firefox).
 // Firefox: use its promise-based browser.* API under the chrome name.
 try { if (typeof browser === "object" && browser.runtime) globalThis.chrome = browser; } catch {}
+if (!globalThis.veloPolicy && typeof importScripts === "function") importScripts("policy.js");
 // Translations (Firefox loads i18n.js as a background script before this one).
 if (!globalThis.veloI18n && typeof importScripts === "function") importScripts("i18n.js");
 const tr = (s) => (globalThis.veloI18n ? veloI18n.t(s) : s);
@@ -30,6 +31,13 @@ async function settings() {
 }
 
 async function send(msg) {
+  // Enforce this at the native-message boundary, including batch links and
+  // stale media saved by an older extension version.
+  if ([msg.url, msg.page, msg.referrer, msg.origin].some(veloPolicy.blocked)) return { ok: false, error: veloPolicy.message };
+  if (msg.type === "batch") {
+    msg = { ...msg, links: msg.links.filter(l => !veloPolicy.blocked(l.url)) };
+    if (!msg.links.length) return { ok: false, error: "No supported download links found." };
+  }
   try {
     const reply = await chrome.runtime.sendNativeMessage(HOST, msg);
     if (reply?.ext) maybeReload(reply.ext);
@@ -70,7 +78,8 @@ async function cookieHeader(url) {
   }
 }
 
-async function handOff({ url, referrer, filename, kind, format, title, source, size }) {
+async function handOff({ url, referrer, filename, kind, format, title, source, size, origin }) {
+  if ([url, referrer, origin].some(veloPolicy.blocked)) return { ok: false, error: veloPolicy.message };
   const facebook = facebookVideoPage(url);
   if (facebook) { url = facebook; kind = "page"; filename = ""; }
   else if (partialMediaURL(url)) return { ok: false, error: "This link is only part of a video. Open the original video post and download from there." };
@@ -85,6 +94,10 @@ async function handOff({ url, referrer, filename, kind, format, title, source, s
     source: source || "",
     size: size > 0 ? size : 0,
     cookies: await cookieHeader(url),
+    // Where the browser started before a redirect, with that site's cookies:
+    // Velo starts again there if the redirected link refuses it (Canvas
+    // file links carry a token only the browser may use).
+    ...(origin && origin !== url && /^https?:/i.test(origin) && !kind ? { origin, originCookies: await cookieHeader(origin) } : {}),
     userAgent: navigator.userAgent,
   });
 }
@@ -99,6 +112,11 @@ function extOf(name) {
 // Other browsers: pause the download as soon as it's created, then decide.
 async function takeOver(item, name) {
   const url = item.finalUrl || item.url;
+  if ([url, item.url, item.referrer].some(veloPolicy.blocked)) return false;
+  if (item.tabId >= 0) {
+    const tab = await chrome.tabs.get(item.tabId).catch(() => null);
+    if (veloPolicy.blocked(tab?.url)) return false;
+  }
   if (!/^https?:/i.test(url)) return false; // blob:, data:, file:
   const s = await settings();
   if (!s.enabled) return false;
@@ -110,7 +128,7 @@ async function takeOver(item, name) {
   const size = item.totalBytes > 0 ? item.totalBytes : item.fileSize;
   if (!s.exts.has(extOf(name)) || (size > 0 && size < MIN_SIZE)) return false;
   // "capture": Velo shows its download dialog.
-  const reply = await handOff({ url, referrer: item.referrer, filename: name, source: "capture", size });
+  const reply = await handOff({ url, referrer: item.referrer, filename: name, source: "capture", size, origin: item.url });
   if (!reply.ok) console.warn("Velo unavailable, downloading in the browser:", reply.error);
   return !!reply.ok;
 }
@@ -188,6 +206,9 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 // "Download with Velo" on a link, image, video or audio. Velo shows its
 // download dialog, as for a captured download.
 async function menuDownload(info, tab) {
+  if ([tab?.url, info.pageUrl, info.frameUrl, info.linkUrl, info.srcUrl].some(veloPolicy.blocked)) {
+    return tab?.id != null && notifyTab(tab.id, veloPolicy.message);
+  }
   const id = String(info.menuItemId || "");
   const format = id.startsWith("velo-fmt-") ? id.slice("velo-fmt-".length).replace(/^best$/, "") : "";
   let url = info.mediaType === "video" || info.mediaType === "audio" ? info.srcUrl || info.linkUrl : info.linkUrl || info.srcUrl;
@@ -227,6 +248,7 @@ function collectLinks(selectionOnly) {
 // dialog to pick which to download (files are pre-selected).
 async function downloadAll(tab, selectionOnly) {
   if (!tab?.id) return;
+  if (veloPolicy.blocked(tab.url)) return notifyTab(tab.id, veloPolicy.message);
   let links = [];
   try {
     const results = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: collectLinks, args: [selectionOnly] });
@@ -234,6 +256,7 @@ async function downloadAll(tab, selectionOnly) {
   } catch (e) {
     return notifyTab(tab.id, "Velo can't read links on this page.");
   }
+  links = links.filter(l => !veloPolicy.blocked(l.url));
   if (!links.length) return notifyTab(tab.id, selectionOnly ? "No links in the selection." : "No links found on this page.");
   const reply = await send({
     type: "batch",
@@ -264,6 +287,7 @@ function header(details, name) {
 
 function classify(details) {
   const url = details.url;
+  if ([url, details.initiator, details.originUrl, details.documentUrl].some(veloPolicy.blocked)) return null;
   const type = header(details, "content-type").toLowerCase().split(";")[0].trim();
   if (facebookVideoPage(url)) return "page";
   if (partialMediaURL(url)) return null;
@@ -363,6 +387,8 @@ chrome.webRequest.onHeadersReceived.addListener(
 
 async function recordMedia(details, kind) {
   const tabId = details.tabId;
+  const tab = await chrome.tabs.get(tabId).catch(() => null);
+  if ([details.url, tab?.url, details.initiator, details.originUrl, details.documentUrl].some(veloPolicy.blocked)) return;
   const entry = { url: kind === "page" ? facebookVideoPage(details.url) : details.url, kind, size: kind === "page" ? 0 : mediaSize(details), quality: kind === "page" ? "Best quality" : "", note: "" };
   if (kind === "file" && entry.size && entry.size < 300 * 1024) return; // ignore tiny clips/sounds
   if (kind === "hls") {
@@ -451,13 +477,16 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   (async () => {
     const tabId = msg.tabId ?? sender.tab?.id;
     const tab = tabId != null ? await chrome.tabs.get(tabId).catch(() => null) : null;
+    if ([tab?.url, sender.url, sender.tab?.url, msg.url, msg.pageUrl, msg.variant].some(veloPolicy.blocked) && ["media", "grab", "all"].includes(msg.type)) {
+      return reply(msg.type === "media" ? { items: [], unsupported: true, reason: veloPolicy.message } : { ok: false, error: veloPolicy.message });
+    }
     const unsupported = tab && unsupportedSite(tab.url);
     const media = tab ? await getMedia(tabId) : { items: [] };
     // Normalize cached entries from older extension versions too.
     media.items = media.items.map((item) => {
       const page = facebookVideoPage(item.url);
       return page ? { url: page, kind: "page", quality: "Best quality", note: "", size: 0 } : item;
-    }).filter((item, i, all) => !partialMediaURL(item.url) && all.findIndex((x) => x.url === item.url) === i);
+    }).filter((item, i, all) => !veloPolicy.blocked(item.url) && !partialMediaURL(item.url) && all.findIndex((x) => x.url === item.url) === i);
     // Resolve the page on demand: SPA navigation must never reuse the previous video.
     let page = videoPage(tab?.url);
     // Content scripts can identify the hovered post on a feed. Keep the URL
@@ -491,15 +520,14 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
 
 // Only individual video/post URLs, never a home feed or playlist.
 function videoPage(raw) {
+  if (veloPolicy.blocked(raw)) return null;
   try {
     const u = new URL(raw);
     if (!/^https?:$/.test(u.protocol)) return null;
     const on = (domain) => u.hostname === domain || u.hostname.endsWith("." + domain);
     const p = u.pathname.split("/").filter(Boolean);
-    if (on("youtu.be") && p.length === 1) return u.href;
-    if ((on("youtube.com") || on("youtube-nocookie.com")) &&
-        ((u.pathname === "/watch" && u.searchParams.get("v")) ||
-         (p.length === 2 && ["shorts", "embed", "live"].includes(p[0])))) return u.href;
+    // Only in the Firefox and personal builds (see tools/packext).
+    if (globalThis.veloYouTube?.videoPage(u)) return u.href;
     if ((on("x.com") || on("twitter.com")) && p.length >= 3 && p[1] === "status") return u.href;
     if (on("facebook.com") && ((["/watch", "/watch/", "/video.php"].includes(u.pathname) && u.searchParams.get("v")) ||
         (p.length === 2 && p[0] === "reel") || (p.length >= 3 && p[1] === "videos"))) return u.href;

@@ -35,10 +35,12 @@
         "https://*/*"
       ],
       "js": [
+        "policy.js",
         "i18n.js",
         "overlay.js"
       ],
       "all_frames": true,
+      "exclude_matches": ["*://*.youtube.com/*", "*://*.youtu.be/*", "*://*.youtube-nocookie.com/*", "*://*.googlevideo.com/*", "*://*.ytimg.com/*"],
       "run_at": "document_idle"
     }
   ],

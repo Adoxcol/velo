@@ -345,6 +345,9 @@ func (a *app) handleAdd(w http.ResponseWriter, r *http.Request) {
 	}
 	req := engine.Request{URL: j.URL, Referrer: j.Referrer, Cookies: j.Cookies,
 		UserAgent: j.UserAgent, Filename: j.Filename, Kind: j.Kind, Format: j.Format, Title: j.Title}
+	if o := strings.ToLower(j.Origin); j.Kind == "" && (strings.HasPrefix(o, "http://") || strings.HasPrefix(o, "https://")) {
+		req.Origin, req.OriginCookies = j.Origin, j.OriginCookies
+	}
 	// Like IDM: a download the browser started opens Velo's download
 	// dialog (unless turned off); the browser's own download is stopped.
 	if j.Source == "capture" && a.getSettings().AskOnCapture && a.showPending != nil {

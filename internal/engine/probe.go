@@ -24,12 +24,7 @@ func (e *Engine) Probe(ctx context.Context, r Request) (Info, error) {
 		name := videoName(Request{URL: r.URL, Title: r.Title}) + ".mp4"
 		return Info{Name: name, Size: -1, Resumable: true, Category: "Video", Kind: kind}, nil
 	}
-	req, err := e.newReq(ctx, r)
-	if err != nil {
-		return Info{}, err
-	}
-	req.Header.Set("Range", "bytes=0-0")
-	resp, err := e.Client.Do(req)
+	resp, err := e.openFirst(ctx, &r)
 	if err != nil {
 		return Info{}, err
 	}

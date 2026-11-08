@@ -2,6 +2,15 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.31 — 2026-11-08
+
+### Fixed
+- **Canvas files now download.** Canvas, and other sites that sign you in and then send the browser on to a separate file server, gave "server returned 401 Unauthorized". Velo was handed a file-server link that only the browser could use. When that link refuses Velo, it now starts again from the link you clicked and gets its own. This needs the updated browser extension.
+
+### Changed
+- The Chrome and Edge extension no longer downloads from YouTube, to follow the Chrome Web Store's rules. This includes YouTube pages, embedded YouTube videos and direct YouTube media links. The Firefox add-on is unchanged.
+- Italian is now available in the app and the extension (#88), and some Hindi and Japanese text is corrected.
+
 ## 0.8.30 — 2026-11-04
 
 ### Fixed

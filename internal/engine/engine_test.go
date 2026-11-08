@@ -663,3 +663,50 @@ func TestServerGoneFailsQuickly(t *testing.T) {
 		t.Errorf("took %v to give up", time.Since(start))
 	}
 }
+
+// Canvas-style: the browser was redirected to a file server with a token
+// only it may use. Velo is refused there, so it starts again from the
+// original link with that site's cookies and gets its own token.
+func TestRefusedLinkRestartsFromOrigin(t *testing.T) {
+	data := randomData(t, 3<<20)
+	copy(data, "PK") // a .pptx is a zip
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/files/1/download":
+			if c, _ := r.Cookie("session"); c == nil || c.Value != "canvas" {
+				http.Error(w, "sign in", http.StatusUnauthorized)
+				return
+			}
+			http.Redirect(w, r, srv.URL+"/store/lesson.pptx?token=velo", http.StatusFound)
+		case "/store/lesson.pptx":
+			if r.URL.Query().Get("token") != "velo" {
+				http.Error(w, "bad token", http.StatusUnauthorized)
+				return
+			}
+			http.ServeContent(w, r, "lesson.pptx", time.Time{}, bytes.NewReader(data))
+		}
+	}))
+	t.Cleanup(srv.Close)
+	browserLink := srv.URL + "/store/lesson.pptx?token=browser"
+	r := Request{URL: browserLink, Origin: srv.URL + "/files/1/download", OriginCookies: "session=canvas"}
+
+	e := New(t.TempDir())
+	info, err := e.Probe(context.Background(), r)
+	if err != nil || info.Name != "lesson.pptx" || info.Size != int64(len(data)) {
+		t.Fatalf("probe: %+v, %v", info, err)
+	}
+	d := &Download{Req: r}
+	if err := e.Run(context.Background(), d); err != nil {
+		t.Fatal(err)
+	}
+	check(t, d, data)
+	if d.Req.URL != r.Origin || d.Req.Origin != "" {
+		t.Fatalf("request after restart: %+v", d.Req)
+	}
+
+	// Without an origin, the refusal is reported as before.
+	if err := e.Run(context.Background(), &Download{Req: Request{URL: browserLink}}); err == nil || !strings.Contains(err.Error(), "401") {
+		t.Fatalf("got %v, want 401", err)
+	}
+}

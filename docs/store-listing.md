@@ -21,7 +21,10 @@ Velo desktop app.
 
 Requires the Velo app for Windows: https://github.com/Adoxcol/velo
 
-Supported YouTube, Facebook and X video pages use optional yt-dlp, ffmpeg and a supported
+YouTube downloads are not supported by the Chrome/Edge extension, including embedded videos and direct YouTube media links.
+Download only content you own or have permission to download.
+
+Supported Facebook and X video pages use optional yt-dlp, ffmpeg and a supported
 JavaScript runtime such as Deno, installed separately. Site availability varies.
 DRM-protected and live streams are not supported. Linux/macOS CLI builds do not
 connect to this extension; it currently requires the Windows desktop app.

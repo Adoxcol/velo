@@ -103,6 +103,11 @@ function choicesFor(items) {
     <div class="t">${esc(tab.title || host)}</div><div class="s">${esc(sub)}</div></div></div>`;
   const allBtn = `<button class="btn ghost" id="all">${svg(ICON.links)}Download all links on this page</button>`;
 
+  if (media.reason) {
+    veloSetHTML(body, `<div class="empty"><div class="ill">${svg(ICON.shield)}</div><b>This site isn't supported</b>${esc(media.reason)}</div>`);
+    return;
+  }
+
   if (media.unsupported) {
     veloSetHTML(body, `<div class="empty"><div class="ill">${svg(ICON.shield)}</div><b>This site isn't supported</b>
       It streams video in a protected format that Velo doesn't download.</div>` + allBtn);

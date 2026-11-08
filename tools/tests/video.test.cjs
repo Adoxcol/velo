@@ -4,30 +4,78 @@ const vm = require('node:vm');
 const fs = require('node:fs');
 const path = require('node:path');
 
-function worker() {
+function worker(firefox = true) {
   let listener, tab = { id: 1, url: 'https://www.youtube.com/watch?v=first', title: 'Test video' };
   const sent = [];
   let cached = [];
   const event = { addListener() {} };
   const chrome = {
-    runtime: { onInstalled: event, onMessage: { addListener(fn) { listener = fn; } },
+    runtime: { getManifest: () => firefox ? { browser_specific_settings: { gecko: { id: 'velo@test' } } } : {}, onInstalled: event, onMessage: { addListener(fn) { listener = fn; } },
       async sendNativeMessage(host, message) { sent.push(message); return { ok: true }; } },
     downloads: { onDeterminingFilename: event }, contextMenus: { onClicked: event },
     webRequest: { onHeadersReceived: event },
-    tabs: { async get() { return tab; }, onUpdated: event, onRemoved: event },
+    tabs: { async get() { return tab; }, async sendMessage() {}, onUpdated: event, onRemoved: event },
     cookies: { async getAll() { return []; } },
     storage: { session: { async get() { return { "media:1": { items: cached } }; } } },
   };
   const context = vm.createContext({ chrome, URL, atob, navigator: { userAgent: 'test' }, console });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../../extension/policy.js'), 'utf8'), context);
+  if (firefox) vm.runInContext(fs.readFileSync(path.join(__dirname, '../../extension/youtube.js'), 'utf8'), context); // Firefox build only
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../../extension/background.js'), 'utf8'), context);
   return {
     sent,
+    send: msg => context.send(msg),
+    menu: (info, tab) => context.menuDownload(info, tab),
     cache(items) { cached = items; },
     classify(url) { return context.classify({ url }); },
     navigate(url) { tab = { ...tab, url }; },
     message(msg, content = false) { return new Promise(resolve => listener(msg, content ? { tab, url: tab.url } : {}, resolve)); },
   };
 }
+
+test('Chrome rejects YouTube pages, embeds, media URLs and old cached entries', async () => {
+  const w = worker(false);
+  for (const url of ['https://www.youtube.com/watch?v=abc', 'https://youtu.be/abc', 'https://www.youtube-nocookie.com/embed/abc', 'https://rr1.googlevideo.com/videoplayback?id=abc']) {
+    w.navigate(url);
+    const media = await w.message({ type: 'media', tabId: 1 });
+    assert.equal(media.unsupported, true);
+    assert.equal(media.items.length, 0);
+    assert.equal((await w.message({ type: 'grab', tabId: 1, url })).ok, false);
+    assert.equal((await w.send({ type: 'download', url })).ok, false);
+    assert.equal(w.classify(url), null);
+  }
+  w.navigate('https://example.com/article');
+  w.cache([{ url: 'https://rr1.googlevideo.com/videoplayback', kind: 'file' }]);
+  assert.equal((await w.message({ type: 'media', tabId: 1 })).items.length, 0);
+  assert.equal(w.sent.length, 0);
+});
+
+test('Chrome filters batch links and blocks YouTube referrers at native boundary', async () => {
+  const w = worker(false);
+  const file = { url: 'https://example.com/file.zip', text: 'file' };
+  await w.send({ type: 'batch', page: 'https://example.com', links: [file, { url: 'https://youtube.com/watch?v=abc' }] });
+  assert.equal(w.sent.length, 1);
+  assert.equal(w.sent[0].links.length, 1);
+  assert.equal(w.sent[0].links[0].url, file.url);
+  assert.equal((await w.send({ type: 'download', url: file.url, referrer: 'https://youtube.com/watch?v=abc' })).ok, false);
+  assert.equal(w.sent.length, 1);
+});
+
+test('Chrome context menus reject YouTube links on other sites', async () => {
+  const w = worker(false);
+  await w.menu({ menuItemId: 'velo-link', linkUrl: 'https://youtu.be/abc' }, { id: 1, url: 'https://example.com' });
+  await w.menu({ menuItemId: 'velo-video', mediaType: 'video', srcUrl: 'https://rr1.googlevideo.com/video.mp4' }, { id: 1, url: 'https://example.com' });
+  assert.equal(w.sent.length, 0);
+});
+
+test('Chrome still routes supported non-YouTube video pages', async () => {
+  const w = worker(false);
+  w.navigate('https://www.facebook.com/reel/123');
+  const media = await w.message({ type: 'media', tabId: 1 });
+  assert.equal(media.items[0].kind, 'page');
+  assert.equal((await w.message({ type: 'grab', tabId: 1 })).ok, true);
+  assert.equal(w.sent.length, 1);
+});
 
 test('YouTube page extraction replaces intercepted fragments and follows SPA navigation', async () => {
   const w = worker();
