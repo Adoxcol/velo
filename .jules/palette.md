@@ -37,3 +37,8 @@
 
 **Learning:** Standalone dialogs that display a single finished item (such as Velo's "Download complete" prompt) often use concise action buttons ("Open", "Open with…", "Open folder"). When navigating with screen readers or virtual cursor, these generic verbs lack the file context present on visual inspection.
 **Action:** Dynamically set contextual `aria-label`s on completion action buttons using the target file name (e.g., `Open ${cur.name}`, `Open ${cur.name} with…`, `Open folder containing ${cur.name}`).
+
+## 2025-07-03 - Target Context on Floating Progress Window Action Buttons
+
+**Learning:** In compact or dedicated progress dialogs (like Velo's downloading window), action buttons ("Pause", "Resume", "Cancel", "Hide") are visually paired with the filename displayed above. However, screen reader users navigating sequentially or jumping between window controls hear ambiguous generic verbs without file context, and confirmation states ("Delete partial file?") lack item specificity.
+**Action:** Dynamically bind the target file name to action button `aria-label`s on progress tick updates (e.g., `Pause ${r.file}`, `Cancel ${r.file}`, `Hide progress for ${r.file}`), and maintain file context during confirmation prompt transitions (`Delete partial file for ${file}? Click again to confirm`).

@@ -144,10 +144,16 @@ async function tick() {
   else if (r.status === "queued") st.textContent = "Waiting in the queue";
   else st.textContent = "Starting…";
   const pausable = r.status === "downloading" || r.status === "queued";
-  $("pause").textContent = pausable ? "Pause" : (r.status === "error" ? "Retry" : "Resume");
+  const pauseVerb = pausable ? "Pause" : (r.status === "error" ? "Retry" : "Resume");
+  $("pause").textContent = pauseVerb;
   $("pause").hidden = r.status === "verifying";
   $("pause").className = "btn" + (pausable ? "" : " primary");
   $("pause").dataset.mode = pausable ? "pause" : "resume";
+  if (r.file) {
+    $("pause").setAttribute("aria-label", `${pauseVerb} ${r.file}`);
+    if (!cancelArmed) $("cancel").setAttribute("aria-label", `Cancel ${r.file}`);
+    $("hide").setAttribute("aria-label", `Hide progress for ${r.file}`);
+  }
 }
 
 $("pause").onclick = async () => {
@@ -155,18 +161,20 @@ $("pause").onclick = async () => {
   tick();
 };
 $("cancel").onclick = async () => {
+  const currentFile = $("name").textContent && $("name").textContent !== "Starting…" ? $("name").textContent : "";
   if (!cancelArmed) { // ask once: cancelling deletes the partial file
     cancelArmed = true;
     $("cancel").textContent = "Delete partial file?";
     $("cancel").className = "btn confirm";
-    $("cancel").setAttribute("aria-label", "Delete partial file? Click again to confirm");
+    $("cancel").setAttribute("aria-label", currentFile ? `Delete partial file for ${currentFile}? Click again to confirm` : "Delete partial file? Click again to confirm");
     $("cancel").title = "Click again to delete the partial file";
     clearTimeout(cancelTimer);
     cancelTimer = setTimeout(() => {
       cancelArmed = false;
       $("cancel").textContent = "Cancel";
       $("cancel").className = "btn danger";
-      $("cancel").removeAttribute("aria-label");
+      if (currentFile) $("cancel").setAttribute("aria-label", `Cancel ${currentFile}`);
+      else $("cancel").removeAttribute("aria-label");
       $("cancel").title = "";
     }, 4000);
     return;
