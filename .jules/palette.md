@@ -42,3 +42,8 @@
 
 **Learning:** In compact or dedicated progress dialogs (like Velo's downloading window), action buttons ("Pause", "Resume", "Cancel", "Hide") are visually paired with the filename displayed above. However, screen reader users navigating sequentially or jumping between window controls hear ambiguous generic verbs without file context, and confirmation states ("Delete partial file?") lack item specificity.
 **Action:** Dynamically bind the target file name to action button `aria-label`s on progress tick updates (e.g., `Pause ${r.file}`, `Cancel ${r.file}`, `Hide progress for ${r.file}`), and maintain file context during confirmation prompt transitions (`Delete partial file for ${file}? Click again to confirm`).
+
+## 2025-07-22 - Target Context for Floating Mini Overlay Action Controls
+
+**Learning:** In compact desktop floating widgets (like Velo Mini), the primary action button toggles between dynamic states (e.g., "Pause" and "Done") while visually positioned beside the active download's name. Screen reader users navigating directly to the button control hear only the isolated verb without understanding which download is affected.
+**Action:** Append the active item's filename to the button's dynamic `aria-label` attribute (e.g., `Pause ${r.file}` or `Done ${r.file}`) while keeping the visual tooltip `title` concise.
