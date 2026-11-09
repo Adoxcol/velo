@@ -728,6 +728,11 @@ func (e *Engine) openFirst(ctx context.Context, r *Request) (*http.Response, err
 			return resp, nil
 		}
 		resp.Body.Close()
+		// Security: When restarting from Origin across host boundaries, clear
+		// Basic Auth credentials to prevent credential leakage to the origin host.
+		if hostOf(r.URL) != hostOf(r.Origin) {
+			r.User, r.Pass = "", ""
+		}
 		r.URL, r.Cookies = r.Origin, r.OriginCookies
 		r.Origin, r.OriginCookies = "", ""
 	}
