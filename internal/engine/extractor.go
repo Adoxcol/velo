@@ -20,23 +20,43 @@ import (
 // VideoPage identifies individual videos, never a site's home feed or playlist.
 func VideoPage(raw string) bool {
 	u, err := url.Parse(raw)
-	if err != nil || (u.Scheme != "https" && u.Scheme != "http") {
+	if err != nil {
+		return false
+	}
+	return videoPageURL(u)
+}
+
+// videoPageURL tests if a pre-parsed URL points to a supported video page.
+// Optimization: Skips path splitting and query parsing for non-video hostnames,
+// avoiding heap allocations during clipboard and URL categorization checks.
+func videoPageURL(u *url.URL) bool {
+	if u.Scheme != "https" && u.Scheme != "http" {
 		return false
 	}
 	h := strings.ToLower(u.Hostname())
 	on := func(domain string) bool { return h == domain || strings.HasSuffix(h, "."+domain) }
-	p := strings.Split(strings.Trim(u.Path, "/"), "/")
+
 	if on("youtu.be") {
+		p := strings.Split(strings.Trim(u.Path, "/"), "/")
 		return len(p) == 1 && p[0] != ""
 	}
 	if on("youtube.com") || on("youtube-nocookie.com") {
-		return (u.Path == "/watch" && u.Query().Get("v") != "") || (len(p) == 2 && (p[0] == "shorts" || p[0] == "embed" || p[0] == "live") && p[1] != "")
+		if u.Path == "/watch" && u.Query().Get("v") != "" {
+			return true
+		}
+		p := strings.Split(strings.Trim(u.Path, "/"), "/")
+		return len(p) == 2 && (p[0] == "shorts" || p[0] == "embed" || p[0] == "live") && p[1] != ""
 	}
 	if on("x.com") || on("twitter.com") {
+		p := strings.Split(strings.Trim(u.Path, "/"), "/")
 		return len(p) >= 3 && p[1] == "status" && p[2] != ""
 	}
 	if on("facebook.com") {
-		return ((u.Path == "/watch/" || u.Path == "/watch" || u.Path == "/video.php") && u.Query().Get("v") != "") || (len(p) == 2 && p[0] == "reel" && p[1] != "") || (len(p) >= 3 && p[1] == "videos" && p[2] != "")
+		if (u.Path == "/watch/" || u.Path == "/watch" || u.Path == "/video.php") && u.Query().Get("v") != "" {
+			return true
+		}
+		p := strings.Split(strings.Trim(u.Path, "/"), "/")
+		return (len(p) == 2 && p[0] == "reel" && p[1] != "") || (len(p) >= 3 && p[1] == "videos" && p[2] != "")
 	}
 	return false
 }

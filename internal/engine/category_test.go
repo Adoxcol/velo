@@ -109,3 +109,25 @@ func TestProbeAndOverrides(t *testing.T) {
 	}
 	check(t, d, data)
 }
+
+func BenchmarkDownloadable(b *testing.B) {
+	urls := []string{
+		"https://example.com/files/archive.zip",
+		"https://cdn.example.org/media/video.mp4?auth=token#part",
+		"https://stream.example.com/live/master.m3u8",
+		"https://stream.example.com/vod/manifest.mpd",
+		"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+		"https://youtu.be/dQw4w9WgXcQ",
+		"https://x.com/user/status/1234567890",
+		"https://www.facebook.com/reel/1234567890",
+		"https://news.ycombinator.com/item?id=12345",
+		"https://github.com/Adoxcol/velo",
+	}
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, u := range urls {
+			Downloadable(u)
+		}
+	}
+}
