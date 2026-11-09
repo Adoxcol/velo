@@ -118,7 +118,7 @@ async function refresh() {
   $("#pp").innerHTML = svg(r.status === "downloading" ? ICON.pause : ICON.check);
   const title = r.status === "downloading" ? "Pause" : "Done";
   $("#pp").title = title;
-  $("#pp").setAttribute("aria-label", title);
+  $("#pp").setAttribute("aria-label", r.file ? `${title} ${r.file}` : title);
 }
 $("#pp").onclick = (e) => { e.stopPropagation(); if (current?.status === "downloading") pause(current.id).then(refresh); };
 $("#close").onclick = (e) => { e.stopPropagation(); $("#ask").hidden = false; };
