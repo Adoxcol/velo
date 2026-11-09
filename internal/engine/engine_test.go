@@ -710,3 +710,45 @@ func TestRefusedLinkRestartsFromOrigin(t *testing.T) {
 		t.Fatalf("got %v, want 401", err)
 	}
 }
+
+// Security: when a refused link restarts from Origin on a different host,
+// Basic Auth credentials (User, Pass) must not leak to the origin host.
+func TestRefusedLinkRestartsFromOriginClearsCrossHostCredentials(t *testing.T) {
+	data := randomData(t, 1<<20)
+	var originLeakedAuth atomic.Bool
+	originSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "" {
+			originLeakedAuth.Store(true)
+		}
+		http.ServeContent(w, r, "doc.bin", time.Time{}, bytes.NewReader(data))
+	}))
+	t.Cleanup(originSrv.Close)
+
+	refusingSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+	}))
+	t.Cleanup(refusingSrv.Close)
+
+	originURL := strings.Replace(originSrv.URL, "127.0.0.1", "localhost", 1) + "/doc.bin"
+	req := Request{
+		URL:           refusingSrv.URL + "/file.bin",
+		Origin:        originURL,
+		OriginCookies: "session=valid",
+		User:          "sensitive-user",
+		Pass:          "sensitive-password",
+	}
+
+	e := New(t.TempDir())
+	d := &Download{Req: req}
+	if err := e.Run(context.Background(), d); err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+	check(t, d, data)
+
+	if originLeakedAuth.Load() {
+		t.Fatal("Basic Auth credentials leaked across host boundaries to origin server")
+	}
+	if d.Req.User != "" || d.Req.Pass != "" {
+		t.Fatalf("expected User and Pass to be cleared, got User=%q Pass=%q", d.Req.User, d.Req.Pass)
+	}
+}
