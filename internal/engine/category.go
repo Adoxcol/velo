@@ -59,7 +59,9 @@ func Downloadable(rawURL string) (ok bool, kind string) {
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		return false, ""
 	}
-	if VideoPage(rawURL) {
+	// Optimization: Pass the already-parsed URL to videoPageURL instead of
+	// re-parsing rawURL with url.Parse in VideoPage.
+	if videoPageURL(u) {
 		return true, "page"
 	}
 	switch ext := strings.ToLower(path.Ext(u.Path)); ext {
