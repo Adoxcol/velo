@@ -752,3 +752,21 @@ func TestRefusedLinkRestartsFromOriginClearsCrossHostCredentials(t *testing.T) {
 		t.Fatalf("expected User and Pass to be cleared, got User=%q Pass=%q", d.Req.User, d.Req.Pass)
 	}
 }
+
+func TestProbeURLSchemeValidation(t *testing.T) {
+	e := New(t.TempDir())
+	badURLs := []string{
+		"file:///etc/passwd",
+		"ftp://example.com/file.zip",
+		"javascript:alert(1)",
+		"data:text/plain;base64,SGVsbG8=",
+		"httpfoo://example.com/file.zip",
+		"invalid-url",
+		"",
+	}
+	for _, u := range badURLs {
+		if _, err := e.Probe(context.Background(), Request{URL: u}); err == nil || !strings.Contains(err.Error(), "invalid URL scheme") {
+			t.Fatalf("Probe(%q) error = %v, want 'invalid URL scheme'", u, err)
+		}
+	}
+}
