@@ -47,3 +47,8 @@
 
 **Learning:** In compact desktop floating widgets (like Velo Mini), the primary action button toggles between dynamic states (e.g., "Pause" and "Done") while visually positioned beside the active download's name. Screen reader users navigating directly to the button control hear only the isolated verb without understanding which download is affected.
 **Action:** Append the active item's filename to the button's dynamic `aria-label` attribute (e.g., `Pause ${r.file}` or `Done ${r.file}`) while keeping the visual tooltip `title` concise.
+
+## 2025-08-14 - Target Context for Browser Capture Action Buttons
+
+**Learning:** When intercepting downloads in the browser capture prompt (`capture.html`), action buttons ("Start download", "Download later", "Cancel") present generic verbs that lack item context for screen reader users navigating controls directly. In addition, user edits to the filename input must immediately propagate to these labels.
+**Action:** Dynamically bind the target file name to action button `aria-label` attributes (`Start download for ${f}`, `Download ${f} later`, `Cancel download for ${f}`) on initial load and synchronize them on filename input changes.

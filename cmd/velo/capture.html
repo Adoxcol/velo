@@ -179,12 +179,19 @@ async function load() {
   $("format").value = cur.format || "";
   $("fmtLbl").hidden = $("fmtRow").hidden = !cur.kind;
   $("err").textContent = "";
+  updateLabels();
   try {
     await Promise.all([showFolder(), showKind()]);
   } catch (e) {
     console.error(e);
   }
   $("start").focus();
+}
+function updateLabels() {
+  const f = $("name")?.value?.trim() || cur?.filename || (cur?.kind === "page" ? "video" : "file");
+  $("start").setAttribute("aria-label", `Start download for ${f}`);
+  $("later").setAttribute("aria-label", `Download ${f} later`);
+  $("cancel").setAttribute("aria-label", `Cancel download for ${f}`);
 }
 // More downloads arrived while the dialog was open.
 window.refreshPending = async () => {
@@ -200,6 +207,7 @@ $("format").onchange = () => {
   if (cur?.kind !== "page" || !$("name").value.trim()) return;
   const ext = $("format").value === "audio" ? ".mp3" : $("format").value === "mp4" ? ".mp4" : ".mkv";
   $("name").value = $("name").value.replace(/\.(mkv|mp4|mp3)$/i, "") + ext;
+  updateLabels();
 };
 
 async function finish(start) {
@@ -238,7 +246,7 @@ $("open").onclick = () => openMain();
 $("change").onclick = async () => {
   try { const p = await pickFolder(customDir || $("dir").dataset.full); if (p) { customDir = p; showFolder(); } } catch (e) { $("err").textContent = String(e); }
 };
-$("name").oninput = () => { showKind(); if (!customDir) showFolder(); };
+$("name").oninput = () => { showKind(); if (!customDir) showFolder(); updateLabels(); };
 let ddEl = null, ddSel = null;
 function closeDD() { if (ddEl) ddEl.style.display = "none"; ddSel = null; }
 function openDD(sel) {
