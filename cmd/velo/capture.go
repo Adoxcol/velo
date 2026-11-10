@@ -100,8 +100,8 @@ func showCapture(a *app) {
 		bindWindowAsync(w, &closed, "categoryOf", func(name string) (string, error) { return engine.CategoryOf(name), nil })
 		bindWindowAsync(w, &closed, "fileTypeIcon", func(name string) (thumbResult, error) { return a.fileTypeIcon(name), nil })
 		bindWindowAsync(w, &closed, "getSettings", func(_ any) (Settings, error) { return a.getSettings(), nil })
-		w.Bind("openMain", func() { go a.show() })
-		w.Bind("closeDialog", func() { go closeCapture(true) })
+		bindWindowAsync(w, &closed, "openMain", func(_ any) (bool, error) { go a.show(); return true, nil })
+		bindWindowAsync(w, &closed, "closeDialog", func(_ any) (bool, error) { go closeCapture(true); return true, nil })
 		w.Bind("pickFolder", func(start string) (string, error) {
 			return pickFolder(uintptr(w.Window()), "Choose download folder", start)
 		})

@@ -1502,9 +1502,9 @@ document.addEventListener("scroll", (e) => { if (ddEl && e.target !== ddEl) clos
 // ---------- start ----------
 let pendingNews = null;
 async function closeNews() {
+  $("#newsDlg").close();
   try {
     await dismissReleaseNotes();
-    $("#newsDlg").close();
   } catch (e) { toast(`Couldn't save: ${e}`, true); }
 }
 $("#newsDone").onclick = closeNews;

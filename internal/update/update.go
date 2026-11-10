@@ -71,8 +71,16 @@ func Latest(ctx context.Context, client *http.Client) (*Release, error) {
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("User-Agent", "Velo-updater")
 	resp, err := client.Do(req)
+	tryWebFallback := func() (*Release, bool) {
+		webCtx, cancelWeb := context.WithTimeout(ctx, 5*time.Second)
+		defer cancelWeb()
+		if rel, werr := latestFromWeb(webCtx, client); werr == nil {
+			return rel, true
+		}
+		return nil, false
+	}
 	if err != nil {
-		if rel, werr := latestFromWeb(ctx, client); werr == nil {
+		if rel, ok := tryWebFallback(); ok {
 			return rel, nil
 		}
 		return nil, err
@@ -82,12 +90,12 @@ func Latest(ctx context.Context, client *http.Client) (*Release, error) {
 		return nil, ErrNoRelease
 	}
 	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
-		if rel, werr := latestFromWeb(ctx, client); werr == nil {
+		if rel, ok := tryWebFallback(); ok {
 			return rel, nil
 		}
 	}
 	if resp.StatusCode != http.StatusOK {
-		if rel, werr := latestFromWeb(ctx, client); werr == nil {
+		if rel, ok := tryWebFallback(); ok {
 			return rel, nil
 		}
 		return nil, fmt.Errorf("release check: %s", resp.Status)

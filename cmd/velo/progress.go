@@ -88,8 +88,8 @@ func showProgress(a *app, id int) {
 		bindWindowAsync(w, &closed, "cancelDownload", func(_ any) (bool, error) { return true, a.remove(id) })
 		bindWindowAsync(w, &closed, "fileTypeIcon", func(name string) (thumbResult, error) { return a.fileTypeIcon(name), nil })
 		bindWindowAsync(w, &closed, "getSettings", func(_ any) (Settings, error) { return a.getSettings(), nil })
-		w.Bind("openMain", func() { go a.show() })
-		w.Bind("closeProgress", func() { go closeProgress(id) })
+		bindWindowAsync(w, &closed, "openMain", func(_ any) (bool, error) { go a.show(); return true, nil })
+		bindWindowAsync(w, &closed, "closeProgress", func(_ any) (bool, error) { go closeProgress(id); return true, nil })
 		w.SetHtml(i18n.Inject(progressHTML, a.lang()))
 		progWins[id] = w
 		progMu.Unlock()

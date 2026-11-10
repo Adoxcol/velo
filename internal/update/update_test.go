@@ -350,3 +350,39 @@ func TestInstallerArguments(t *testing.T) {
 		t.Fatalf("ran %q with %q, want Velo-Setup.exe with /S /update", name, args)
 	}
 }
+
+func TestWebFallbackBoundedTimeout(t *testing.T) {
+	// API endpoint fails immediately, web fallback stalls.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/latest":
+			http.Error(w, "API unavailable", http.StatusBadGateway)
+		case "/releases/latest":
+			// Stall until client gives up
+			<-r.Context().Done()
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	oldAPI, oldWeb := API, Web
+	API, Web = srv.URL+"/api/latest", srv.URL+"/releases"
+	t.Cleanup(func() { API, Web = oldAPI, oldWeb })
+
+	// Pass a context with plenty of time (10s)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	_, err := Latest(ctx, srv.Client())
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("expected error when web fallback stalls, got nil")
+	}
+	// The bounded fallback timeout (5s) should trigger well before the outer 10s context.
+	if elapsed > 7*time.Second {
+		t.Fatalf("expected fallback to abort within ~5s, took %v", elapsed)
+	}
+}

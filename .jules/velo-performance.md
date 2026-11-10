@@ -126,3 +126,21 @@
 1. Converted `appVersion`, `languages`, `connections`, `downloadDir`, and `defaultDir` in `cmd/velo/ui.go` to `bindWindowAsync` so execution occurs off the UI thread in background goroutines.
 
 **Future Guidance:** Maintain 100% asynchronous IPC binding coverage across all WebView2 windows for all information retrieval calls, ensuring the UI thread only processes window events and render updates.
+
+## 2026-11-10 — Dialog Dismissal & Web Fallback Timeout Optimization
+
+**Problem:** Dismissing update release notes or navigating auxiliary windows exhibited sluggishness and perceived UI freezing. Additionally, update checks stalled for up to 10+ seconds when GitHub API failed and web scrape fallback hung.
+
+**Root Cause:**
+1. In `cmd/velo/ui.html`, `closeNews()` awaited `dismissReleaseNotes()` file I/O before closing `#newsDlg`, causing UI sluggishness while disk operations or IPC promises were pending.
+2. `openMain`, `closeDialog`, and `closeProgress` in auxiliary windows (`capture.go`, `mini.go`, `progress.go`) were bound synchronously with `w.Bind`, blocking WebView2 UI message threads during window navigation or mutex acquisition.
+3. In `internal/update/update.go`, fallback calls to `latestFromWeb` used the outer context without a dedicated tight sub-timeout, allowing stalled fallback connections to delay update checks up to 10+ seconds.
+
+**Evidence:** Code inspection of `cmd/velo/ui.html`, `cmd/velo/capture.go`, `cmd/velo/mini.go`, `cmd/velo/progress.go`, and `internal/update/update.go`; unit tests in `tools/tests/news_dialog.test.cjs` and `TestWebFallbackBoundedTimeout` in `internal/update/update_test.go`.
+
+**Resolution:**
+1. Updated `closeNews()` in `ui.html` to close `#newsDlg` immediately before awaiting `dismissReleaseNotes()`.
+2. Migrated `openMain`, `closeDialog`, and `closeProgress` in `capture.go`, `mini.go`, and `progress.go` to `bindWindowAsync`.
+3. Added a 5-second sub-timeout wrapper (`tryWebFallback`) around `latestFromWeb` in `internal/update/update.go`.
+
+**Future Guidance:** Always close UI dialogs immediately before initiating asynchronous background state persistence, execute all window navigation bindings via `bindWindowAsync`, and bound secondary network fallbacks with tight sub-timeouts.

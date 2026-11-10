@@ -124,7 +124,7 @@ func showMini(a *app) {
 		bindWindowAsync(w, &closed, "itemPreview", func(id int) (thumbResult, error) { return a.itemPreview(id), nil })
 		bindWindowAsync(w, &closed, "pause", func(id int) (bool, error) { return true, a.pause(id) })
 		bindWindowAsync(w, &closed, "resume", func(id int) (bool, error) { return true, a.resume(id) })
-		w.Bind("openMain", func() { go a.show() })
+		bindWindowAsync(w, &closed, "openMain", func(_ any) (bool, error) { go a.show(); return true, nil })
 		// mode "now": until these downloads finish; "never": turn Velo Mini off.
 		bindWindowAsync(w, &closed, "hideMini", func(mode string) (bool, error) {
 			if mode == "never" {
