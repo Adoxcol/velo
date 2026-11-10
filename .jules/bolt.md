@@ -53,3 +53,7 @@
 ## 2026-11-10 - Batch lock acquisitions and preallocate slice in history snapshot
 **Learning:** In `a.snapshot()`, calling `d.State()` and `d.Info()` separately for every download item in `a.items` acquired and released the `Download.mu` mutex twice per item (1,000 lock/unlock operations for 500 items). Adding `d.StateInfo()` to retrieve status, error, path, and total size in a single critical section halves mutex acquisitions, and pre-allocating `out := make([]histEntry, 0, capacity)` eliminates dynamic slice growth reallocations, cutting snapshot allocation overhead and reducing lock contention across background dispatch cycles.
 **Action:** Combine multi-field getters into a single batched accessor when reading multiple protected fields from synchronised objects in iteration loops, and pre-allocate destination slice capacities when item counts are known.
+
+## 2026-11-10 - Zero-allocation linear scanning in semantic version parsing
+**Learning:** Calling `strings.Split` and `strconv.Atoi` inside `parse` for semantic version checks in update checking creates unnecessary heap slice allocations and conversions. Replacing `strings.Split` with index scanning (`strings.IndexByte`) and inline ASCII digit conversion completely eliminates heap allocations (0 B/op, 0 allocs/op) and speeds up `parse` by ~4.6x (207 ns/op vs 960 ns/op) and `Newer` by ~3.0x (655 ns/op vs 1960 ns/op).
+**Action:** Use index slicing and inline ASCII digit scanning instead of `strings.Split` and `strconv.Atoi` when parsing dot-separated semantic versions.

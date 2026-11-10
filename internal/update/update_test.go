@@ -27,9 +27,51 @@ func TestNewer(t *testing.T) {
 		{"0.1.1", "0.1.0", true}, {"0.2.0", "0.1.9", true}, {"1.0.0", "0.9.9", true},
 		{"0.1.0", "0.1.0", false}, {"0.1.0", "0.1.1", false}, {"0.10.0", "0.9.0", true},
 		{"0.1.1", "dev", false}, {"x", "0.1.0", false}, {"v0.2.0", "0.1.0", true},
+		{"0.8.31", "0.8.30", true}, {"0.8.30", "0.8.31", false},
+		{"0.8", "0.8.0", false}, {"0.8.0.1", "0.8.0", false}, {"", "0.1.0", false},
 	} {
 		if got := Newer(c.a, c.b); got != c.want {
 			t.Errorf("Newer(%q, %q) = %v", c.a, c.b, got)
+		}
+	}
+}
+
+func BenchmarkNewer(b *testing.B) {
+	pairs := [][2]string{
+		{"0.8.31", "0.8.30"},
+		{"v0.8.31", "0.8.31"},
+		{"0.9.0", "0.8.31"},
+		{"1.0.0", "0.9.9"},
+		{"dev", "0.8.31"},
+		{"0.8.31", "dev"},
+		{"invalid", "0.1.0"},
+		{"0.1.0", "0.1.1"},
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, p := range pairs {
+			Newer(p[0], p[1])
+		}
+	}
+}
+
+func BenchmarkParse(b *testing.B) {
+	versions := []string{
+		"0.8.31",
+		"v0.8.31",
+		"1.0.0",
+		"v1.0.0",
+		"dev",
+		"0.8.31-beta",
+		"0.8",
+		"0.8.31.1",
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, v := range versions {
+			parse(v)
 		}
 	}
 }
