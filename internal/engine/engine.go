@@ -185,6 +185,13 @@ func (d *Download) Info() (path string, total int64) {
 	return d.Path, d.Total
 }
 
+// StateInfo returns status, last error, path, and total size in a single lock acquisition.
+func (d *Download) StateInfo() (status string, err error, path string, total int64) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.Status, d.Err, d.Path, d.Total
+}
+
 // StateInfoQueue returns status, last error, path, total size, and queue ID in a single lock acquisition.
 func (d *Download) StateInfoQueue() (status string, err error, path string, total int64, queueID string) {
 	d.mu.Lock()
