@@ -37,11 +37,23 @@ func (a *app) historyPath() string { return filepath.Join(a.home, "history.json"
 func (a *app) snapshot() []histEntry {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	var out []histEntry
-	for _, it := range a.items {
+	// Optimization: Pre-allocate capacity up to maxHistory to avoid repeated slice growth
+	// reallocations during periodic history snapshots.
+	capacity := len(a.items)
+	if capacity > maxHistory {
+		capacity = maxHistory
+	}
+	out := make([]histEntry, 0, capacity)
+	// If items exceeds maxHistory, snapshot only the most recent maxHistory items.
+	items := a.items
+	if len(items) > maxHistory {
+		items = items[len(items)-maxHistory:]
+	}
+	for _, it := range items {
 		d := it.d
-		status, err := d.State()
-		p, total := d.Info()
+		// Optimization: Retrieve status, error, path, and total size in a single
+		// lock acquisition instead of separate d.State() and d.Info() calls.
+		status, err, p, total := d.StateInfo()
 		if status == "downloading" || status == "verifying" {
 			status = "queued" // was interrupted: start again on the next run
 		}
@@ -57,9 +69,6 @@ func (a *app) snapshot() []histEntry {
 			e.Error = err.Error()
 		}
 		out = append(out, e)
-	}
-	if len(out) > maxHistory {
-		out = out[len(out)-maxHistory:]
 	}
 	return out
 }
