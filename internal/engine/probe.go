@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -20,6 +21,12 @@ type Info struct {
 
 // Probe asks the server about r.URL with a one-byte range request.
 func (e *Engine) Probe(ctx context.Context, r Request) (Info, error) {
+	// Security: Validate that the URL uses an HTTP or HTTPS scheme before probing
+	// to prevent requests to unsupported protocols or local file schemes.
+	u := strings.ToLower(r.URL)
+	if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
+		return Info{}, errors.New("invalid URL scheme")
+	}
 	if ok, kind := Downloadable(r.URL); ok && kind != "" {
 		name := videoName(Request{URL: r.URL, Title: r.Title}) + ".mp4"
 		return Info{Name: name, Size: -1, Resumable: true, Category: "Video", Kind: kind}, nil
