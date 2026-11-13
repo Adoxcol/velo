@@ -144,3 +144,17 @@
 3. Added a 5-second sub-timeout wrapper (`tryWebFallback`) around `latestFromWeb` in `internal/update/update.go`.
 
 **Future Guidance:** Always close UI dialogs immediately before initiating asynchronous background state persistence, execute all window navigation bindings via `bindWindowAsync`, and bound secondary network fallbacks with tight sub-timeouts.
+
+## 2026-11-10 — Zero-Allocation Semantic Version Parsing & Evaluation in Update Checks
+
+**Problem:** Version comparison (`Newer(a, b)`) and release tag parsing in update checks allocated heap memory and sliced strings on every invocation. When checking updates periodically or on manual trigger, `parse` repeatedly invoked `strings.Split` and `strconv.Atoi`.
+
+**Root Cause:**
+`parse` in `internal/update/update.go` used `strings.Split(strings.TrimPrefix(v, "v"), ".")` which allocates a heap slice and substring copies, followed by `strconv.Atoi` on each segment.
+
+**Evidence:** Benchmarking `BenchmarkParse` and `BenchmarkNewer` demonstrated 10 allocs/op (408 B/op) for `parse` and 16 allocs/op (672 B/op) for `Newer`.
+
+**Resolution:**
+Replaced `strings.Split` and `strconv.Atoi` with single-pass index scanning (`strings.IndexByte`) and inline ASCII digit conversion. This eliminated 100% of heap allocations (0 B/op, 0 allocs/op) and accelerated `parse` from 960 ns/op to 207 ns/op (~4.6x faster) and `Newer` from 1960 ns/op to 655 ns/op (~3.0x faster).
+
+**Future Guidance:** Avoid `strings.Split` on structured dot-delimited versions; use index scanning and inline ASCII conversion for zero-allocation version parsing.

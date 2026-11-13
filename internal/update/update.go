@@ -17,7 +17,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -364,14 +363,35 @@ func Newer(a, b string) bool {
 
 func parse(v string) ([3]int, bool) {
 	var out [3]int
-	parts := strings.Split(strings.TrimPrefix(v, "v"), ".")
-	if len(parts) != 3 {
-		return out, false
-	}
-	for i, p := range parts {
-		n, err := strconv.Atoi(p)
-		if err != nil || n < 0 {
+	s := strings.TrimPrefix(v, "v")
+	for i := 0; i < 3; i++ {
+		dot := strings.IndexByte(s, '.')
+		var part string
+		if i < 2 {
+			if dot == -1 {
+				return out, false
+			}
+			part = s[:dot]
+			s = s[dot+1:]
+		} else {
+			if dot != -1 || len(s) == 0 {
+				return out, false
+			}
+			part = s
+		}
+		if len(part) == 0 {
 			return out, false
+		}
+		n := 0
+		for j := 0; j < len(part); j++ {
+			c := part[j]
+			if c < '0' || c > '9' {
+				return out, false
+			}
+			n = n*10 + int(c-'0')
+			if n > 1<<30 { // Atoi would overflow eventually; no real version is this big
+				return out, false
+			}
 		}
 		out[i] = n
 	}
