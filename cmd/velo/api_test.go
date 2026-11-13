@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -236,5 +237,95 @@ func BenchmarkAddBatch(b *testing.B) {
 				_ = a.addBatch(req, urls, false)
 			}
 		})
+	}
+}
+
+// A site that refuses Velo gets the download handed back to the browser,
+// once, and the browser's new download of it isn't taken over again.
+func TestRefusedCaptureGoesBackToBrowser(t *testing.T) {
+	site := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "sign in", http.StatusUnauthorized)
+	}))
+	defer site.Close()
+	a := testApp(t, defaultSettings())
+	a.token = "t"
+	opened := make(chan string, 4)
+	a.openInBrowser = func(link string) { opened <- link }
+
+	link := site.URL + "/lesson.pptx"
+	id := a.add(engine.Request{URL: link, Captured: true})
+	waitFor(t, "failure", func() bool { return statusOf(a, id) == "error" })
+	select {
+	case got := <-opened:
+		if got != link {
+			t.Fatalf("opened %q", got)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("the refused download wasn't given back to the browser")
+	}
+
+	capture := func(body string) ipc.Reply {
+		req := httptest.NewRequest("POST", "/add", strings.NewReader(body))
+		req.Header.Set(ipc.TokenHeader, a.token)
+		res := httptest.NewRecorder()
+		a.handle(res, req)
+		var r ipc.Reply
+		json.Unmarshal(res.Body.Bytes(), &r)
+		return r
+	}
+	if r := capture(`{"url":"` + link + `","source":"capture"}`); r.OK {
+		t.Fatal("the browser's own download was taken over again")
+	}
+
+	// Retrying in Velo doesn't open the browser a second time.
+	a.resume(id)
+	waitFor(t, "failure again", func() bool { return statusOf(a, id) == "error" && !a.get(id).running })
+	select {
+	case got := <-opened:
+		t.Fatalf("opened the browser again: %s", got)
+	case <-time.After(200 * time.Millisecond):
+	}
+
+	// A download Velo added itself is never handed to the browser.
+	id2 := a.add(engine.Request{URL: site.URL + "/other.zip"})
+	waitFor(t, "failure", func() bool { return statusOf(a, id2) == "error" && !a.get(id2).running })
+	select {
+	case got := <-opened:
+		t.Fatalf("opened the browser for a download Velo started: %s", got)
+	case <-time.After(200 * time.Millisecond):
+	}
+}
+
+func TestOutdatedExtensionWarning(t *testing.T) {
+	a := &app{token: "t"}
+	if old, _ := a.extensionOutdated(); old {
+		t.Fatal("warned before the extension ever talked to Velo")
+	}
+	for _, c := range []struct {
+		body string
+		old  bool
+	}{
+		{`{"type":"ping"}`, true}, // before 0.8.32: no version at all
+		{`{"type":"ping","ext":"0.8.31"}`, true},
+		{`{"type":"ping","ext":"` + minExtension + `"}`, false},
+		{`{"type":"ping","ext":"0.9.0"}`, false},
+	} {
+		req := httptest.NewRequest("POST", "/ping", strings.NewReader(c.body))
+		req.Header.Set(ipc.TokenHeader, a.token)
+		req.Header.Set("Content-Type", "application/json")
+		res := httptest.NewRecorder()
+		a.handle(res, req)
+		if old, _ := a.extensionOutdated(); old != c.old || res.Code != http.StatusOK {
+			t.Errorf("%s: outdated = %v (HTTP %d), want %v", c.body, old, res.Code, c.old)
+		}
+	}
+	// The body is still there for the handler after the version is read.
+	req := httptest.NewRequest("POST", "/add", strings.NewReader(`{"url":"ftp://x/f","ext":"0.9.0"}`))
+	req.Header.Set(ipc.TokenHeader, a.token)
+	req.Header.Set("Content-Type", "application/json")
+	res := httptest.NewRecorder()
+	a.handle(res, req)
+	if !strings.Contains(res.Body.String(), "invalid URL scheme") {
+		t.Fatalf("handler didn't get the body: %s", res.Body.String())
 	}
 }

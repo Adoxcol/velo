@@ -54,6 +54,9 @@ type Request struct {
 	// a file server with a token only the browser may use; when URL is
 	// refused, Velo starts again from Origin and follows the redirect itself.
 	Origin, OriginCookies string `json:",omitempty"`
+	// Captured means the browser started this download and handed it to
+	// Velo, so the browser can take it back if the site refuses Velo.
+	Captured bool `json:",omitempty"`
 }
 
 // Segment is the byte range [Pos, End] still to fetch. Guarded by Download.mu.
@@ -88,6 +91,26 @@ type StatusError struct {
 }
 
 func (e *StatusError) Error() string { return e.Msg }
+
+// refusedError explains an HTTP error status in words a user can act on,
+// keeping the code for bug reports.
+func refusedError(resp *http.Response) *StatusError {
+	code := resp.StatusCode
+	var msg string
+	switch {
+	case code == http.StatusUnauthorized || code == http.StatusForbidden:
+		msg = "the site refused Velo: you may need to be signed in, or the link has expired. Download it again from your browser"
+	case code == http.StatusNotFound || code == http.StatusGone:
+		msg = "the file isn't at this link any more. Get a new link from the site"
+	case code == http.StatusTooManyRequests:
+		msg = "the site is limiting downloads right now; try again later"
+	case code >= 500:
+		msg = "the site had a problem; try again later"
+	default:
+		msg = "the server returned an error"
+	}
+	return &StatusError{code, fmt.Sprintf("%s (HTTP %s)", msg, resp.Status)}
+}
 
 // Transient reports whether err is worth retrying later: the network dropped
 // or the server had a temporary problem. A missing file, a refused link or a
@@ -658,7 +681,7 @@ func (e *Engine) run(ctx context.Context, d *Download) error {
 		total = resp.ContentLength
 	} else {
 		resp.Body.Close()
-		return &StatusError{resp.StatusCode, "server returned " + resp.Status}
+		return refusedError(resp)
 	}
 
 	if u := resp.Request.URL.String(); u != d.Req.URL {

@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -16,6 +18,7 @@ import (
 
 	"github.com/Adoxcol/velo/internal/engine"
 	"github.com/Adoxcol/velo/internal/ipc"
+	"github.com/Adoxcol/velo/internal/update"
 	"github.com/Adoxcol/velo/internal/version"
 )
 
@@ -205,6 +208,23 @@ func sameHost(a, b string) bool {
 	return err1 == nil && err2 == nil && ua.Host != "" && strings.EqualFold(ua.Host, ub.Host)
 }
 
+// minExtension is the oldest browser extension that has everything this app
+// relies on (0.8.32: it reports its version and where redirected downloads
+// started). Older ones still work, with a warning to update.
+const minExtension = "0.8.32"
+
+// extensionOutdated reports whether the extension that last talked to Velo
+// is older than minExtension, and its version ("" when it's too old to say).
+func (a *app) extensionOutdated() (bool, string) {
+	a.mu.Lock()
+	seen, v := !a.extSeen.IsZero(), a.extVersion
+	a.mu.Unlock()
+	if !seen {
+		return false, v
+	}
+	return v == "" || update.Newer(minExtension, v), v
+}
+
 // extensionSeen is when the browser extension last talked to Velo (unix ms, 0 = never this session).
 func (a *app) extensionSeen() int64 {
 	a.mu.Lock()
@@ -348,6 +368,14 @@ func (a *app) handleAdd(w http.ResponseWriter, r *http.Request) {
 	if o := strings.ToLower(j.Origin); j.Kind == "" && (strings.HasPrefix(o, "http://") || strings.HasPrefix(o, "https://")) {
 		req.Origin, req.OriginCookies = j.Origin, j.OriginCookies
 	}
+	if j.Source == "capture" {
+		// Velo gave this link back after the site refused it: the browser keeps it.
+		if a.handedBackLink(j.URL, j.Origin) {
+			replyIPC(w, 0, fmt.Errorf("the site refused Velo; leaving this download to the browser"))
+			return
+		}
+		req.Captured = true
+	}
 	// Like IDM: a download the browser started opens Velo's download
 	// dialog (unless turned off); the browser's own download is stopped.
 	if j.Source == "capture" && a.getSettings().AskOnCapture && a.showPending != nil {
@@ -412,8 +440,18 @@ func (a *app) handle(w http.ResponseWriter, r *http.Request) {
 	}
 	id, _ := strconv.Atoi(r.URL.Query().Get("id"))
 	if r.Header.Get("Content-Type") == "application/json" { // from velo-host, i.e. the extension
+		body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<20))
+		if err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		r.Body = io.NopCloser(bytes.NewReader(body))
+		var head struct {
+			Ext string `json:"ext"` // extensions before 0.8.32 don't send it
+		}
+		json.Unmarshal(body, &head)
 		a.mu.Lock()
-		a.extSeen = time.Now()
+		a.extSeen, a.extVersion = time.Now(), head.Ext
 		a.mu.Unlock()
 	}
 	switch r.URL.Path {

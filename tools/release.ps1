@@ -49,6 +49,14 @@ if ($UseBuiltApp) {
 # the same extension ID that the native host allows.
 Copy-Item -Recurse -LiteralPath (Join-Path $root 'extension') -Destination (Join-Path $payload 'extension')
 Remove-Item -LiteralPath (Join-Path $payload 'extension\EXTENSION_ID.txt') -ErrorAction SilentlyContinue
+# Give it this release's version, as packext does for the store packages:
+# an unpacked copy reloads itself when the installed version is newer, and
+# Velo warns when the extension is older than it needs.
+$manifest = Join-Path $payload 'extension\manifest.json'
+$text = [IO.File]::ReadAllText($manifest)
+$stamped = [regex]::Replace($text, '"version":\s*"[^"]*"', "`"version`": `"$Version`"", 1)
+if ($stamped -eq $text -and $text -notmatch "`"version`":\s*`"$([regex]::Escape($Version))`"") { throw 'could not set the extension version' }
+[IO.File]::WriteAllText($manifest, $stamped)
 
 $setup = Join-Path $dist "Velo-Setup-$Version.exe"
 go build -trimpath -ldflags "$ld -H windowsgui -s -w" -o $setup ./cmd/velo-setup

@@ -285,6 +285,9 @@
   .dots i.on { background: var(--primary); width: 22px; border-radius: 4px; }
   .status { display: flex; gap: 10px; align-items: center; padding: 12px 14px; border-radius: 10px; background: var(--panel-2); margin-top: 14px; font-weight: 600; }
   .status.ok { background: var(--ok-soft); color: var(--ok); }
+  .extold { display: flex; gap: 12px; align-items: center; padding: 10px 14px; margin: 0 0 14px; border-radius: 10px; background: var(--warn-soft); }
+  .extold[hidden] { display: none; }
+  .extold span { flex: 1; }
   .spin { width: 16px; height: 16px; border: 2px solid var(--line); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   #toast {
@@ -316,6 +319,10 @@
       <input id="search" placeholder="Search downloads…" spellcheck="false" aria-label="Search downloads"><button class="iconbtn" id="searchClear" title="Clear search" aria-label="Clear search" hidden style="width:24px;height:24px"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button><kbd id="searchKbd">Ctrl K</kbd></label>
   </div>
   <div class="content">
+    <div class="extold" id="extOld" role="status" hidden>
+      <span>Your browser extension is out of date, so some downloads may fail. The browser usually updates it within a day; if this message stays, reinstall it from the store.</span>
+      <button class="btn" id="extOldStore">Open the store</button>
+    </div>
 
     <!-- Home -->
     <section class="page" data-page="home">
@@ -725,6 +732,8 @@ function card(r) {
     meta = `<span class="badge err" title="${escapeHtml(r.error || "")}">${escapeHtml(shorten(r.error || "Failed", 80))}</span>`;
     if (/yt-dlp|ffmpeg|video extraction failed/i.test(r.error || "")) {
       acts = `<button class="btn" style="padding:5px 10px;font-size:12px" data-act="vtools" title="Install or update yt-dlp, ffmpeg and Deno" aria-label="Fix video tools for ${escapeHtml(fileName)}">Fix video tools</button>`;
+    } else if (!r.kind && /HTTP (401|403|404|410)\b/.test(r.error || "")) {
+      acts = `<button class="btn" style="padding:5px 10px;font-size:12px" data-act="relink" title="Paste a fresh link from the website" aria-label="Get a new link for ${escapeHtml(fileName)}">Get a new link</button>`;
     }
     acts += `<button class="iconbtn" data-act="resume" title="Retry" aria-label="Retry ${escapeHtml(fileName)}">${icon(I.retry)}</button>`;
   } else {
@@ -815,6 +824,7 @@ document.addEventListener("click", (e) => {
     case "pause": return act(pause, id);
     case "resume": return act(resume, id);
     case "folder": return act(showInFolder, id);
+    case "relink": return openRelink(r);
     case "vtools": go("settings"); showSec("video"); startVideoToolsInstall(); return;
     case "cancel":
       ask(`Cancel “${r.file || r.url}” and delete the partial file?`, "Cancel download").then((ok) => ok && act(remove, id));
@@ -895,6 +905,7 @@ async function refresh() {
     const now = st.speed.length ? st.speed[st.speed.length - 1] : 0;
     $("#speedVal").textContent = size(now) + "/s";
     spark(st.speed.slice(-30));
+    $("#extOld").hidden = !st.extOld;
     if (!$("#menu").contains(document.activeElement) && $("#menu").style.display !== "block") render();
   } catch { /* closing */ }
 }
@@ -1378,7 +1389,7 @@ $("#bGo").onclick = async () => {
 
 // ---------- extension status ----------
 document.addEventListener("click", (e) => {
-  if (e.target.closest("#getExt, #obGetExt")) openStore();
+  if (e.target.closest("#getExt, #obGetExt, #extOldStore")) openStore();
   if (e.target.closest("#getFfExt, #obGetFfExt")) openFirefoxStore();
 });
 async function extStatusHTML() {

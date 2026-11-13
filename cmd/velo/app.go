@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -77,19 +78,22 @@ type app struct {
 	changed   func() // settings changed (updates the tray menu)
 	onTick    func() // every second (taskbar progress)
 
-	lastHistory   []byte            // last saved history.json contents
-	lastSnap      []histEntry       // last saved history entries
-	speedHist     []float64         // total speed per second, last minute
-	extSeen       time.Time         // last message from the browser extension
-	batch         *batchReq         // links waiting in the batch dialog
-	miniDismissed bool              // Velo Mini closed by the user until downloads stop
-	upd           updater           // GitHub Releases updates
-	pending       map[int]pendingDL // browser downloads waiting for the download dialog
+	lastHistory   []byte               // last saved history.json contents
+	lastSnap      []histEntry          // last saved history entries
+	speedHist     []float64            // total speed per second, last minute
+	extSeen       time.Time            // last message from the browser extension
+	extVersion    string               // version the extension reported ("" = too old to say)
+	handedBack    map[string]time.Time // links given back to the browser, by URL without fragment
+	batch         *batchReq            // links waiting in the batch dialog
+	miniDismissed bool                 // Velo Mini closed by the user until downloads stop
+	upd           updater              // GitHub Releases updates
+	pending       map[int]pendingDL    // browser downloads waiting for the download dialog
 	pendingOrder  []int
 	nextPending   int
-	showPending   func() // opens the download dialog for pending downloads
-	defaultDir    string // download folder when the setting is empty
-	home          string // data folder (%APPDATA%\Velo), fixed at start
+	showPending   func()            // opens the download dialog for pending downloads
+	openInBrowser func(link string) // opens a link in the default browser
+	defaultDir    string            // download folder when the setting is empty
+	home          string            // data folder (%APPDATA%\Velo), fixed at start
 }
 
 func (a *app) cond() *sync.Cond {
@@ -401,6 +405,9 @@ func (a *app) launch(it *item) {
 			log.Printf("#%d paused at %.1f%%", d.ID, pct(d))
 		case err != nil:
 			log.Printf("#%d failed: %v", d.ID, err)
+			if a.handBack(d, err) {
+				err = fmt.Errorf("%w. Velo gave it back to your browser to download", err)
+			}
 			if a.onFail != nil {
 				a.onFail(d, err)
 			}
@@ -953,6 +960,9 @@ type status struct {
 	Summary string    `json:"summary"` // limit / schedule / finish action
 	Waiting bool      `json:"waiting"` // queued downloads are held by the schedule
 	Speed   []float64 `json:"speed"`   // total speed, last 60 seconds
+	// ExtOld: the browser extension is older than this app needs.
+	ExtOld     bool   `json:"extOld,omitempty"`
+	ExtVersion string `json:"extVersion,omitempty"`
 }
 
 func (a *app) status() status {
@@ -961,7 +971,8 @@ func (a *app) status() status {
 	a.mu.Lock()
 	hist := append([]float64(nil), a.speedHist...)
 	a.mu.Unlock()
-	return status{Rows: a.rows(), Summary: s.describe(now), Waiting: !s.Schedule.allowed(now), Speed: hist}
+	old, ext := a.extensionOutdated()
+	return status{Rows: a.rows(), Summary: s.describe(now), Waiting: !s.Schedule.allowed(now), Speed: hist, ExtOld: old, ExtVersion: ext}
 }
 
 // lang is the interface language in use.
@@ -969,3 +980,55 @@ func (a *app) lang() string { return i18n.Resolve(a.getSettings().Language) }
 
 // tr translates an English interface string.
 func (a *app) tr(s string) string { return i18n.T(a.lang(), s) }
+
+// handBack gives a download the browser started back to the browser when the
+// site refused Velo before anything arrived (the site wants the browser's
+// sign-in, or a link only the browser may use). It opens the link once, in
+// the default browser; handleAdd then lets the browser keep that download.
+func (a *app) handBack(d *engine.Download, err error) bool {
+	var se *engine.StatusError
+	if !d.Req.Captured || d.Done.Load() > 0 || !errors.As(err, &se) ||
+		(se.Code != http.StatusUnauthorized && se.Code != http.StatusForbidden) {
+		return false
+	}
+	link := d.Req.URL
+	a.mu.Lock()
+	if a.handedBack == nil {
+		a.handedBack = map[string]time.Time{}
+	}
+	if t, ok := a.handedBack[withoutFragment(link)]; ok && time.Since(t) < handBackWindow {
+		a.mu.Unlock()
+		return false // already tried: the browser was refused too
+	}
+	a.handedBack[withoutFragment(link)] = time.Now()
+	a.mu.Unlock()
+	log.Printf("#%d handed back to the browser", d.ID)
+	if a.openInBrowser != nil {
+		a.openInBrowser(link)
+	}
+	return true
+}
+
+// handBackWindow is how long a link given back to the browser stays the
+// browser's: its download of it isn't taken over again.
+const handBackWindow = 5 * time.Minute
+
+// handedBackLink reports whether the browser is downloading one of these
+// links because Velo gave it back.
+func (a *app) handedBackLink(links ...string) bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for _, l := range links {
+		if t, ok := a.handedBack[withoutFragment(l)]; ok && l != "" && time.Since(t) < handBackWindow {
+			return true
+		}
+	}
+	return false
+}
+
+func withoutFragment(link string) string {
+	if i := strings.IndexByte(link, '#'); i >= 0 {
+		return link[:i]
+	}
+	return link
+}

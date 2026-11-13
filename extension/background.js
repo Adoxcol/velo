@@ -38,6 +38,8 @@ async function send(msg) {
     msg = { ...msg, links: msg.links.filter(l => !veloPolicy.blocked(l.url)) };
     if (!msg.links.length) return { ok: false, error: "No supported download links found." };
   }
+  // Velo warns when the extension is too old for the app.
+  msg = { ...msg, ext: chrome.runtime.getManifest().version };
   try {
     const reply = await chrome.runtime.sendNativeMessage(HOST, msg);
     if (reply?.ext) maybeReload(reply.ext);

@@ -2,6 +2,18 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.32 — 2026-11-13
+
+### Added
+- **When a site refuses Velo, your browser downloads the file instead.** If a download you started in the browser is refused before any of it arrives, Velo hands the link back to the browser. You get the file either way. This needs the updated browser extension.
+- Velo now tells you when your browser extension is out of date, and gives you a button to open the store.
+- A failed download that the site refused or no longer has now shows a **Get a new link** button.
+
+### Changed
+- Download errors are easier to understand. For example, "the file isn't at this link any more. Get a new link from the site (HTTP 404 Not Found)" replaces "server returned 404 Not Found".
+- The extension that comes with Velo now has the same version as the app, so copies loaded unpacked reload themselves after an update.
+- Bug reports now show the extension version in your browser, and note when the Velo window stopped responding.
+
 ## 0.8.31 — 2026-11-08
 
 ### Fixed

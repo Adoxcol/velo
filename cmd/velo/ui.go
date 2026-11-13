@@ -91,6 +91,11 @@ func setupTrayApp(a *app) {
 	go a.runMini()
 	go a.upd.run(a)
 	a.showPending = func() { showCapture(a) } // its own small window, like IDM
+	a.openInBrowser = func(link string) {
+		if err := exec.Command("rundll32", "url.dll,FileProtocolHandler", link).Start(); err != nil {
+			log.Printf("opening the link in the browser: %v", err)
+		}
+	}
 	a.showBatch = func() {
 		a.show()
 		evalMain("openBatch()")
@@ -315,12 +320,43 @@ func showMain(a *app) {
 		w.SetHtml(i18n.Inject(uiHTML, a.lang()))
 		win = w
 		winMu.Unlock()
+		go watchUI(w, &closed)
 		w.Run() // until the window is closed
 		closed.Store(true)
 		winMu.Lock()
 		win = nil
 		winMu.Unlock()
 	}()
+}
+
+// watchUI logs when the window's thread stops answering for more than five
+// seconds, and how long it was stuck, so freezes show up in bug reports.
+func watchUI(w webview2.WebView, closed *atomic.Bool) {
+	const every, stuck = 2 * time.Second, 5 * time.Second
+	for !closed.Load() {
+		time.Sleep(every)
+		if closed.Load() {
+			return
+		}
+		sent := time.Now()
+		done := make(chan struct{})
+		w.Dispatch(func() { close(done) })
+		select {
+		case <-done:
+			continue
+		case <-time.After(stuck):
+		}
+		log.Printf("window not responding for %s", stuck)
+		select {
+		case <-done:
+			log.Printf("window responding again after %s", time.Since(sent).Round(100*time.Millisecond))
+		case <-time.After(10 * time.Minute):
+			if !closed.Load() {
+				log.Print("window still not responding after 10m")
+			}
+			return
+		}
+	}
 }
 
 // evalMain runs JavaScript in the window once it is open.

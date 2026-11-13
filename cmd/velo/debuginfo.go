@@ -36,7 +36,11 @@ func (a *app) debugInfo() string {
 	if t := a.extensionSeen(); t > 0 {
 		seen = time.Since(time.UnixMilli(t)).Round(time.Second).String() + " ago"
 	}
-	fmt.Fprintf(&b, "Extension: %s, last heard from %s\n", ext, seen)
+	inBrowser := "unknown (older than 0.8.32, or not heard from)"
+	if _, v := a.extensionOutdated(); v != "" {
+		inBrowser = v
+	}
+	fmt.Fprintf(&b, "Extension: in the browser %s, bundled with Velo %s, last heard from %s\n", inBrowser, ext, seen)
 	a.mu.Lock()
 	n, running := len(a.items), a.running
 	a.mu.Unlock()

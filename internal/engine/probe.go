@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -48,7 +47,7 @@ func (e *Engine) Probe(ctx context.Context, r Request) (Info, error) {
 	case http.StatusOK:
 		info.Size = resp.ContentLength
 	default:
-		return Info{}, fmt.Errorf("server returned %s", resp.Status)
+		return Info{}, refusedError(resp)
 	}
 	info.Name = fileName(r, resp)
 	info.Category = CategoryOf(info.Name)
