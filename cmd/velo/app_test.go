@@ -402,14 +402,18 @@ func TestRefreshLinkClearsLoginsOnHostChange(t *testing.T) {
 	}
 
 	// Setting credentials and refreshing to the same host keeps credentials.
+	a.pause(id) // refreshLink queued it again
+	waitFor(t, "stop", func() bool { return !a.get(id).running }) // it may fail first: the host is fake
 	it.d.Req.Cookies, it.d.Req.User, it.d.Req.Pass = "session=456", "bob", "pass456"
-	a.pause(id)
 	if err := a.refreshLink(id, "https://new-host.example.com/other-path.zip"); err != nil {
 		t.Fatal(err)
 	}
 	if it.d.Req.User != "bob" || it.d.Req.Pass != "pass456" || it.d.Req.Cookies != "session=456" {
 		t.Fatalf("credentials were wrongly cleared on same host: %+v", it.d.Req)
 	}
+	// Stop the restarted download before the test folder is removed.
+	a.pause(id)
+	waitFor(t, "stop", func() bool { return !a.get(id).running }) // it may fail first: the host is fake
 }
 
 func TestQueueOrder(t *testing.T) {
