@@ -389,6 +389,9 @@ func parse(v string) ([3]int, bool) {
 				return out, false
 			}
 			n = n*10 + int(c-'0')
+			if n > 1<<30 { // Atoi would overflow eventually; no real version is this big
+				return out, false
+			}
 		}
 		out[i] = n
 	}
