@@ -2,6 +2,11 @@
 
 All notable changes to Velo. The newest version is first.
 
+## 0.8.33 — 2026-11-14
+
+### Fixed
+- **Windows Security no longer mistakes the installer for a Trojan.** The installer copied itself into Velo's folder to serve as the uninstaller, and some antivirus programs, including Windows Defender, treat a program copying itself as malware. The installer now includes a separate uninstaller instead.
+
 ## 0.8.32 — 2026-11-13
 
 ### Added

@@ -98,10 +98,13 @@ func doInstall(dir string, opts installOptions, progress progressFunc) error {
 		}
 		size += n
 	}
-	// Keep a copy of this program as the uninstaller.
+	// Release builds ship the uninstaller in the payload. Development builds
+	// without one keep a copy of this program instead.
 	self, _ := os.Executable()
 	uninstaller := filepath.Join(dir, "velo-setup.exe")
-	if !strings.EqualFold(filepath.Clean(self), filepath.Clean(uninstaller)) {
+	if _, err := fs.Stat(payload, "payload/velo-setup.exe"); err == nil {
+		// copied with the other files
+	} else if !strings.EqualFold(filepath.Clean(self), filepath.Clean(uninstaller)) {
 		if _, err := writeFile(uninstaller, func() (io.ReadCloser, error) { return os.Open(self) }); err != nil {
 			return err
 		}

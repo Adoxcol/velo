@@ -92,7 +92,7 @@ func writeFile(dst string, open func() (io.ReadCloser, error)) (int64, error) {
 		if err != nil {
 			return 0, err
 		}
-		tmp := dst + ".new"
+		tmp := dst + ".tmp"
 		f, err := os.Create(tmp)
 		if err != nil {
 			src.Close()

@@ -27,7 +27,7 @@ $payload = Join-Path $root 'cmd\velo-setup\payload'
 $dist = Join-Path $root 'dist'
 
 New-Item -ItemType Directory -Force $dist | Out-Null
-$programs = 'velo.exe', 'velo-host.exe', 'veloctl.exe'
+$programs = 'velo.exe', 'velo-host.exe', 'veloctl.exe', 'velo-setup.exe'
 
 if ($UseBuiltApp) {
     # Keep the programs; clear anything else left from a previous run.
@@ -38,6 +38,13 @@ if ($UseBuiltApp) {
     # Fresh payload (keep the README that explains the folder).
     Get-ChildItem -LiteralPath $payload | Where-Object Name -ne 'README.md' | Remove-Item -Recurse -Force
     Write-Host "Building Velo $Version..."
+    # The uninstaller is velo-setup built while the payload is still empty,
+    # so the installer ships it as a file instead of copying itself into the
+    # install folder (antivirus treats a program copying itself as a dropper).
+    # Build it first: the payload folder is embedded at build time.
+    go build -trimpath -ldflags "$ld -H windowsgui -s -w" -o (Join-Path $env:TEMP 'velo-uninstaller.exe') ./cmd/velo-setup
+    if ($LASTEXITCODE) { throw 'uninstaller build failed' }
+    Move-Item -Force (Join-Path $env:TEMP 'velo-uninstaller.exe') (Join-Path $payload 'velo-setup.exe')
     go build -trimpath -ldflags "$ld -H windowsgui -s -w" -o (Join-Path $payload 'velo.exe') ./cmd/velo
     go build -trimpath -ldflags "$ld -H windowsgui -s -w" -o (Join-Path $payload 'velo-host.exe') ./cmd/velo-host
     go build -trimpath -ldflags "$ld -s -w" -o (Join-Path $payload 'veloctl.exe') ./cmd/veloctl
@@ -67,7 +74,7 @@ if ($LASTEXITCODE) { throw 'setup build failed' }
 $portable = Join-Path ([IO.Path]::GetTempPath()) "Velo-Portable-$Version"
 Remove-Item -LiteralPath $portable -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $portable | Out-Null
-Get-ChildItem -LiteralPath $payload | Where-Object Name -ne 'README.md' | Copy-Item -Destination $portable -Recurse
+Get-ChildItem -LiteralPath $payload | Where-Object { 'README.md', 'velo-setup.exe' -notcontains $_.Name } | Copy-Item -Destination $portable -Recurse
 Set-Content -LiteralPath (Join-Path $portable 'portable') -Value 'This file makes Velo portable: settings and history stay in the data folder next to it.'
 @"
 Velo $Version (portable)
